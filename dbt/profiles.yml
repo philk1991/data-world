@@ -1,0 +1,7 @@
+spotify:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/spotify.duckdb
+      threads: 4

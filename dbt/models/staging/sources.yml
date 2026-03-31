@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: main
+    tables:
+      - name: raw_top_artists
+        description: Raw top artists ingested from Spotify API
+      - name: raw_top_tracks
+        description: Raw top tracks ingested from Spotify API
