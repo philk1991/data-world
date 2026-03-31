@@ -1,12 +1,10 @@
 with source as (
-    select * from {{ source('raw', 'raw_top_tracks') }}
+    select * from {{ source('raw', 'raw_recommendations') }}
 )
 
 select
-    id                                          as track_id,
-    name                                        as track_name,
-    rank,
-    time_range,
+    track_id,
+    track_name,
     artist_ids,
     artist_names,
     album_id,
@@ -24,5 +22,7 @@ select
     popularity,
     spotify_url,
     preview_url,
+    seed_artist_ids,
+    seed_track_ids,
     ingested_at::timestamp                      as ingested_at
 from source

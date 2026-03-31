@@ -1,0 +1,139 @@
+ version: 2
+
+models:
+  - name: top_artists_by_period
+    description: >
+      One row per artist showing their ranking across all three Spotify time
+      periods side by side (short_term ~4 weeks, medium_term ~6 months,
+      long_term all time). Null rank means the artist did not appear in the
+      top 50 for that period. Ordered by short_term rank ascending.
+    columns:
+      - name: artist_id
+        description: Spotify artist ID. Unique per row.
+        tests:
+          - not_null
+          - unique
+      - name: artist_name
+        description: Display name of the artist.
+        tests:
+          - not_null
+      - name: genres
+        description: Comma-separated list of genres associated with the artist.
+      - name: popularity
+        description: Spotify popularity score (0–100), taken as the max across time ranges.
+        tests:
+          - not_null
+      - name: followers
+        description: Total Spotify followers, taken as the max across time ranges.
+        tests:
+          - not_null
+      - name: rank_short_term
+        description: Artist rank over the last ~4 weeks. Null if not in top 50.
+      - name: rank_medium_term
+        description: Artist rank over the last ~6 months. Null if not in top 50.
+      - name: rank_long_term
+        description: Artist rank over all time. Null if not in top 50.
+      - name: spotify_url
+        description: External Spotify URL for the artist profile.
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Most recent ingestion timestamp across all time ranges.
+        tests:
+          - not_null
+
+  - name: top_tracks_by_period
+    description: >
+      One row per track showing its ranking across all three Spotify time
+      periods side by side (short_term ~4 weeks, medium_term ~6 months,
+      long_term all time). Null rank means the track did not appear in the
+      top 50 for that period. Ordered by short_term rank ascending.
+    columns:
+      - name: track_id
+        description: Spotify track ID. Unique per row.
+        tests:
+          - not_null
+          - unique
+      - name: track_name
+        description: Display name of the track.
+        tests:
+          - not_null
+      - name: artist_names
+        description: Comma-separated list of artist names for this track.
+        tests:
+          - not_null
+      - name: album_name
+        description: Name of the album this track belongs to.
+        tests:
+          - not_null
+      - name: album_release_date
+        description: Release date of the album, normalised to a full date.
+      - name: duration_minutes
+        description: Track duration in minutes, rounded to 2 decimal places.
+        tests:
+          - not_null
+      - name: explicit
+        description: Whether the track has explicit content.
+        tests:
+          - not_null
+      - name: popularity
+        description: Spotify popularity score (0–100), taken as the max across time ranges.
+        tests:
+          - not_null
+      - name: rank_short_term
+        description: Track rank over the last ~4 weeks. Null if not in top 50.
+      - name: rank_medium_term
+        description: Track rank over the last ~6 months. Null if not in top 50.
+      - name: rank_long_term
+        description: Track rank over all time. Null if not in top 50.
+      - name: spotify_url
+        description: External Spotify URL for the track.
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Most recent ingestion timestamp across all time ranges.
+        tests:
+          - not_null
+
+  - name: top_tracks_enriched
+    description: >
+      Top tracks joined with audio features. One row per track with ranking
+      across all three time periods plus the full set of Spotify audio feature
+      scores. Use this model for any analysis combining listening patterns with
+      sonic characteristics (e.g. energy trends, valence by period).
+    columns:
+      - name: track_id
+        description: Spotify track ID. Unique per row.
+        tests:
+          - not_null
+          - unique
+      - name: track_name
+        description: Display name of the track.
+        tests:
+          - not_null
+      - name: artist_names
+        description: Comma-separated list of artist names.
+        tests:
+          - not_null
+      - name: danceability
+        description: How suitable the track is for dancing (0–1).
+      - name: energy
+        description: Perceptual intensity and activity (0–1).
+      - name: valence
+        description: Musical positiveness — high = happy/cheerful, low = sad/angry (0–1).
+      - name: tempo
+        description: Estimated tempo in beats per minute (BPM).
+      - name: acousticness
+        description: Confidence the track is acoustic (0–1).
+      - name: instrumentalness
+        description: Likelihood the track has no vocals (0–1).
+      - name: rank_short_term
+        description: Track rank over the last ~4 weeks. Null if not in top 50.
+      - name: rank_medium_term
+        description: Track rank over the last ~6 months. Null if not in top 50.
+      - name: rank_long_term
+        description: Track rank over all time. Null if not in top 50.
+      - name: spotify_url
+        description: External Spotify URL for the track.
+        tests:
+          - not_null

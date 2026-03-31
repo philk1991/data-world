@@ -1,0 +1,70 @@
+version: '3'
+
+vars:
+  VENV: .venv/bin/activate
+  DBT_DIR: dbt
+  CACHE: data-ingestion/.spotify_cache
+
+tasks:
+
+  # ── Spotify Ingestion ────────────────────────────────────────────────────────
+
+  ingest:
+    desc: Clear Spotify cache and run the full ingest pipeline
+    cmds:
+      - rm -f {{.CACHE}}
+      - bash -c "source {{.VENV}} && cd data-ingestion && python ingest.py"
+
+  ingest:no-cache-clear:
+    desc: Run ingest without clearing the Spotify cache (uses existing token)
+    cmds:
+      - bash -c "source {{.VENV}} && cd data-ingestion && python ingest.py"
+
+  # ── dbt ─────────────────────────────────────────────────────────────────────
+
+  dbt:run:
+    desc: Run all dbt models
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt run"
+
+  dbt:test:
+    desc: Run all dbt tests
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt test"
+
+  dbt:build:
+    desc: Run all dbt models then test them
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt build"
+
+  dbt:docs:
+    desc: Generate and serve dbt docs in the browser
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt docs generate && dbt docs serve"
+
+  dbt:compile:
+    desc: Compile dbt project (validates SQL without running)
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt compile"
+
+  dbt:run:select:
+    desc: "Run a specific dbt model -- usage: task dbt:run:select MODEL=top_tracks_enriched"
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt run --select {{.MODEL}}"
+    requires:
+      vars: [MODEL]
+
+  dbt:test:select:
+    desc: "Test a specific dbt model -- usage: task dbt:test:select MODEL=stg_top_tracks"
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt test --select {{.MODEL}}"
+    requires:
+      vars: [MODEL]
+
+  # ── Combined ─────────────────────────────────────────────────────────────────
+
+  refresh:
+    desc: Full refresh — ingest from Spotify then build and test all dbt models
+    cmds:
+      - task: ingest
+      - task: dbt:build

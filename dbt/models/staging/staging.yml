@@ -1,0 +1,325 @@
+version: 2
+
+models:
+  - name: stg_top_artists
+    description: >
+      Staged top artists pulled from the Spotify API. Each row represents one
+      artist at a specific time range (short_term, medium_term, long_term).
+      Ranks are 1-indexed with 1 being the most listened to.
+    columns:
+      - name: artist_id
+        description: Spotify artist ID.
+        tests:
+          - not_null
+      - name: artist_name
+        description: Display name of the artist.
+        tests:
+          - not_null
+      - name: rank
+        description: Rank within the given time range (1 = most listened).
+        tests:
+          - not_null
+      - name: time_range
+        description: Spotify time range window for the ranking.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["short_term", "medium_term", "long_term"]
+      - name: popularity
+        description: Spotify popularity score (0–100).
+        tests:
+          - not_null
+      - name: followers
+        description: Total number of Spotify followers for the artist.
+        tests:
+          - not_null
+      - name: genres
+        description: Comma-separated list of genres associated with the artist.
+      - name: spotify_url
+        description: External Spotify URL for the artist profile.
+        tests:
+          - not_null
+      - name: image_url
+        description: URL of the artist's profile image. May be null if no image is set.
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the Spotify API.
+        tests:
+          - not_null
+
+  - name: stg_top_tracks
+    description: >
+      Staged top tracks pulled from the Spotify API. Each row represents one
+      track at a specific time range (short_term, medium_term, long_term).
+      Album release dates are normalised to full dates — year-only and
+      year-month values are defaulted to January 1st.
+    columns:
+      - name: track_id
+        description: Spotify track ID.
+        tests:
+          - not_null
+      - name: track_name
+        description: Display name of the track.
+        tests:
+          - not_null
+      - name: rank
+        description: Rank within the given time range (1 = most listened).
+        tests:
+          - not_null
+      - name: time_range
+        description: Spotify time range window for the ranking.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["short_term", "medium_term", "long_term"]
+      - name: artist_ids
+        description: Comma-separated list of Spotify artist IDs for this track.
+        tests:
+          - not_null
+      - name: artist_names
+        description: Comma-separated list of artist names for this track.
+        tests:
+          - not_null
+      - name: album_id
+        description: Spotify album ID.
+        tests:
+          - not_null
+      - name: album_name
+        description: Name of the album this track belongs to.
+        tests:
+          - not_null
+      - name: album_release_date
+        description: >
+          Release date of the album, normalised to a full date. Spotify may
+          return year-only ("2001") or year-month ("2001-06") values, which
+          are coerced to YYYY-01-01 and YYYY-MM-01 respectively.
+      - name: duration_ms
+        description: Track duration in milliseconds.
+        tests:
+          - not_null
+      - name: duration_minutes
+        description: Track duration in minutes, rounded to 2 decimal places.
+        tests:
+          - not_null
+      - name: explicit
+        description: Whether the track has explicit content.
+        tests:
+          - not_null
+      - name: popularity
+        description: Spotify popularity score (0–100).
+        tests:
+          - not_null
+      - name: spotify_url
+        description: External Spotify URL for the track.
+        tests:
+          - not_null
+      - name: preview_url
+        description: URL for a 30-second preview clip. May be null if unavailable.
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the Spotify API.
+        tests:
+          - not_null
+
+  - name: stg_audio_features
+    description: >
+      Audio features for each top track, sourced from the Spotify Audio Features API.
+      Each row is unique per track. Features are scores between 0 and 1 unless noted.
+    columns:
+      - name: track_id
+        description: Spotify track ID. Unique per row.
+        tests:
+          - not_null
+          - unique
+      - name: danceability
+        description: How suitable the track is for dancing (0 = least, 1 = most).
+        tests:
+          - not_null
+      - name: energy
+        description: Perceptual intensity and activity (0 = low energy, 1 = high).
+        tests:
+          - not_null
+      - name: key
+        description: Estimated musical key (0 = C, 1 = C#/Db, ... 11 = B). -1 if no key detected.
+        tests:
+          - not_null
+      - name: loudness
+        description: Overall loudness in decibels (dB). Typically between -60 and 0.
+        tests:
+          - not_null
+      - name: mode
+        description: Modality of the track — 1 = major, 0 = minor.
+        tests:
+          - not_null
+      - name: speechiness
+        description: Presence of spoken words (0 = music only, 1 = entirely speech).
+        tests:
+          - not_null
+      - name: acousticness
+        description: Confidence the track is acoustic (0 = not acoustic, 1 = fully acoustic).
+        tests:
+          - not_null
+      - name: instrumentalness
+        description: Likelihood the track has no vocals (closer to 1 = more instrumental).
+        tests:
+          - not_null
+      - name: liveness
+        description: Presence of a live audience in the recording (>0.8 likely live).
+        tests:
+          - not_null
+      - name: valence
+        description: Musical positiveness — high valence sounds happy/cheerful, low sounds sad/angry.
+        tests:
+          - not_null
+      - name: tempo
+        description: Estimated tempo in beats per minute (BPM).
+        tests:
+          - not_null
+      - name: time_signature
+        description: Estimated time signature (beats per bar). Ranges from 3 to 7.
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the Spotify API.
+        tests:
+          - not_null
+
+  - name: stg_recently_played
+    description: >
+      The 50 most recently played tracks for the user. Each row is a distinct
+      play event identified by played_at. Includes derived date and hour columns
+      for time-of-day analysis.
+    columns:
+      - name: played_at
+        description: UTC timestamp of when the track was played. Unique per row.
+        tests:
+          - not_null
+          - unique
+      - name: played_date
+        description: Calendar date the track was played (truncated to day).
+        tests:
+          - not_null
+      - name: played_hour
+        description: Hour of day the track was played (0–23).
+        tests:
+          - not_null
+      - name: track_id
+        description: Spotify track ID.
+        tests:
+          - not_null
+      - name: track_name
+        description: Display name of the track.
+        tests:
+          - not_null
+      - name: artist_ids
+        description: Comma-separated list of Spotify artist IDs.
+        tests:
+          - not_null
+      - name: artist_names
+        description: Comma-separated list of artist names.
+        tests:
+          - not_null
+      - name: album_id
+        description: Spotify album ID.
+        tests:
+          - not_null
+      - name: album_name
+        description: Name of the album.
+        tests:
+          - not_null
+      - name: duration_ms
+        description: Track duration in milliseconds.
+        tests:
+          - not_null
+      - name: duration_minutes
+        description: Track duration in minutes, rounded to 2 decimal places.
+        tests:
+          - not_null
+      - name: explicit
+        description: Whether the track has explicit content.
+        tests:
+          - not_null
+      - name: popularity
+        description: Spotify popularity score (0–100).
+        tests:
+          - not_null
+      - name: spotify_url
+        description: External Spotify URL for the track.
+        tests:
+          - not_null
+      - name: context_type
+        description: Type of context the track was played from (e.g. playlist, album, artist). May be null.
+      - name: context_uri
+        description: Spotify URI of the context (e.g. playlist URI). May be null.
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the Spotify API.
+        tests:
+          - not_null
+
+  - name: stg_recommendations
+    description: >
+      Recommended tracks returned by the Spotify Recommendations API, seeded
+      from the user's top 3 short-term artists and top 2 short-term tracks.
+      Refreshed fully on each ingest run.
+    columns:
+      - name: track_id
+        description: Spotify track ID. Unique per row.
+        tests:
+          - not_null
+          - unique
+      - name: track_name
+        description: Display name of the track.
+        tests:
+          - not_null
+      - name: artist_ids
+        description: Comma-separated list of Spotify artist IDs for this track.
+        tests:
+          - not_null
+      - name: artist_names
+        description: Comma-separated list of artist names for this track.
+        tests:
+          - not_null
+      - name: album_id
+        description: Spotify album ID.
+        tests:
+          - not_null
+      - name: album_name
+        description: Name of the album.
+        tests:
+          - not_null
+      - name: album_release_date
+        description: Release date normalised to a full date (same coercion as stg_top_tracks).
+      - name: duration_ms
+        description: Track duration in milliseconds.
+        tests:
+          - not_null
+      - name: duration_minutes
+        description: Track duration in minutes, rounded to 2 decimal places.
+        tests:
+          - not_null
+      - name: explicit
+        description: Whether the track has explicit content.
+        tests:
+          - not_null
+      - name: popularity
+        description: Spotify popularity score (0–100).
+        tests:
+          - not_null
+      - name: spotify_url
+        description: External Spotify URL for the track.
+        tests:
+          - not_null
+      - name: preview_url
+        description: URL for a 30-second preview clip. May be null if unavailable.
+      - name: seed_artist_ids
+        description: Comma-separated artist IDs used as recommendation seeds.
+        tests:
+          - not_null
+      - name: seed_track_ids
+        description: Comma-separated track IDs used as recommendation seeds.
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the Spotify API.
+        tests:
+          - not_null
