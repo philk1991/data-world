@@ -15,11 +15,28 @@ DuckDB table: raw_sb_events
 
 Note: 'type' is a SQL reserved word — stored as 'event_type'.
 """
+import time
 import duckdb
 import pandas as pd
+import requests
 from datetime import datetime, timezone
 
 import statsbombpy.sb as sb
+
+
+def _fetch_with_retry(fn, *args, retries: int = 5, **kwargs):
+    """Call fn(*args, **kwargs), retrying on HTTP 429 with exponential backoff."""
+    delay = 10
+    for attempt in range(retries):
+        try:
+            return fn(*args, **kwargs)
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 429 and attempt < retries - 1:
+                print(f"    Rate limited — waiting {delay}s before retry {attempt + 1}/{retries - 1}...")
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
 
 
 def get_loaded_match_ids(conn: duckdb.DuckDBPyConnection) -> set[int]:
@@ -48,7 +65,7 @@ def _extract_id(val) -> int | None:
 
 def fetch_events(match_id: int) -> list[dict]:
     """Fetch all events for one match and flatten to a list of dicts."""
-    df = sb.events(match_id=match_id)
+    df = _fetch_with_retry(sb.events, match_id=match_id)
     now = datetime.now(timezone.utc).isoformat()
     records = []
     for _, row in df.iterrows():

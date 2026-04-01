@@ -9,11 +9,28 @@ DuckDB table: raw_sb_lineups
   Incremental: matches already present are skipped. On retry after a partial
   failure, the match's rows are deleted before reinserting.
 """
+import time
 import duckdb
 import pandas as pd
+import requests
 from datetime import datetime, timezone
 
 import statsbombpy.sb as sb
+
+
+def _fetch_with_retry(fn, *args, retries: int = 5, **kwargs):
+    """Call fn(*args, **kwargs), retrying on HTTP 429 with exponential backoff."""
+    delay = 10
+    for attempt in range(retries):
+        try:
+            return fn(*args, **kwargs)
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 429 and attempt < retries - 1:
+                print(f"    Rate limited — waiting {delay}s before retry {attempt + 1}/{retries - 1}...")
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
 
 
 def get_loaded_match_ids(conn: duckdb.DuckDBPyConnection) -> set[int]:
@@ -27,7 +44,7 @@ def get_loaded_match_ids(conn: duckdb.DuckDBPyConnection) -> set[int]:
 
 def fetch_lineups(match_id: int) -> list[dict]:
     """Fetch lineups for one match and flatten both teams to a list of dicts."""
-    lineup_dict = sb.lineups(match_id=match_id)
+    lineup_dict = _fetch_with_retry(sb.lineups, match_id=match_id)
     now = datetime.now(timezone.utc).isoformat()
     records = []
     for team_name, df in lineup_dict.items():
