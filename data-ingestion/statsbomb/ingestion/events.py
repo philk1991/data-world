@@ -48,23 +48,36 @@ def get_loaded_match_ids(conn: duckdb.DuckDBPyConnection) -> set[int]:
         return set()
 
 
-def _extract_name(val) -> str | None:
-    """Extract the 'name' field from a StatsBomb dict column, or return None."""
-    if isinstance(val, dict):
-        return val.get("name")
-    return None
+def _str_or_none(val) -> str | None:
+    """Return val as a string, or None if null/NaN."""
+    if val is None:
+        return None
+    try:
+        if pd.isna(val):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return str(val)
 
 
-def _extract_id(val) -> int | None:
-    """Extract the 'id' field from a StatsBomb dict column, or return None."""
-    if isinstance(val, dict):
-        raw = val.get("id")
-        return int(raw) if raw is not None else None
-    return None
+def _int_or_none(val) -> int | None:
+    """Return val as an int, or None if null/NaN."""
+    if val is None:
+        return None
+    try:
+        if pd.isna(val):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return int(val)
 
 
 def fetch_events(match_id: int) -> list[dict]:
-    """Fetch all events for one match and flatten to a list of dicts."""
+    """Fetch all events for one match and flatten to a list of dicts.
+
+    statsbombpy already flattens nested fields — type, play_pattern,
+    possession_team, team, player, and player_id are all plain scalars.
+    """
     df = _fetch_with_retry(sb.events, match_id=match_id)
     now = datetime.now(timezone.utc).isoformat()
     records = []
@@ -76,25 +89,21 @@ def fetch_events(match_id: int) -> list[dict]:
         duration = row.get("duration")
         duration = float(duration) if duration is not None and not pd.isna(duration) else None
 
-        player_val = row.get("player")
-        player_id = _extract_id(player_val)
-        player_name = _extract_name(player_val)
-
         records.append({
             "event_id":         str(row["id"]),
             "match_id":         match_id,
             "event_index":      int(row["index"]),
             "period":           int(row["period"]),
-            "timestamp":        str(row["timestamp"]) if not pd.isna(row.get("timestamp", None)) else None,
+            "timestamp":        _str_or_none(row.get("timestamp")),
             "minute":           int(row["minute"]),
             "second":           int(row["second"]),
-            "event_type":       _extract_name(row.get("type")),
+            "event_type":       _str_or_none(row.get("type")),
             "possession":       int(row["possession"]),
-            "possession_team":  _extract_name(row.get("possession_team")),
-            "play_pattern":     _extract_name(row.get("play_pattern")),
-            "team":             _extract_name(row.get("team")),
-            "player_id":        player_id,
-            "player_name":      player_name,
+            "possession_team":  _str_or_none(row.get("possession_team")),
+            "play_pattern":     _str_or_none(row.get("play_pattern")),
+            "team":             _str_or_none(row.get("team")),
+            "player_id":        _int_or_none(row.get("player_id")),
+            "player_name":      _str_or_none(row.get("player")),
             "location_x":       location_x,
             "location_y":       location_y,
             "duration":         duration,
