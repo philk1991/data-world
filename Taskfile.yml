@@ -61,6 +61,32 @@ tasks:
     requires:
       vars: [MODEL]
 
+  # ── Dashboard ────────────────────────────────────────────────────────────────
+
+  dashboard:install:
+    desc: Install dashboard Node.js dependencies
+    dir: dashboard
+    cmds:
+      - npm install
+
+  dashboard:dev:
+    desc: "Start the Spotify dashboard with hot reload (http://localhost:5173)"
+    dir: dashboard
+    cmds:
+      - npm run dev
+
+  dashboard:build:
+    desc: Build the dashboard for production
+    dir: dashboard
+    cmds:
+      - npm run build
+
+  dashboard:start:
+    desc: Run the built dashboard
+    dir: dashboard
+    cmds:
+      - npm run preview
+
   # ── Combined ─────────────────────────────────────────────────────────────────
 
   refresh:

@@ -10,6 +10,7 @@ pivoted as (
         genres,
         max(popularity)                                                         as popularity,
         max(followers)                                                          as followers,
+        max(image_url)                                                          as image_url,
         max(case when time_range = 'short_term'  then rank end)                as rank_short_term,
         max(case when time_range = 'medium_term' then rank end)                as rank_medium_term,
         max(case when time_range = 'long_term'   then rank end)                as rank_long_term,

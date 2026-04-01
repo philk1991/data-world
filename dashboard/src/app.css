@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
+:root {
+  --bg-base: #121212;
+  --bg-elevated: #181818;
+  --bg-highlight: #282828;
+  --bg-hover: #333333;
+  --accent-green: #1DB954;
+  --accent-green-dim: #158a3e;
+  --text-primary: #FFFFFF;
+  --text-muted: #B3B3B3;
+  --text-subdued: #6a6a6a;
+  --border: #282828;
+}
+
+@theme inline {
+  --color-base: var(--bg-base);
+  --color-elevated: var(--bg-elevated);
+  --color-highlight: var(--bg-highlight);
+  --color-hover: var(--bg-hover);
+  --color-green: var(--accent-green);
+  --color-green-dim: var(--accent-green-dim);
+  --color-muted: var(--text-muted);
+  --color-subdued: var(--text-subdued);
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+html, body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-hover);
+  border-radius: 4px;
+}
