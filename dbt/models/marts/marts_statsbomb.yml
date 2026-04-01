@@ -1,0 +1,160 @@
+version: 2
+
+models:
+  - name: sb_match_summary
+    description: >
+      One row per StatsBomb match combining match metadata, result, and
+      aggregate event counts. Covers only matches with status = available.
+      Ordered by match_date descending.
+    columns:
+      - name: match_id
+        description: StatsBomb match identifier. Unique per row.
+        tests:
+          - not_null
+          - unique
+      - name: match_date
+        description: Date the match was played.
+        tests:
+          - not_null
+      - name: competition_id
+        description: StatsBomb competition identifier.
+        tests:
+          - not_null
+      - name: competition_name
+        description: Name of the competition.
+        tests:
+          - not_null
+      - name: season_id
+        description: StatsBomb season identifier.
+        tests:
+          - not_null
+      - name: season_name
+        description: Human-readable season label.
+        tests:
+          - not_null
+      - name: home_team_name
+        description: Name of the home team.
+        tests:
+          - not_null
+      - name: away_team_name
+        description: Name of the away team.
+        tests:
+          - not_null
+      - name: home_score
+        description: Goals scored by the home team.
+        tests:
+          - not_null
+      - name: away_score
+        description: Goals scored by the away team.
+        tests:
+          - not_null
+      - name: goal_difference
+        description: Home score minus away score. Positive means the home team won.
+        tests:
+          - not_null
+      - name: match_result
+        description: Outcome from the home team's perspective.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["home_win", "away_win", "draw"]
+      - name: match_week
+        description: Matchweek number within the season. Null for knockout rounds.
+      - name: competition_stage
+        description: Stage of the competition (e.g. "Regular Season", "Final").
+      - name: stadium_name
+        description: Name of the stadium. May be null.
+      - name: total_events
+        description: Total number of events recorded in this match.
+        tests:
+          - not_null
+      - name: total_shots
+        description: Total shot events in this match.
+        tests:
+          - not_null
+      - name: total_passes
+        description: Total pass events in this match.
+        tests:
+          - not_null
+      - name: total_dribbles
+        description: Total dribble events in this match.
+        tests:
+          - not_null
+      - name: total_pressures
+        description: Total pressure events in this match.
+        tests:
+          - not_null
+      - name: total_carries
+        description: Total carry events in this match.
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Timestamp when the match record was ingested.
+        tests:
+          - not_null
+
+  - name: sb_player_stats
+    description: >
+      Aggregated player statistics across all StatsBomb open data matches.
+      One row per (player_id, team). A player who represented multiple clubs
+      across different competitions appears as one row per team. Ordered by
+      total_shots descending.
+
+      Note: Goals are not yet tracked — shot_outcome is not extracted into the
+      raw events table at this stage. total_shots counts all Shot events
+      regardless of outcome.
+    columns:
+      - name: player_id
+        description: StatsBomb player identifier. Combined with team, forms the natural key.
+        tests:
+          - not_null
+      - name: player_name
+        description: Full name of the player.
+        tests:
+          - not_null
+      - name: team
+        description: Team name from events. Combined with player_id, forms the natural key.
+        tests:
+          - not_null
+      - name: country_name
+        description: Player's nationality from lineup data. May be null.
+      - name: lineup_appearances
+        description: Number of matches the player appeared in a lineup for this team.
+        tests:
+          - not_null
+      - name: matches_in_events
+        description: Number of distinct matches the player has events attributed to.
+        tests:
+          - not_null
+      - name: total_events
+        description: Total number of events attributed to this player for this team.
+        tests:
+          - not_null
+      - name: total_passes
+        description: Total pass events attributed to this player.
+        tests:
+          - not_null
+      - name: total_shots
+        description: >
+          Total shot events attributed to this player. Includes all shot outcomes
+          (on target, off target, blocked, saved). Goal counts require a future
+          extension to extract shot_outcome into raw_sb_events.
+        tests:
+          - not_null
+      - name: total_dribbles
+        description: Total dribble events attributed to this player.
+        tests:
+          - not_null
+      - name: total_pressures
+        description: Total pressure events attributed to this player.
+        tests:
+          - not_null
+      - name: total_carries
+        description: Total carry events attributed to this player.
+        tests:
+          - not_null
+      - name: total_duration_minutes
+        description: Sum of event durations in minutes for this player and team.
+        tests:
+          - not_null

@@ -87,10 +87,30 @@ tasks:
     cmds:
       - npm run preview
 
+  # ── StatsBomb Ingestion ───────────────────────────────────────────────────────
+
+  ingest:statsbomb:
+    desc: Run the StatsBomb open data ingest pipeline (incremental)
+    cmds:
+      - bash -c "source {{.VENV}} && cd data-ingestion && python ingest_statsbomb.py"
+
   # ── Combined ─────────────────────────────────────────────────────────────────
 
   refresh:
     desc: Full refresh — ingest from Spotify then build and test all dbt models
     cmds:
       - task: ingest
+      - task: dbt:build
+
+  refresh:statsbomb:
+    desc: Ingest StatsBomb data then build and test all dbt models
+    cmds:
+      - task: ingest:statsbomb
+      - task: dbt:build
+
+  refresh:all:
+    desc: Full refresh of all sources — Spotify + StatsBomb — then build all dbt models
+    cmds:
+      - task: ingest
+      - task: ingest:statsbomb
       - task: dbt:build

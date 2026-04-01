@@ -1,0 +1,243 @@
+version: 2
+
+models:
+  - name: stg_sb_competitions
+    description: >
+      All competition/season pairs available in the StatsBomb open data set.
+      Each row is one unique combination of competition and season.
+    columns:
+      - name: competition_id
+        description: StatsBomb competition identifier.
+        tests:
+          - not_null
+      - name: competition_name
+        description: Name of the competition (e.g. "La Liga", "FIFA World Cup").
+        tests:
+          - not_null
+      - name: country_name
+        description: Country the competition is held in.
+        tests:
+          - not_null
+      - name: competition_gender
+        description: Gender category of the competition.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["male", "female"]
+      - name: competition_youth
+        description: Whether this is a youth competition.
+        tests:
+          - not_null
+      - name: competition_international
+        description: Whether this is an international competition (e.g. World Cup vs domestic league).
+        tests:
+          - not_null
+      - name: season_id
+        description: StatsBomb season identifier.
+        tests:
+          - not_null
+      - name: season_name
+        description: Human-readable season label (e.g. "2015/2016").
+        tests:
+          - not_null
+      - name: match_available_360
+        description: Whether 360 freeze-frame tracking data is available for this competition/season.
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Timestamp when this record was ingested.
+        tests:
+          - not_null
+
+  - name: stg_sb_matches
+    description: >
+      Match metadata for all available StatsBomb open data matches. Filtered to
+      match_status = available. Derives match_result and goal_difference from
+      the raw scores.
+    columns:
+      - name: match_id
+        description: StatsBomb match identifier. Unique per row.
+        tests:
+          - not_null
+          - unique
+      - name: match_date
+        description: Date the match was played.
+        tests:
+          - not_null
+      - name: kick_off
+        description: Scheduled kick-off time.
+      - name: competition_id
+        description: StatsBomb competition identifier.
+        tests:
+          - not_null
+      - name: competition_name
+        description: Name of the competition.
+        tests:
+          - not_null
+      - name: season_id
+        description: StatsBomb season identifier.
+        tests:
+          - not_null
+      - name: season_name
+        description: Human-readable season label.
+        tests:
+          - not_null
+      - name: home_team_id
+        description: StatsBomb home team identifier.
+        tests:
+          - not_null
+      - name: home_team_name
+        description: Name of the home team.
+        tests:
+          - not_null
+      - name: away_team_id
+        description: StatsBomb away team identifier.
+        tests:
+          - not_null
+      - name: away_team_name
+        description: Name of the away team.
+        tests:
+          - not_null
+      - name: home_score
+        description: Goals scored by the home team.
+        tests:
+          - not_null
+      - name: away_score
+        description: Goals scored by the away team.
+        tests:
+          - not_null
+      - name: goal_difference
+        description: Home score minus away score. Positive means home team won.
+        tests:
+          - not_null
+      - name: match_result
+        description: Outcome from the home team's perspective.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["home_win", "away_win", "draw"]
+      - name: match_week
+        description: Matchweek number within the season. May be null for knockout competitions.
+      - name: competition_stage
+        description: Stage of the competition (e.g. "Regular Season", "Quarter-finals", "Final").
+      - name: stadium_name
+        description: Name of the stadium. May be null.
+      - name: referee_name
+        description: Name of the match referee. May be null.
+      - name: ingested_at
+        description: Timestamp when this record was ingested.
+        tests:
+          - not_null
+
+  - name: stg_sb_events
+    description: >
+      All events from available StatsBomb matches. One row per event. Covers
+      all event types including Pass, Shot, Dribble, Carry, Pressure, Ball
+      Receipt, and more. Only universal envelope columns are stored — type-
+      specific attributes (shot_outcome, pass_length, etc.) are not extracted
+      at this stage. location_x and location_y use StatsBomb pitch coordinates
+      (x: 0–120, y: 0–80).
+    columns:
+      - name: event_id
+        description: StatsBomb UUID for this event. Unique across all matches.
+        tests:
+          - not_null
+          - unique
+      - name: match_id
+        description: Foreign key to stg_sb_matches.
+        tests:
+          - not_null
+      - name: event_index
+        description: Sequential ordering of this event within the match.
+        tests:
+          - not_null
+      - name: period
+        description: Match period (1=first half, 2=second half, 3/4=extra time, 5=penalties).
+        tests:
+          - not_null
+      - name: event_time
+        description: Clock time within the period when the event occurred.
+      - name: minute
+        description: Match minute of the event.
+        tests:
+          - not_null
+      - name: second
+        description: Second within the minute.
+        tests:
+          - not_null
+      - name: seconds_elapsed
+        description: >
+          Total seconds elapsed from the start of the period (minute * 60 + second).
+          Useful for time-series aggregations within a period.
+        tests:
+          - not_null
+      - name: event_type
+        description: Category of the event (e.g. Pass, Shot, Dribble, Carry, Pressure).
+        tests:
+          - not_null
+      - name: possession
+        description: Possession sequence number. Increments each time possession changes.
+        tests:
+          - not_null
+      - name: possession_team
+        description: Name of the team in possession during this event.
+        tests:
+          - not_null
+      - name: play_pattern
+        description: How the current phase of play was initiated (e.g. Regular Play, From Corner).
+        tests:
+          - not_null
+      - name: team
+        description: Name of the team performing the event.
+        tests:
+          - not_null
+      - name: player_id
+        description: StatsBomb player identifier. Null for non-player events (e.g. ball receipts by team).
+      - name: player_name
+        description: Full name of the player. Null for non-player events.
+      - name: location_x
+        description: X coordinate on the pitch (0–120, goal at x=120). Null for non-located events.
+      - name: location_y
+        description: Y coordinate on the pitch (0–80). Null for non-located events.
+      - name: duration
+        description: Duration of the event in seconds. Null for instantaneous events.
+      - name: ingested_at
+        description: Timestamp when this record was ingested.
+        tests:
+          - not_null
+
+  - name: stg_sb_lineups
+    description: >
+      Player lineup data for each StatsBomb match. One row per player per match,
+      covering both the home and away teams.
+    columns:
+      - name: match_id
+        description: Foreign key to stg_sb_matches.
+        tests:
+          - not_null
+      - name: team_name
+        description: Name of the team for this lineup entry.
+        tests:
+          - not_null
+      - name: player_id
+        description: StatsBomb player identifier.
+        tests:
+          - not_null
+      - name: player_name
+        description: Full name of the player.
+        tests:
+          - not_null
+      - name: player_nickname
+        description: Player's common nickname. May be null.
+      - name: jersey_number
+        description: Jersey number worn in this match.
+        tests:
+          - not_null
+      - name: country_name
+        description: Player's nationality. May be null.
+      - name: ingested_at
+        description: Timestamp when this record was ingested.
+        tests:
+          - not_null

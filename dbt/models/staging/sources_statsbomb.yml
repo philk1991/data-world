@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: main
+    tables:
+      - name: raw_sb_competitions
+        description: Raw competition/season pairs from StatsBomb open data.
+      - name: raw_sb_matches
+        description: Raw match metadata from StatsBomb open data.
+      - name: raw_sb_events
+        description: >
+          Raw event-level data from StatsBomb open data. One row per event.
+          Covers all event types (Pass, Shot, Dribble, Carry, Pressure, etc.).
+          Only universal envelope columns are stored — type-specific columns
+          (shot_outcome, pass_length, etc.) are excluded at this stage.
+      - name: raw_sb_lineups
+        description: >
+          Raw lineup data from StatsBomb open data. One row per player per match.
