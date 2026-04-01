@@ -7,8 +7,10 @@ metadata for one competition/season. Called once per competition/season pair.
 DuckDB table: raw_sb_matches
   Rows are replaced per (competition_id, season_id) on each run.
 
-Many columns in the statsbombpy response are nested dicts (e.g. competition,
-season, home_team, away_team). These are flattened during fetch.
+statsbombpy already flattens all nested fields — competition, season,
+home_team, away_team, stadium, referee, and competition_stage are all plain
+strings. IDs for competition and season are taken from the function arguments
+since statsbombpy does not expose them as separate columns.
 """
 import duckdb
 import pandas as pd
@@ -17,11 +19,16 @@ from datetime import datetime, timezone
 import statsbombpy.sb as sb
 
 
-def _safe_dict(val, key: str, default=None):
-    """Extract a key from a dict column; return default if null or not a dict."""
-    if isinstance(val, dict):
-        return val.get(key, default)
-    return default
+def _str_or_none(val) -> str | None:
+    """Return val as a string, or None if null/NaN."""
+    if val is None:
+        return None
+    try:
+        if pd.isna(val):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return str(val)
 
 
 def fetch_matches(competition_id: int, season_id: int) -> list[dict]:
@@ -36,29 +43,25 @@ def fetch_matches(competition_id: int, season_id: int) -> list[dict]:
     now = datetime.now(timezone.utc).isoformat()
     records = []
     for _, row in df.iterrows():
-        competition_stage = _safe_dict(row.get("competition_stage"), "name")
-        stadium = _safe_dict(row.get("stadium"), "name")
-        referee = _safe_dict(row.get("referee"), "name")
-
         records.append({
             "match_id":           int(row["match_id"]),
-            "match_date":         str(row["match_date"]) if not pd.isna(row.get("match_date", None)) else None,
-            "kick_off":           str(row["kick_off"]) if not pd.isna(row.get("kick_off", None)) else None,
-            "competition_id":     int(_safe_dict(row.get("competition"), "competition_id", competition_id)),
-            "competition_name":   str(_safe_dict(row.get("competition"), "competition_name", "")),
-            "season_id":          int(_safe_dict(row.get("season"), "season_id", season_id)),
-            "season_name":        str(_safe_dict(row.get("season"), "season_name", "")),
-            "home_team_id":       int(_safe_dict(row.get("home_team"), "home_team_id", 0)),
-            "home_team_name":     str(_safe_dict(row.get("home_team"), "home_team_name", "")),
-            "away_team_id":       int(_safe_dict(row.get("away_team"), "away_team_id", 0)),
-            "away_team_name":     str(_safe_dict(row.get("away_team"), "away_team_name", "")),
+            "match_date":         _str_or_none(row.get("match_date")),
+            "kick_off":           _str_or_none(row.get("kick_off")),
+            "competition_id":     competition_id,
+            "competition_name":   _str_or_none(row.get("competition")),
+            "season_id":          season_id,
+            "season_name":        _str_or_none(row.get("season")),
+            "home_team_id":       None,
+            "home_team_name":     _str_or_none(row.get("home_team")),
+            "away_team_id":       None,
+            "away_team_name":     _str_or_none(row.get("away_team")),
             "home_score":         int(row["home_score"]) if not pd.isna(row.get("home_score")) else None,
             "away_score":         int(row["away_score"]) if not pd.isna(row.get("away_score")) else None,
-            "match_status":       str(row.get("match_status", "")),
+            "match_status":       _str_or_none(row.get("match_status")),
             "match_week":         int(row["match_week"]) if not pd.isna(row.get("match_week")) else None,
-            "competition_stage":  competition_stage,
-            "stadium_name":       stadium,
-            "referee_name":       referee,
+            "competition_stage":  _str_or_none(row.get("competition_stage")),
+            "stadium_name":       _str_or_none(row.get("stadium")),
+            "referee_name":       _str_or_none(row.get("referee")),
             "ingested_at":        now,
         })
     return records
@@ -84,9 +87,7 @@ def load_matches(
             competition_name    VARCHAR,
             season_id           INTEGER,
             season_name         VARCHAR,
-            home_team_id        INTEGER,
             home_team_name      VARCHAR,
-            away_team_id        INTEGER,
             away_team_name      VARCHAR,
             home_score          INTEGER,
             away_score          INTEGER,
@@ -107,15 +108,15 @@ def load_matches(
     if matches:
         conn.executemany("""
             INSERT INTO raw_sb_matches VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         """, [
             [
                 m["match_id"], m["match_date"], m["kick_off"],
                 m["competition_id"], m["competition_name"],
                 m["season_id"], m["season_name"],
-                m["home_team_id"], m["home_team_name"],
-                m["away_team_id"], m["away_team_name"],
+                m["home_team_name"],
+                m["away_team_name"],
                 m["home_score"], m["away_score"],
                 m["match_status"], m["match_week"],
                 m["competition_stage"], m["stadium_name"], m["referee_name"],

@@ -83,16 +83,8 @@ models:
         description: Human-readable season label.
         tests:
           - not_null
-      - name: home_team_id
-        description: StatsBomb home team identifier.
-        tests:
-          - not_null
       - name: home_team_name
         description: Name of the home team.
-        tests:
-          - not_null
-      - name: away_team_id
-        description: StatsBomb away team identifier.
         tests:
           - not_null
       - name: away_team_name

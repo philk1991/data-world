@@ -41,6 +41,7 @@ models:
         tests:
           - not_null
       - name: home_score
+
         description: Goals scored by the home team.
         tests:
           - not_null
