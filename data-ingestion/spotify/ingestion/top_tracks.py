@@ -73,8 +73,9 @@ def load_top_tracks(conn: duckdb.DuckDBPyConnection, tracks: list[dict]) -> None
         conn:   Open DuckDB connection.
         tracks: List of track dicts from fetch_top_tracks.
     """
+    conn.execute("CREATE SCHEMA IF NOT EXISTS raw_spotify")
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS raw_top_tracks (
+        CREATE TABLE IF NOT EXISTS raw_spotify.raw_top_tracks (
             id                  VARCHAR,
             name                VARCHAR,
             rank                INTEGER,
@@ -95,9 +96,9 @@ def load_top_tracks(conn: duckdb.DuckDBPyConnection, tracks: list[dict]) -> None
 
     if tracks:
         time_range = tracks[0]["time_range"]
-        conn.execute("DELETE FROM raw_top_tracks WHERE time_range = ?", [time_range])
+        conn.execute("DELETE FROM raw_spotify.raw_top_tracks WHERE time_range = ?", [time_range])
         conn.executemany("""
-            INSERT INTO raw_top_tracks VALUES (
+            INSERT INTO raw_spotify.raw_top_tracks VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         """, [

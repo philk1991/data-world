@@ -33,8 +33,9 @@ def fetch_recently_played(client: spotipy.Spotify, limit: int = 50) -> list[dict
 
 
 def load_recently_played(conn: duckdb.DuckDBPyConnection, plays: list[dict]) -> None:
+    conn.execute("CREATE SCHEMA IF NOT EXISTS raw_spotify")
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS raw_recently_played (
+        CREATE TABLE IF NOT EXISTS raw_spotify.raw_recently_played (
             played_at     TIMESTAMPTZ,
             track_id      VARCHAR,
             track_name    VARCHAR,
@@ -55,11 +56,11 @@ def load_recently_played(conn: duckdb.DuckDBPyConnection, plays: list[dict]) -> 
     if plays:
         played_ats = [p["played_at"] for p in plays]
         conn.execute(
-            f"DELETE FROM raw_recently_played WHERE played_at IN ({','.join(['?'] * len(played_ats))})",
+            f"DELETE FROM raw_spotify.raw_recently_played WHERE played_at IN ({','.join(['?'] * len(played_ats))})",
             played_ats,
         )
         conn.executemany("""
-            INSERT INTO raw_recently_played VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO raw_spotify.raw_recently_played VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             [
                 p["played_at"], p["track_id"], p["track_name"],

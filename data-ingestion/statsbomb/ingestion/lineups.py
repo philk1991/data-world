@@ -36,7 +36,7 @@ def _fetch_with_retry(fn, *args, retries: int = 5, **kwargs):
 def get_loaded_match_ids(conn: duckdb.DuckDBPyConnection) -> set[int]:
     """Return the set of match_ids already loaded into raw_sb_lineups."""
     try:
-        rows = conn.execute("SELECT DISTINCT match_id FROM raw_sb_lineups").fetchall()
+        rows = conn.execute("SELECT DISTINCT match_id FROM raw_statsbomb.raw_sb_lineups").fetchall()
         return {row[0] for row in rows}
     except Exception:
         return set()
@@ -79,8 +79,9 @@ def load_lineups(
 
     Deletes any existing rows for this match_id first, then bulk-inserts.
     """
+    conn.execute("CREATE SCHEMA IF NOT EXISTS raw_statsbomb")
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS raw_sb_lineups (
+        CREATE TABLE IF NOT EXISTS raw_statsbomb.raw_sb_lineups (
             match_id            INTEGER,
             team_name           VARCHAR,
             player_id           INTEGER,
@@ -92,11 +93,11 @@ def load_lineups(
         )
     """)
 
-    conn.execute("DELETE FROM raw_sb_lineups WHERE match_id = ?", [match_id])
+    conn.execute("DELETE FROM raw_statsbomb.raw_sb_lineups WHERE match_id = ?", [match_id])
 
     if lineups:
         conn.executemany("""
-            INSERT INTO raw_sb_lineups VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO raw_statsbomb.raw_sb_lineups VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             [
                 l["match_id"], l["team_name"], l["player_id"], l["player_name"],

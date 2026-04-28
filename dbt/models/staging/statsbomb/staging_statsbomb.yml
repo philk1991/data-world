@@ -186,7 +186,7 @@ models:
         tests:
           - not_null
       - name: player_id
-        description: StatsBomb player identifier. Null for non-player events (e.g. ball receipts by team).
+        description: StatsBomb player identifier. Null for non-player events.
       - name: player_name
         description: Full name of the player. Null for non-player events.
       - name: location_x

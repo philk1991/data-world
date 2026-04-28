@@ -61,8 +61,9 @@ def load_top_artists(conn: duckdb.DuckDBPyConnection, artists: list[dict]) -> No
         conn:    Open DuckDB connection.
         artists: List of artist dicts from fetch_top_artists.
     """
+    conn.execute("CREATE SCHEMA IF NOT EXISTS raw_spotify")
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS raw_top_artists (
+        CREATE TABLE IF NOT EXISTS raw_spotify.raw_top_artists (
             id             VARCHAR,
             name           VARCHAR,
             rank           INTEGER,
@@ -79,9 +80,9 @@ def load_top_artists(conn: duckdb.DuckDBPyConnection, artists: list[dict]) -> No
     # Replace existing rows for this time_range so re-runs are idempotent
     if artists:
         time_range = artists[0]["time_range"]
-        conn.execute("DELETE FROM raw_top_artists WHERE time_range = ?", [time_range])
+        conn.execute("DELETE FROM raw_spotify.raw_top_artists WHERE time_range = ?", [time_range])
         conn.executemany("""
-            INSERT INTO raw_top_artists VALUES (
+            INSERT INTO raw_spotify.raw_top_artists VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         """, [

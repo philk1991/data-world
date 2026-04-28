@@ -10,3 +10,4 @@ __pycache__/
 dashboard/node_modules/
 dashboard/.svelte-kit/
 dashboard/.env
+ideas.md

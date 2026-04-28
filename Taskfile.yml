@@ -87,7 +87,65 @@ tasks:
     cmds:
       - npm run preview
 
-  # ── StatsBomb Ingestion ───────────────────────────────────────────────────────
+  # ── dbt Crypto ──────────────────────────────────────────────────────────────
+
+  dbt:crypto:run:
+    desc: Run all crypto dbt models (staging_crypto + OHLCV marts)
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt run --select staging.crypto+ marts.crypto+"
+
+  dbt:crypto:test:
+    desc: Run all crypto dbt tests
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt test --select staging.crypto+ marts.crypto+"
+
+  dbt:crypto:build:
+    desc: Run and test all crypto dbt models
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt build --select staging.crypto+ marts.crypto+"
+
+  # ── Crypto Streaming ────────────────────────────────────────────────────────
+
+  crypto:producer:
+    desc: "Start the Binance WebSocket → Kafka producer (BTC/USDT, ETH/USDT)"
+    cmds:
+      - bash -c "source {{.VENV}} && cd data-ingestion && python -m crypto.producer"
+
+  crypto:consumer:
+    desc: "Start the Kafka → DuckDB consumer (raw_crypto.raw_trades)"
+    cmds:
+      - bash -c "source {{.VENV}} && cd data-ingestion && python -m crypto.consumer"
+
+  # ── Schema Migration ────────────────────────────────────────────────────────
+
+  migrate:schemas:
+    desc: Migrate existing DuckDB tables from main schema to raw_spotify / raw_statsbomb
+    cmds:
+      - bash -c "source {{.VENV}} && python scripts/migrate_schemas.py"
+
+  # ── Crypto Dashboard ─────────────────────────────────────────────────────────
+
+  dashboard:crypto:install:
+    desc: Install crypto dashboard Node.js dependencies
+    dir: dashboard-crypto
+    cmds:
+      - npm install
+
+  dashboard:crypto:dev:
+    desc: "Start the crypto dashboard with hot reload (http://localhost:5174)"
+    dir: dashboard-crypto
+    cmds:
+      - npm run dev -- --port 5174
+
+  dashboard:crypto:build:
+    desc: Build the crypto dashboard for production
+    dir: dashboard-crypto
+    cmds:
+      - npm run build
+
+  # ── StatsBomb Ingestion ──────────────────────────────────────────────────────
+
+  # ── Bomb Ingestion ───────────────────────────────────────────────────────
 
   ingest:statsbomb:
     desc: Run the StatsBomb open data ingest pipeline (incremental)

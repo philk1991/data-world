@@ -1,5 +1,5 @@
 with source as (
-    select * from {{ source('raw', 'raw_recently_played') }}
+    select * from {{ source('raw_spotify', 'raw_recently_played') }}
 )
 
 select

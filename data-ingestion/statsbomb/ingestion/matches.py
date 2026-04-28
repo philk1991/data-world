@@ -78,8 +78,9 @@ def load_matches(
     Deletes existing rows for the (competition_id, season_id) pair before
     inserting, so re-runs are idempotent.
     """
+    conn.execute("CREATE SCHEMA IF NOT EXISTS raw_statsbomb")
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS raw_sb_matches (
+        CREATE TABLE IF NOT EXISTS raw_statsbomb.raw_sb_matches (
             match_id            INTEGER,
             match_date          VARCHAR,
             kick_off            VARCHAR,
@@ -101,13 +102,13 @@ def load_matches(
     """)
 
     conn.execute(
-        "DELETE FROM raw_sb_matches WHERE competition_id = ? AND season_id = ?",
+        "DELETE FROM raw_statsbomb.raw_sb_matches WHERE competition_id = ? AND season_id = ?",
         [competition_id, season_id],
     )
 
     if matches:
         conn.executemany("""
-            INSERT INTO raw_sb_matches VALUES (
+            INSERT INTO raw_statsbomb.raw_sb_matches VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         """, [

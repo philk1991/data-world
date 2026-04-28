@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: stg_crypto_trades
+    description: >
+      Staged crypto trade ticks from Binance. One row per trade. Adds
+      notional_value (price × quantity) and casts timestamps to TIMESTAMPTZ.
+    columns:
+      - name: trade_id
+        description: Binance trade identifier. Unique per symbol.
+        tests:
+          - not_null
+      - name: symbol
+        description: Trading pair (e.g. BTCUSDT, ETHUSDT).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["BTCUSDT", "ETHUSDT"]
+      - name: price
+        description: Execution price of the trade in USDT.
+        tests:
+          - not_null
+      - name: quantity
+        description: Amount of base asset traded.
+        tests:
+          - not_null
+      - name: notional_value
+        description: Price × quantity — total USD value of the trade.
+        tests:
+          - not_null
+      - name: buyer_maker
+        description: True if the buyer is the market maker (i.e. the trade was a sell).
+        tests:
+          - not_null
+      - name: trade_time
+        description: UTC timestamp of the trade execution on Binance.
+        tests:
+          - not_null
+      - name: event_time
+        description: UTC timestamp of when the WebSocket event was emitted.
+        tests:
+          - not_null
+      - name: consumed_at
+        description: UTC timestamp of when the consumer wrote this row to DuckDB.
+        tests:
+          - not_null

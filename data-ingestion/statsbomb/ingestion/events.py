@@ -42,7 +42,7 @@ def _fetch_with_retry(fn, *args, retries: int = 5, **kwargs):
 def get_loaded_match_ids(conn: duckdb.DuckDBPyConnection) -> set[int]:
     """Return the set of match_ids already fully loaded into raw_sb_events."""
     try:
-        rows = conn.execute("SELECT DISTINCT match_id FROM raw_sb_events").fetchall()
+        rows = conn.execute("SELECT DISTINCT match_id FROM raw_statsbomb.raw_sb_events").fetchall()
         return {row[0] for row in rows}
     except Exception:
         return set()
@@ -122,8 +122,9 @@ def load_events(
     Deletes any existing rows for this match_id first (handles partial-failure
     retries), then bulk-inserts all events.
     """
+    conn.execute("CREATE SCHEMA IF NOT EXISTS raw_statsbomb")
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS raw_sb_events (
+        CREATE TABLE IF NOT EXISTS raw_statsbomb.raw_sb_events (
             event_id            VARCHAR,
             match_id            INTEGER,
             event_index         INTEGER,
@@ -145,11 +146,11 @@ def load_events(
         )
     """)
 
-    conn.execute("DELETE FROM raw_sb_events WHERE match_id = ?", [match_id])
+    conn.execute("DELETE FROM raw_statsbomb.raw_sb_events WHERE match_id = ?", [match_id])
 
     if events:
         conn.executemany("""
-            INSERT INTO raw_sb_events VALUES (
+            INSERT INTO raw_statsbomb.raw_sb_events VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         """, [

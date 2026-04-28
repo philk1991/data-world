@@ -1,10 +1,6 @@
 -- Aggregated player statistics across all StatsBomb open data matches.
 -- One row per (player_id, team) — a player who transferred between clubs will
 -- appear as multiple rows, one per team they played for in the dataset.
---
--- Note: shot_outcome (goals, assists) is not extracted into raw_sb_events at
--- this stage. total_shots is a count of Shot events; goals require a future
--- extension to add shot_outcome to the raw table.
 with events as (
     select * from {{ ref('stg_sb_events') }}
 ),

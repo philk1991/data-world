@@ -1,8 +1,8 @@
 version: 2
 
 sources:
-  - name: raw
-    schema: main
+  - name: raw_statsbomb
+    schema: raw_statsbomb
     tables:
       - name: raw_sb_competitions
         description: Raw competition/season pairs from StatsBomb open data.
@@ -15,5 +15,4 @@ sources:
           Only universal envelope columns are stored — type-specific columns
           (shot_outcome, pass_length, etc.) are excluded at this stage.
       - name: raw_sb_lineups
-        description: >
-          Raw lineup data from StatsBomb open data. One row per player per match.
+        description: Raw lineup data from StatsBomb open data. One row per player per match.

@@ -1,6 +1,6 @@
 -- Staged StatsBomb lineup data. One row per player per match.
 with source as (
-    select * from {{ source('raw', 'raw_sb_lineups') }}
+    select * from {{ source('raw_statsbomb', 'raw_sb_lineups') }}
 )
 
 select

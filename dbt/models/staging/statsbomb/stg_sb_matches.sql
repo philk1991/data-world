@@ -1,7 +1,7 @@
 -- Staged StatsBomb match metadata.
 -- Derives match_result and goal_difference. Filters to available matches only.
 with source as (
-    select * from {{ source('raw', 'raw_sb_matches') }}
+    select * from {{ source('raw_statsbomb', 'raw_sb_matches') }}
 )
 
 select

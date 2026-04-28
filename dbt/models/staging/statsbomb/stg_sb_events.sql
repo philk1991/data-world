@@ -2,7 +2,7 @@
 -- Casts types and derives seconds_elapsed from minute and second.
 -- location_x and location_y are already parsed to DOUBLE in raw.
 with source as (
-    select * from {{ source('raw', 'raw_sb_events') }}
+    select * from {{ source('raw_statsbomb', 'raw_sb_events') }}
 )
 
 select

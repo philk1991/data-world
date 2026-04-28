@@ -58,7 +58,7 @@ def main():
     loaded_lineup_ids = get_lineup_match_ids(conn)
 
     all_match_rows = conn.execute(
-        "SELECT DISTINCT match_id FROM raw_sb_matches WHERE match_status = 'available'"
+        "SELECT DISTINCT match_id FROM raw_statsbomb.raw_sb_matches WHERE match_status = 'available'"
     ).fetchall()
     all_match_ids = [row[0] for row in all_match_rows]
 

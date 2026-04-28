@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: raw_crypto
+    schema: raw_crypto
+    tables:
+      - name: raw_trades
+        description: >
+          Raw crypto trade events consumed from Kafka. One row per trade tick.
+          Sourced from Binance public WebSocket streams for BTC/USDT and ETH/USDT.
+          Append-only — trades are never updated or deleted.

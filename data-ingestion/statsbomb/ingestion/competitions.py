@@ -41,8 +41,9 @@ def load_competitions(conn: duckdb.DuckDBPyConnection, competitions: list[dict])
     Creates the table if it doesn't exist, clears all rows, then bulk-inserts.
     Full replace is safe because the competition list is small and static.
     """
+    conn.execute("CREATE SCHEMA IF NOT EXISTS raw_statsbomb")
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS raw_sb_competitions (
+        CREATE TABLE IF NOT EXISTS raw_statsbomb.raw_sb_competitions (
             competition_id            INTEGER,
             competition_name          VARCHAR,
             country_name              VARCHAR,
@@ -56,11 +57,11 @@ def load_competitions(conn: duckdb.DuckDBPyConnection, competitions: list[dict])
         )
     """)
 
-    conn.execute("DELETE FROM raw_sb_competitions")
+    conn.execute("DELETE FROM raw_statsbomb.raw_sb_competitions")
 
     if competitions:
         conn.executemany("""
-            INSERT INTO raw_sb_competitions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO raw_statsbomb.raw_sb_competitions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             [
                 c["competition_id"], c["competition_name"], c["country_name"],

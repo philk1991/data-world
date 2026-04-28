@@ -1,4 +1,3 @@
-
 # data-ingestion
 
 Pulls your top artists and tracks from the Spotify API and loads them into a local DuckDB database.

@@ -1,7 +1,7 @@
 -- Staged StatsBomb competition/season pairs.
 -- Minimal transformation: cast ingested_at and pass all columns through cleanly.
 with source as (
-    select * from {{ source('raw', 'raw_sb_competitions') }}
+    select * from {{ source('raw_statsbomb', 'raw_sb_competitions') }}
 )
 
 select

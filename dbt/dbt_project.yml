@@ -19,6 +19,22 @@ clean-targets:
 models:
   spotify:
     staging:
-      +materialized: view
+      spotify:
+        +materialized: view
+        +schema: staging_spotify
+      statsbomb:
+        +materialized: view
+        +schema: staging_statsbomb
+      crypto:
+        +materialized: view
+        +schema: staging_crypto
     marts:
-      +materialized: table
+      spotify:
+        +materialized: table
+        +schema: marts
+      statsbomb:
+        +materialized: table
+        +schema: marts
+      crypto:
+        +materialized: incremental
+        +schema: marts
