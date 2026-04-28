@@ -89,7 +89,7 @@ tasks:
 
   # ── dbt Crypto ──────────────────────────────────────────────────────────────
 
-  dbt:crypto:run:
+  dbt:cryhe un:
     desc: Run all crypto dbt models (staging_crypto + OHLCV marts)
     cmds:
       - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt run --select staging.crypto+ marts.crypto+"

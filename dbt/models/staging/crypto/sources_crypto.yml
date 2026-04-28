@@ -2,6 +2,7 @@ version: 2
 
 sources:
   - name: raw_crypto
+    database: crypto_raw
     schema: raw_crypto
     tables:
       - name: raw_trades

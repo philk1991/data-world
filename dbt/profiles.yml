@@ -5,3 +5,7 @@ spotify:
       type: duckdb
       path: ../data/spotify.duckdb
       threads: 4
+      attach:
+        - path: ../data/crypto_raw.duckdb
+          alias: crypto_raw
+          read_only: true
