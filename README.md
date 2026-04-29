@@ -1,118 +1,166 @@
 # data-world
 
-A local data platform for ingesting personal Spotify data and StatsBomb open football data into DuckDB, transforming it with dbt, and visualising it in a SvelteKit dashboard.
+A local data platform demonstrating multiple ingestion patterns — batch API pulls, open dataset loading, and real-time streaming — all flowing through DuckDB, transformed with dbt, and visualised in SvelteKit dashboards.
 
-## Architecture
+## Project structure
 
 ```
 data-world/
-├── data-ingestion/        # Python pipelines — pulls from external sources → DuckDB
-│   ├── ingest.py          # Spotify entry point
-│   ├── ingest_statsbomb.py # StatsBomb entry point
-│   ├── spotify/
-│   │   ├── auth.py        # OAuth via Spotipy (token cached in .spotify_cache)
-│   │   └── ingestion/
-│   │       ├── top_artists.py      # Top 50 artists × 3 time ranges
-│   │       ├── top_tracks.py       # Top 50 tracks × 3 time ranges
-│   │       └── recently_played.py  # Last 50 played tracks
-│   └── statsbomb/
-│       └── ingestion/
-│           ├── competitions.py     # All competition/season pairs
-│           ├── matches.py          # Match metadata per competition/season
-│           ├── events.py           # Match events (incremental)
-│           └── lineups.py          # Player lineups (incremental)
-├── dbt/                   # Transformation layer
+├── data-ingestion/            # Python ingestion pipelines
+│   ├── ingest.py              # Spotify entry point
+│   ├── ingest_statsbomb.py    # StatsBomb entry point
+│   ├── spotify/               # OAuth + API fetch logic
+│   ├── statsbomb/             # GitHub fetch logic
+│   └── crypto/                # Binance WebSocket → Kafka
+│       ├── producer.py        # WebSocket → Kafka topic
+│       └── consumer.py        # Kafka → DuckDB + live JSON sidecar
+├── dbt/                       # Transformation layer (all sources)
 │   ├── models/
-│   │   ├── staging/       # Cleaned views over raw tables
-│   │   └── marts/         # Analysis-ready tables
-│   └── profiles.yml       # Points dbt at the local DuckDB file
-├── dashboard/             # SvelteKit web app — visualises Spotify data
-├── data/                  # DuckDB database file — gitignored
-├── Taskfile.yml           # Task runner
-└── requirements.txt       # Python dependencies
+│   │   ├── staging/
+│   │   │   ├── spotify/       # Cleaned views over raw Spotify tables
+│   │   │   ├── statsbomb/     # Cleaned views over raw StatsBomb tables
+│   │   │   └── crypto/        # Cleaned views over raw trade ticks
+│   │   └── marts/
+│   │       ├── spotify/       # Analysis-ready Spotify tables
+│   │       ├── statsbomb/     # Analysis-ready football tables
+│   │       └── crypto/        # Incremental OHLCV candle tables
+│   ├── macros/                # generate_schema_name override
+│   └── profiles.yml           # DuckDB connection + crypto_raw attach
+├── dashboards/
+│   ├── spotify/               # SvelteKit app — Spotify listening data
+│   └── crypto/                # SvelteKit app — real-time trade feed
+├── data/                      # DuckDB files + live JSON sidecar (gitignored)
+│   ├── spotify.duckdb         # Spotify + StatsBomb data
+│   ├── crypto_raw.duckdb      # Raw crypto trades (consumer-owned)
+│   └── live_data.json         # Atomic JSON sidecar written by consumer
+├── scripts/                   # One-off utility scripts
+├── Taskfile.yml               # Task runner
+└── requirements.txt           # Python dependencies
 ```
 
-### How data flows
+## Architecture
+
+### Batch pipelines (Spotify + StatsBomb)
 
 ```
 Spotify API                    StatsBomb open data (GitHub)
     │                                   │
     ▼                                   ▼
 ingest.py                      ingest_statsbomb.py
-    │  raw_top_artists                  │  raw_sb_competitions
-    │  raw_top_tracks                   │  raw_sb_matches
-    │  raw_recently_played              │  raw_sb_events
-    └──────────────┬───────────────────┘  raw_sb_lineups
+    │  raw_spotify.*                    │  raw_statsbomb.*
+    └──────────────┬───────────────────┘
                    ▼
-           data/spotify.duckdb
+          data/spotify.duckdb
                    │
                    ▼
             dbt build
-       (staging views → mart tables)
+    (staging_spotify / staging_statsbomb → marts)
                    │
                    ▼
-           dashboard/ (SvelteKit SSR)
-        reads via duckdb npm (READ_ONLY)
+        dashboards/spotify (SvelteKit SSR)
+          reads via duckdb npm (READ_ONLY)
                    ▼
           http://localhost:5173
 ```
 
-## Data Sources
+### Streaming pipeline (Crypto)
+
+```
+Binance public WebSocket
+    │  BTC/USDT, ETH/USDT trade ticks
+    ▼
+crypto/producer.py
+    │  publishes JSON to 'crypto.trades' Kafka topic
+    ▼
+Kafka (localhost:9092)
+    │
+    ▼
+crypto/consumer.py
+    ├──▶ data/crypto_raw.duckdb   (raw_crypto.raw_trades — append only)
+    └──▶ data/live_data.json      (atomic overwrite after each batch)
+                                           │
+                                           ▼
+                               dashboards/crypto (SvelteKit)
+                                 reads live_data.json via API route
+                                           ▼
+                                 http://localhost:5174
+
+dbt build (run separately, read-only attach to crypto_raw.duckdb)
+    └──▶ staging_crypto.stg_crypto_trades
+    └──▶ marts.ohlcv_1m / ohlcv_1h  (incremental OHLCV candles)
+```
+
+> The crypto dashboard reads `live_data.json` rather than querying DuckDB directly.
+> This avoids write-lock conflicts between the consumer and the dashboard.
+
+## Data sources
 
 ### Spotify
 
-Personal listening data pulled from the [Spotify Web API](https://developer.spotify.com/documentation/web-api). Requires a Spotify Developer app and OAuth authentication.
+Personal listening data from the [Spotify Web API](https://developer.spotify.com/documentation/web-api). Requires a Spotify Developer app and OAuth.
 
-| Endpoint | Raw Table | Description |
+| Endpoint | Schema.Table | Description |
 |---|---|---|
-| `/me/top/artists` | `raw_top_artists` | Top 50 artists across short, medium, and long term |
-| `/me/top/tracks` | `raw_top_tracks` | Top 50 tracks across short, medium, and long term |
-| `/me/player/recently-played` | `raw_recently_played` | Last 50 played tracks with timestamps |
-
-> The Audio Features and Recommendations endpoints are deprecated for new apps and are not included.
+| `/me/top/artists` | `raw_spotify.raw_top_artists` | Top 50 artists × 3 time ranges |
+| `/me/top/tracks` | `raw_spotify.raw_top_tracks` | Top 50 tracks × 3 time ranges |
+| `/me/player/recently-played` | `raw_spotify.raw_recently_played` | Last 50 played tracks with timestamps |
 
 ### StatsBomb
 
-Free, open football event data from [StatsBomb open data](https://github.com/statsbomb/open-data). No authentication required — data is fetched from GitHub via the `statsbombpy` library.
+Free open football event data from [StatsBomb open data](https://github.com/statsbomb/open-data). No authentication required.
 
-| Dataset | Raw Table | Description |
+| Dataset | Schema.Table | Description |
 |---|---|---|
-| Competitions | `raw_sb_competitions` | All available competition/season pairs (~75 competitions) |
-| Matches | `raw_sb_matches` | Match metadata for every competition/season |
-| Events | `raw_sb_events` | Every on-ball action in every match (Pass, Shot, Dribble, Carry, Pressure, etc.) |
-| Lineups | `raw_sb_lineups` | Player rosters for each match |
+| Competitions | `raw_statsbomb.raw_sb_competitions` | All available competition/season pairs |
+| Matches | `raw_statsbomb.raw_sb_matches` | Match metadata per competition/season |
+| Events | `raw_statsbomb.raw_sb_events` | Every on-ball action per match (incremental) |
+| Lineups | `raw_statsbomb.raw_sb_lineups` | Player rosters per match (incremental) |
 
-Covers La Liga, Premier League, Bundesliga, Ligue 1, Serie A, FIFA World Cup (1958–2022), UEFA Euro (2020, 2024), Women's competitions, and more. Events data is ingested **incrementally** — re-running skips matches already in the database.
+### Crypto (Binance)
 
-## dbt Models
+Real-time trade ticks streamed from [Binance public WebSocket API](https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams). No authentication required.
+
+| Symbol | Schema.Table | Description |
+|---|---|---|
+| BTC/USDT | `raw_crypto.raw_trades` | Every executed trade tick (append-only) |
+| ETH/USDT | `raw_crypto.raw_trades` | Every executed trade tick (append-only) |
+
+## dbt models
+
+All models live in `dbt/` and target `data/spotify.duckdb` as the primary database, with `data/crypto_raw.duckdb` attached read-only as `crypto_raw`.
 
 ### Staging (views)
 
-| Model | Source | Description |
+| Model | Schema | Description |
 |---|---|---|
-| `stg_top_artists` | `raw_top_artists` | Typed artists with time range and rank |
-| `stg_top_tracks` | `raw_top_tracks` | Typed tracks; album dates normalised to `YYYY-MM-DD` |
-| `stg_recently_played` | `raw_recently_played` | Play events with derived `played_date` and `played_hour` |
-| `stg_sb_competitions` | `raw_sb_competitions` | Competition/season pairs with typed columns |
-| `stg_sb_matches` | `raw_sb_matches` | Matches filtered to available; derives `match_result` and `goal_difference` |
-| `stg_sb_events` | `raw_sb_events` | Events with derived `seconds_elapsed`; location x/y pre-parsed |
-| `stg_sb_lineups` | `raw_sb_lineups` | Player lineup rows with typed columns |
+| `stg_top_artists` | `staging_spotify` | Typed artists with time range and rank |
+| `stg_top_tracks` | `staging_spotify` | Typed tracks; album dates normalised |
+| `stg_recently_played` | `staging_spotify` | Play events with `played_date` and `played_hour` |
+| `stg_sb_competitions` | `staging_statsbomb` | Competition/season pairs |
+| `stg_sb_matches` | `staging_statsbomb` | Matches with derived `match_result` and `goal_difference` |
+| `stg_sb_events` | `staging_statsbomb` | Events with `seconds_elapsed`; location x/y pre-parsed |
+| `stg_sb_lineups` | `staging_statsbomb` | Player lineup rows |
+| `stg_crypto_trades` | `staging_crypto` | Typed trade ticks with `notional_value` |
 
 ### Marts (tables)
 
-| Model | Description |
-|---|---|
-| `top_artists_by_period` | One row per artist with `rank_short_term`, `rank_medium_term`, `rank_long_term` |
-| `top_tracks_by_period` | One row per track with the same three rank columns |
-| `sb_match_summary` | One row per match with competition context and aggregate event counts (shots, passes, dribbles, etc.) |
-| `sb_player_stats` | One row per (player, team) with aggregate stats across all matches |
+| Model | Schema | Description |
+|---|---|---|
+| `top_artists_by_period` | `marts` | One row per artist with rank across all three time ranges |
+| `top_tracks_by_period` | `marts` | One row per track with rank across all three time ranges |
+| `sb_match_summary` | `marts` | One row per match with aggregate event counts |
+| `sb_player_stats` | `marts` | One row per (player, team) with aggregate stats |
+| `ohlcv_1m` | `marts` | 1-minute OHLCV candles per trading pair (incremental) |
+| `ohlcv_1h` | `marts` | 1-hour OHLCV candles per trading pair (incremental) |
 
 ## Setup
 
 ### Prerequisites
+
 - Python 3.12
-- Node.js 22 LTS (`brew install node@22`)
-- [Task](https://taskfile.dev) (`brew install go-task`)
+- Node.js 22 LTS — `brew install node@22`
+- [Task](https://taskfile.dev) — `brew install go-task`
+- Kafka — `brew install kafka`
 - A [Spotify Developer app](https://developer.spotify.com/dashboard) with `http://127.0.0.1:8888/callback` as a Redirect URI
 
 ### Python environment
@@ -123,6 +171,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Kafka
+
+```bash
+# Start ZooKeeper and Kafka (runs in background as launchd services)
+brew services start zookeeper
+brew services start kafka
+
+# Create the topic (only needed once)
+kafka-topics --create --topic crypto.trades --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+```
+
 ### Configure
 
 Create a `.env` file in the project root:
@@ -131,15 +190,18 @@ Create a `.env` file in the project root:
 SPOTIFY_CLIENT_ID=your_client_id
 SPOTIFY_CLIENT_SECRET=your_client_secret
 SPOTIFY_REDIRECT_URI=http://127.0.0.1:8888/callback
+
 DUCKDB_PATH=/absolute/path/to/data-world/data/spotify.duckdb
+CRYPTO_DB_PATH=/absolute/path/to/data-world/data/crypto_raw.duckdb
 ```
 
-> `DUCKDB_PATH` must be an absolute path. A relative path will resolve differently depending on which directory the script is run from.
+> Both `DUCKDB_PATH` and `CRYPTO_DB_PATH` must be absolute paths.
 
-### Dashboard
+### Dashboard dependencies
 
 ```bash
 task dashboard:install
+task dashboard:crypto:install
 ```
 
 ## Usage
@@ -150,33 +212,47 @@ All commands run from the root of `data-world/` using [Task](https://taskfile.de
 
 | Command | Description |
 |---|---|
-| `task ingest` | Clear Spotify cache and run the full Spotify ingest (triggers browser auth) |
+| `task ingest` | Clear Spotify cache and run the full Spotify ingest (triggers browser auth on first run) |
 | `task ingest:no-cache-clear` | Run Spotify ingest using the existing cached token |
 | `task ingest:statsbomb` | Run the StatsBomb ingest (incremental — skips already-loaded matches) |
 
-On first run, `task ingest` opens a browser tab to authorise with Spotify. The token is cached in `.spotify_cache` and refreshed automatically on subsequent runs. StatsBomb requires no authentication.
+### Crypto streaming
+
+Start both processes in separate terminals:
+
+```bash
+task crypto:producer   # Binance WebSocket → Kafka
+task crypto:consumer   # Kafka → DuckDB + live_data.json
+```
+
+| Command | Description |
+|---|---|
+| `task crypto:producer` | Stream BTC/USDT and ETH/USDT ticks from Binance into Kafka |
+| `task crypto:consumer` | Consume from Kafka, write to DuckDB, and update the live JSON sidecar |
 
 ### dbt
 
 | Command | Description |
 |---|---|
-| `task dbt:run` | Run all models |
+| `task dbt:run` | Run all models (all sources) |
 | `task dbt:test` | Run all tests |
 | `task dbt:build` | Run all models then test them |
 | `task dbt:compile` | Validate SQL without executing |
 | `task dbt:docs` | Generate and serve dbt docs in the browser |
 | `task dbt:run:select MODEL=<name>` | Run a specific model |
 | `task dbt:test:select MODEL=<name>` | Test a specific model |
+| `task dbt:crypto:build` | Run and test crypto models only |
 
-### Dashboard
+### Dashboards
 
 | Command | Description |
 |---|---|
-| `task dashboard:dev` | Start dashboard with hot reload at http://localhost:5173 |
-| `task dashboard:build` | Build for production |
-| `task dashboard:start` | Serve the production build |
+| `task dashboard:dev` | Start Spotify dashboard at http://localhost:5173 |
+| `task dashboard:build` | Build Spotify dashboard for production |
+| `task dashboard:crypto:dev` | Start crypto dashboard at http://localhost:5174 |
+| `task dashboard:crypto:build` | Build crypto dashboard for production |
 
-### Refresh
+### Full refresh
 
 | Command | Description |
 |---|---|
@@ -184,12 +260,14 @@ On first run, `task ingest` opens a browser tab to authorise with Spotify. The t
 | `task refresh:statsbomb` | StatsBomb ingest → `dbt:build` |
 | `task refresh:all` | Spotify + StatsBomb ingest → `dbt:build` |
 
-## Important: DuckDB version alignment
+## Viewing data directly
 
-The Python (`duckdb==1.2.1`) and Node.js (`duckdb@1.2.1`) packages must use the **same version**. A mismatch causes the newer version to attempt a file format migration when it opens the database, requiring exclusive write access — which conflicts with dbt. Both are pinned to `1.2.1`.
-
-## Viewing Data Directly
-
-- **DBeaver** — New connection → DuckDB → path: `<absolute path>/data/spotify.duckdb` (use Read-Only mode to avoid write lock conflicts with dbt)
-- **DuckDB CLI** — `python -m duckdb data/spotify.duckdb`
+- **DBeaver** — connect to `data/spotify.duckdb` or `data/crypto_raw.duckdb` in Read-Only mode
+- **DuckDB CLI** — `duckdb data/spotify.duckdb` or `duckdb data/crypto_raw.duckdb`
 - **Harlequin** (TUI) — `pip install harlequin && harlequin data/spotify.duckdb`
+
+> Open `crypto_raw.duckdb` in read-only mode when the consumer is running to avoid lock conflicts.
+
+## DuckDB version alignment
+
+The Python (`duckdb==1.2.1`) and Node.js (`duckdb@1.2.1`) packages must use the **same version**. A mismatch causes the newer version to attempt a file format migration requiring exclusive write access, which conflicts with other processes. Both are pinned to `1.2.1`.

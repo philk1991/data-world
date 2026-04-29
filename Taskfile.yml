@@ -64,26 +64,26 @@ tasks:
   # ── Dashboard ────────────────────────────────────────────────────────────────
 
   dashboard:install:
-    desc: Install dashboard Node.js dependencies
-    dir: dashboard
+    desc: Install Spotify dashboard Node.js dependencies
+    dir: dashboards/spotify
     cmds:
       - npm install
 
   dashboard:dev:
     desc: "Start the Spotify dashboard with hot reload (http://localhost:5173)"
-    dir: dashboard
+    dir: dashboards/spotify
     cmds:
       - npm run dev
 
   dashboard:build:
-    desc: Build the dashboard for production
-    dir: dashboard
+    desc: Build the Spotify dashboard for production
+    dir: dashboards/spotify
     cmds:
       - npm run build
 
   dashboard:start:
-    desc: Run the built dashboard
-    dir: dashboard
+    desc: Run the built Spotify dashboard
+    dir: dashboards/spotify
     cmds:
       - npm run preview
 
@@ -127,19 +127,19 @@ tasks:
 
   dashboard:crypto:install:
     desc: Install crypto dashboard Node.js dependencies
-    dir: dashboard-crypto
+    dir: dashboards/crypto
     cmds:
       - npm install
 
   dashboard:crypto:dev:
     desc: "Start the crypto dashboard with hot reload (http://localhost:5174)"
-    dir: dashboard-crypto
+    dir: dashboards/crypto
     cmds:
       - npm run dev -- --port 5174
 
   dashboard:crypto:build:
     desc: Build the crypto dashboard for production
-    dir: dashboard-crypto
+    dir: dashboards/crypto
     cmds:
       - npm run build
 

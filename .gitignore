@@ -7,7 +7,7 @@ dbt/logs/
 __pycache__/
 *.pyc
 .venv/
-dashboard/node_modules/
-dashboard/.svelte-kit/
-dashboard/.env
+dashboards/*/node_modules/
+dashboards/*/.svelte-kit/
+dashboards/*/.env
 ideas.md
