@@ -1,9 +1,10 @@
 .env
 .spotify_cache
-data/
+/data/
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
+dbt/edr_target/
 __pycache__/
 *.pyc
 .venv/

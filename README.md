@@ -129,6 +129,8 @@ Real-time trade ticks streamed from [Binance public WebSocket API](https://devel
 
 All models live in `dbt/` and target `data/spotify.duckdb` as the primary database, with `data/crypto_raw.duckdb` attached read-only as `crypto_raw`.
 
+[Elementary](https://docs.elementary-data.com) is integrated as a dbt package. It captures test results, model run history, and row counts into an `elementary` schema on every `dbt build`, and the `edr` CLI generates an HTML observability report from that data.
+
 ### Staging (views)
 
 | Model | Schema | Description |
@@ -197,6 +199,13 @@ CRYPTO_DB_PATH=/absolute/path/to/data-world/data/crypto_raw.duckdb
 
 > Both `DUCKDB_PATH` and `CRYPTO_DB_PATH` must be absolute paths.
 
+### dbt packages and Elementary
+
+```bash
+task dbt:deps              # install dbt packages (elementary + dbt_utils)
+task dbt:elementary:init   # create Elementary tracking tables (run once)
+```
+
 ### Dashboard dependencies
 
 ```bash
@@ -242,6 +251,7 @@ task crypto:consumer   # Kafka → DuckDB + live_data.json
 | `task dbt:run:select MODEL=<name>` | Run a specific model |
 | `task dbt:test:select MODEL=<name>` | Test a specific model |
 | `task dbt:crypto:build` | Run and test crypto models only |
+| `task edr:report` | Generate and open the Elementary observability report |
 
 ### Dashboards
 

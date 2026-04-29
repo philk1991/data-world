@@ -37,6 +37,21 @@ tasks:
     cmds:
       - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt build"
 
+  dbt:deps:
+    desc: Install dbt packages (including elementary)
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt deps"
+
+  dbt:elementary:init:
+    desc: Materialise Elementary tracking tables in DuckDB (run once after dbt deps)
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt run --select elementary"
+
+  edr:report:
+    desc: Generate and open the Elementary observability report
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && edr report --profiles-dir . --project-dir . --open-browser true"
+
   dbt:docs:
     desc: Generate and serve dbt docs in the browser
     cmds:

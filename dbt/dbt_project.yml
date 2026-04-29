@@ -38,3 +38,10 @@ models:
       crypto:
         +materialized: incremental
         +schema: marts
+  elementary:
+    +schema: elementary
+    +materialized: table
+
+vars:
+  elementary:
+    database_name: "spotify"

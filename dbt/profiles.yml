@@ -9,3 +9,12 @@ spotify:
         - path: ../data/crypto_raw.duckdb
           alias: crypto_raw
           read_only: true
+
+elementary:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: /Users/philkillarney/dev-env/data-world/data/spotify.duckdb
+      schema: elementary
+      threads: 4
