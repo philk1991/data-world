@@ -7,7 +7,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 DBT_PROJECT_DIR = PROJECT_ROOT / "dbt"
 DATA_DIR = PROJECT_ROOT / "data"
 DATA_INGESTION_DIR = PROJECT_ROOT / "data-ingestion"
-SPOTIFY_CACHE_PATH = PROJECT_ROOT / ".spotify_cache"
+SPOTIFY_CACHE_PATH = DATA_INGESTION_DIR / ".spotify_cache"
 
 DUCKDB_PATH = str(DATA_DIR / "spotify.duckdb")
 CRYPTO_DUCKDB_PATH = str(DATA_DIR / "crypto_raw.duckdb")

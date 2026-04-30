@@ -20,6 +20,6 @@ class SpotifyClientResource(ConfigurableResource):
             redirect_uri=self.redirect_uri,
             scope=_SCOPES,
             cache_path=self.cache_path,
-            open_browser=True,
+            open_browser=False,
         )
         return spotipy.Spotify(auth_manager=auth_manager)

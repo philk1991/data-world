@@ -27,6 +27,7 @@ Setting up a Spotify Developer app:
   3. Copy the Client ID and Client Secret into your .env file.
 """
 import os
+from pathlib import Path
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
@@ -35,6 +36,9 @@ load_dotenv()
 
 # OAuth scopes required across all ingestion endpoints.
 SCOPES = "user-top-read user-read-recently-played"
+
+# Absolute path so the cache is in the same place whether run locally or via Dagster.
+_CACHE_PATH = Path(__file__).parent.parent / ".spotify_cache"
 
 
 def get_client() -> spotipy.Spotify:
@@ -48,7 +52,7 @@ def get_client() -> spotipy.Spotify:
         client_secret=os.environ["SPOTIFY_CLIENT_SECRET"],
         redirect_uri=os.environ.get("SPOTIFY_REDIRECT_URI", "http://localhost:8888/callback"),
         scope=SCOPES,
-        cache_path=".spotify_cache",
+        cache_path=str(_CACHE_PATH),
         open_browser=True,
     )
     return spotipy.Spotify(auth_manager=auth_manager)
