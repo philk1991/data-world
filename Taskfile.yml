@@ -62,6 +62,11 @@ tasks:
     cmds:
       - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt compile"
 
+  dbt:parse:
+    desc: Parse dbt project and regenerate manifest.json (required after adding/renaming models)
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt parse --profiles-dir ."
+
   dbt:run:select:
     desc: "Run a specific dbt model -- usage: task dbt:run:select MODEL=top_tracks_enriched"
     cmds:
@@ -166,6 +171,19 @@ tasks:
     desc: Run the StatsBomb open data ingest pipeline (incremental)
     cmds:
       - bash -c "source {{.VENV}} && cd data-ingestion && python ingest_statsbomb.py"
+
+  # ── Dagster Orchestration ────────────────────────────────────────────────────
+
+  dagster:dev:
+    desc: "Start Dagster UI + daemon (http://localhost:3000)"
+    cmds:
+      - bash -c "source {{.VENV}} && DAGSTER_HOME=$(pwd)/orchestration dagster dev --module-name dagster_data_world"
+
+  dagster:install:
+    desc: Install the orchestration package into the venv (run once after adding deps)
+    dir: orchestration
+    cmds:
+      - bash -c "source ../.venv/bin/activate && pip install -e . --quiet"
 
   # ── Combined ─────────────────────────────────────────────────────────────────
 

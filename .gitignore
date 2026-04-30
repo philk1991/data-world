@@ -12,3 +12,13 @@ dashboards/*/node_modules/
 dashboards/*/.svelte-kit/
 dashboards/*/.env
 ideas.md
+
+# Dagster runtime storage
+.dagster_home/
+orchestration/.dagster_home/
+orchestration/.nux/
+orchestration/storage/
+orchestration/*.egg-info/
+
+# Data files
+data-ingestion/data/

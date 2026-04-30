@@ -4,3 +4,7 @@ python-dotenv==1.0.1
 dbt-duckdb==1.10.1
 statsbombpy
 elementary-data[duckdb]==0.23.*
+dagster
+dagster-webserver
+dagster-dbt
+dagster-duckdb
