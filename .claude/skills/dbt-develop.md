@@ -7,14 +7,36 @@ description: Scaffold a new dbt model (SQL + YAML) following project conventions
 
 Scaffold a new dbt model with correct SQL structure and YAML schema entry, following this project's conventions.
 
-## Step 1 — Load conventions
+## Step 1 — Synthesise conventions via sub-agent
 
-Before doing anything else, read all three conventions files:
-- `.claude/conventions/dbt-conventions.md`
-- `.claude/conventions/sql-conventions.md`
-- `.claude/conventions/yml-conventions.md`
+Spawn one **Explore** sub-agent to read all three conventions files and return a compact,
+layer-specific summary.
 
-These define the authoritative standards for everything you generate.
+**Why a sub-agent rather than reading the files directly?**
+The three conventions files together are ~300 lines. Reading them inline consumes main
+context that will be needed for SQL generation, YAML writing, and compile validation.
+The Explore sub-agent reads the raw files, filters to rules relevant to the target layer,
+and returns a concise reference — protecting the main context window from noise.
+
+Give the sub-agent this prompt (substitute the actual layer — staging, intermediate, or mart):
+
+> Read these three files in full:
+> - `.claude/conventions/dbt-conventions.md`
+> - `.claude/conventions/sql-conventions.md`
+> - `.claude/conventions/yml-conventions.md`
+>
+> The user is building a **<LAYER>** model (staging / intermediate / mart).
+>
+> Return a compact summary — maximum 40 lines — covering only the rules that apply to
+> this layer:
+> - The correct SQL template for this layer
+> - Formatting rules (indentation, keywords, alias style, CTE structure)
+> - YAML structure and which tests are required
+> - Required `meta:` fields and example values
+>
+> Omit anything that applies only to other layers. Return the summary only — no preamble.
+
+Use the sub-agent's summary as your working conventions reference for Steps 3–5.
 
 ## Step 2 — Gather intent
 

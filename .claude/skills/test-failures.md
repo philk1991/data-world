@@ -69,11 +69,51 @@ Read both files with Python:
         }))
     EOF
 
-Each line of output is a JSON object for one failure. Collect them all for Step 4.
+Each line of output is a JSON object for one failure. Collect them all.
 
-## Step 4 — Diagnose each failure
+## Step 4 — Diagnose failures
 
-For each failure, connect to DuckDB and run a targeted diagnostic query to get sample failing rows. Always use `read_only=True`. Attach `crypto_raw.duckdb` for any crypto model.
+**Decide whether to use sub-agents or a sequential script based on failure count:**
+
+| Failures | Approach | Reason |
+|---|---|---|
+| < 3 | Sequential Python script | Sub-agent spawn overhead (~2s each) costs more than it saves at low counts |
+| ≥ 3 | Parallel sub-agents | Each diagnosis is fully independent — no shared state, no ordering dependency. Wall-clock time drops from N × query_time to max(query_time) |
+
+---
+
+### If ≥ 3 failures — spawn sub-agents in parallel
+
+Spawn one **general-purpose** sub-agent per failure **in a single message** — not one at a time.
+Waiting for each to finish before spawning the next would make it sequential again, defeating
+the point. All agents start simultaneously and their results are collected when the last one finishes.
+
+Give each sub-agent this prompt, substituting the failure JSON:
+
+> Connect to DuckDB: `duckdb.connect('data/spotify.duckdb', read_only=True)`.
+> Also try: `conn.execute("ATTACH 'data/crypto_raw.duckdb' AS crypto_raw (READ_ONLY)")`.
+>
+> Run a diagnostic query for this dbt test failure and return two things:
+> 1. A markdown table of the query results
+> 2. A specific suggested fix (one short paragraph) based on what the data shows
+>
+> Failure JSON: `<paste the JSON object from Step 3>`
+>
+> Query logic by test type:
+> - **not_null**: `SELECT COUNT(*) AS null_count FROM "schema"."model" WHERE "col" IS NULL`
+> - **unique**: `SELECT "col", COUNT(*) AS occurrences FROM "schema"."model" GROUP BY "col" HAVING COUNT(*) > 1 ORDER BY occurrences DESC LIMIT 10`
+> - **accepted_values**: `SELECT "col", COUNT(*) AS row_count FROM "schema"."model" WHERE "col" NOT IN ('val1','val2',...) GROUP BY "col" ORDER BY row_count DESC`
+> - **other**: `SELECT * FROM (<compiled_code>) _failures LIMIT 10`
+>
+> Return ONLY the markdown table and the suggested fix. No preamble, no explanation of what you did.
+
+Collect all sub-agent results. Proceed to Step 5.
+
+---
+
+### If < 3 failures — sequential script
+
+For each failure, run:
 
     python3 - <<'EOF'
     import duckdb, json, sys
@@ -112,7 +152,6 @@ For each failure, connect to DuckDB and run a targeted diagnostic query to get s
             ORDER BY row_count DESC
         '''
     else:
-        # fallback: run the compiled SQL limited to 10 rows
         base = failure['compiled_code'].strip().rstrip(';')
         sql = f'SELECT * FROM ({base}) _failures LIMIT 10'
 
