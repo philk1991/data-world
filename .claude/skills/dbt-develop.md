@@ -9,9 +9,10 @@ Scaffold a new dbt model with correct SQL structure and YAML schema entry, follo
 
 ## Step 1 — Load conventions
 
-Before doing anything else, read both conventions files:
+Before doing anything else, read all three conventions files:
 - `.claude/conventions/dbt-conventions.md`
 - `.claude/conventions/sql-conventions.md`
+- `.claude/conventions/yml-conventions.md`
 
 These define the authoritative standards for everything you generate.
 

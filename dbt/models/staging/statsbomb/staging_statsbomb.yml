@@ -5,6 +5,10 @@ models:
     description: >
       All competition/season pairs available in the StatsBomb open data set.
       Each row is one unique combination of competition and season.
+    meta:
+      grain: one row per (competition_id, season_id)
+      purpose: Clean and pass through raw competition/season pairs from the
+        StatsBomb open data catalogue.
     columns:
       - name: competition_id
         description: StatsBomb competition identifier.
@@ -55,6 +59,10 @@ models:
       Match metadata for all available StatsBomb open data matches. Filtered to
       match_status = available. Derives match_result and goal_difference from
       the raw scores.
+    meta:
+      grain: one row per match_id
+      purpose: Clean match metadata and derive match_result (home_win/away_win/draw)
+        and goal_difference from raw home and away scores.
     columns:
       - name: match_id
         description: StatsBomb match identifier. Unique per row.
@@ -131,6 +139,11 @@ models:
       specific attributes (shot_outcome, pass_length, etc.) are not extracted
       at this stage. location_x and location_y use StatsBomb pitch coordinates
       (x: 0–120, y: 0–80).
+    meta:
+      grain: one row per event_id (unique across all matches)
+      purpose: Clean the universal StatsBomb event envelope, deriving
+        seconds_elapsed and pre-parsing location x/y. Type-specific attributes
+        (shot_outcome, pass_length, etc.) are not extracted at this layer.
     columns:
       - name: event_id
         description: StatsBomb UUID for this event. Unique across all matches.
@@ -204,6 +217,10 @@ models:
     description: >
       Player lineup data for each StatsBomb match. One row per player per match,
       covering both the home and away teams.
+    meta:
+      grain: one row per (match_id, team_name, player_id)
+      purpose: Clean player roster data per match, providing the link between
+        players, teams, and matches for joining to event-level data.
     columns:
       - name: match_id
         description: Foreign key to stg_sb_matches.

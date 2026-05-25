@@ -6,6 +6,16 @@ models:
       One row per StatsBomb match combining match metadata, result, and
       aggregate event counts. Covers only matches with status = available.
       Ordered by match_date descending.
+    meta:
+      grain: one row per match_id
+      purpose: Join match metadata with aggregate event counts to produce a
+        single summary row per match for dashboard consumption.
+      business_question: How did each match play out — result, activity volume,
+        and key event counts?
+      relationships:
+        decomposes_into:
+          - "stg_sb_matches: source of match metadata and result columns"
+          - "stg_sb_events: source of all event counts via conditional aggregation"
     columns:
       - name: match_id
         description: StatsBomb match identifier. Unique per row.
@@ -104,6 +114,16 @@ models:
       Note: Goals are not yet tracked — shot_outcome is not extracted into the
       raw events table at this stage. total_shots counts all Shot events
       regardless of outcome.
+    meta:
+      grain: one row per (player_id, team)
+      purpose: Aggregate all event-level activity per player per team, joined
+        with lineup data for nationality context.
+      business_question: Which players are most active across the open data set,
+        and what does their activity breakdown look like?
+      relationships:
+        decomposes_into:
+          - "stg_sb_events: source of all per-player event counts"
+          - "stg_sb_lineups: source of lineup_appearances and country_name"
     columns:
       - name: player_id
         description: StatsBomb player identifier. Combined with team, forms the natural key.

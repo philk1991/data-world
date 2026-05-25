@@ -7,6 +7,19 @@ models:
       periods side by side (short_term ~4 weeks, medium_term ~6 months,
       long_term all time). Null rank means the artist did not appear in the
       top 50 for that period. Ordered by short_term rank ascending.
+    meta:
+      grain: one row per artist_id
+      purpose: Pivot artist rankings from three source rows per artist into a
+        single comparison row, enabling side-by-side period analysis.
+      business_question: Which artists am I consistently into vs. recent obsessions?
+      seasonality: Rankings reflect a point-in-time snapshot from the last ingest.
+        Short-term ranks shift quickly with recent listening; long-term ranks
+        are stable.
+      relationships:
+        decomposes_into:
+          - "stg_top_artists: three rows per artist (one per time_range) before pivot"
+        correlates_with:
+          - "top_tracks_by_period: same three-period structure applied to tracks"
     columns:
       - name: artist_id
         description: Spotify artist ID. Unique per row.
@@ -48,6 +61,19 @@ models:
       periods side by side (short_term ~4 weeks, medium_term ~6 months,
       long_term all time). Null rank means the track did not appear in the
       top 50 for that period. Ordered by short_term rank ascending.
+    meta:
+      grain: one row per track_id
+      purpose: Pivot track rankings from three source rows per track into a
+        single comparison row, enabling side-by-side period analysis.
+      business_question: Which tracks do I return to across different time horizons?
+      seasonality: Rankings reflect a point-in-time snapshot from the last ingest.
+        Short-term ranks are sensitive to recent listening sessions.
+      relationships:
+        decomposes_into:
+          - "stg_top_tracks: three rows per track (one per time_range) before pivot"
+        correlates_with:
+          - "top_artists_by_period: same three-period structure applied to artists"
+          - "stg_recently_played: overlapping tracks appear in both models but at different grains"
     columns:
       - name: track_id
         description: Spotify track ID. Unique per row.

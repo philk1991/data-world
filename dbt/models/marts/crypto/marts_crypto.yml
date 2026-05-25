@@ -6,6 +6,18 @@ models:
       OHLCV candlestick data at 1-minute resolution per trading pair.
       Incrementally built — each run appends new completed candles.
       open/close use the first/last trade price within the candle window.
+    meta:
+      grain: one row per (symbol, candle_open_time) at 1-minute resolution
+      purpose: Aggregate raw trade ticks into 1-minute OHLCV candles per
+        trading pair for charting and time-series analysis.
+      business_question: What did prices and volume look like at each minute?
+      seasonality: Volume spikes during US market open (~9am EST) and EU market
+        open (~9am GMT). Weekend candles have significantly lower trade counts.
+      relationships:
+        decomposes_into:
+          - "stg_crypto_trades: individual trade ticks aggregated into candle windows"
+        leads_to:
+          - "ohlcv_1h: 1h candles are rolled up from 1m candles"
     columns:
       - name: symbol
         description: Trading pair (e.g. BTCUSDT).
@@ -48,6 +60,19 @@ models:
     description: >
       OHLCV candlestick data at 1-hour resolution per trading pair.
       Rolled up from 1-minute candles for efficient long-range charting.
+    meta:
+      grain: one row per (symbol, candle_open_time) at 1-hour resolution
+      purpose: Roll up 1-minute candles into hourly OHLCV for efficient
+        long-range charting without scanning the full 1m table.
+      business_question: What did hourly price action and volume look like
+        across a longer time range?
+      seasonality: Volume spikes during US market open (~9am EST) and EU market
+        open (~9am GMT). Weekend hours have significantly lower trade counts.
+      relationships:
+        decomposes_into:
+          - "ohlcv_1m: 1m candles aggregated into 1h windows"
+        correlates_with:
+          - "ohlcv_1m: same data at finer resolution — use 1m for intraday, 1h for longer-range"
     columns:
       - name: symbol
         description: Trading pair (e.g. BTCUSDT).

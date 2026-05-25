@@ -6,6 +6,10 @@ models:
       Staged top artists pulled from the Spotify API. Each row represents one
       artist at a specific time range (short_term, medium_term, long_term).
       Ranks are 1-indexed with 1 being the most listened to.
+    meta:
+      grain: one row per (artist_id, time_range)
+      purpose: Clean and type raw Spotify top artist data, renaming columns and
+        casting ingested_at for downstream consumption.
     columns:
       - name: artist_id
         description: Spotify artist ID.
@@ -53,6 +57,11 @@ models:
       track at a specific time range (short_term, medium_term, long_term).
       Album release dates are normalised to full dates — year-only and
       year-month values are defaulted to January 1st.
+    meta:
+      grain: one row per (track_id, time_range)
+      purpose: Clean and type raw Spotify top track data, renaming columns,
+        casting ingested_at, and normalising partial album release dates to
+        full YYYY-MM-DD values.
     columns:
       - name: track_id
         description: Spotify track ID.
@@ -126,6 +135,12 @@ models:
       The 50 most recently played tracks for the user. Each row is a distinct
       play event identified by played_at. Includes derived date and hour columns
       for time-of-day analysis.
+    meta:
+      grain: one row per play event (played_at)
+      purpose: Clean and type recent play events, deriving played_date and
+        played_hour for time-of-day analysis.
+      seasonality: Limited to the 50 most recent plays per ingest run. History
+        beyond that window is lost unless the ingest runs frequently.
     columns:
       - name: played_at
         description: UTC timestamp of when the track was played. Unique per row.
