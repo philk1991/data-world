@@ -49,3 +49,5 @@ Required in a `.env` file at the project root — check `.env.example` or `orche
 `/dbt-develop` — scaffold a new dbt model (SQL + YAML). Reads conventions lazily from `.claude/conventions/` when invoked — check those files for the full dbt and SQL standards.
 
 `/test-failures [scope]` — run dbt tests, diagnose failures by querying the affected tables, and output a markdown report with suggested fixes. Optional scope argument narrows the run (e.g. `marts for spotify`, `staging`, `crypto`).
+
+`/explore-dataset <domain|table>` — profile a raw DuckDB dataset before building dbt models. Outputs column stats, missing data, top values for categoricals, suggested dbt models, and cross-domain join opportunities. Saves report to `.claude/eda/`.
