@@ -29,6 +29,12 @@ data-world/
 ├── dashboards/
 │   ├── spotify/               # SvelteKit app — Spotify listening data
 │   └── crypto/                # SvelteKit app — real-time trade feed
+├── orchestration/             # Dagster package (dagster_data_world)
+│   ├── assets/                # Software-defined assets (Spotify, StatsBomb, dbt)
+│   ├── jobs/                  # Job definitions
+│   ├── schedules/             # Cron-based schedules
+│   ├── sensors/               # crypto_sensor — triggers dbt on new trade data
+│   └── resources/             # Spotify API client resource
 ├── data/                      # DuckDB files + live JSON sidecar (gitignored)
 │   ├── spotify.duckdb         # Spotify + StatsBomb data
 │   ├── crypto_raw.duckdb      # Raw crypto trades (consumer-owned)
@@ -176,8 +182,7 @@ pip install -r requirements.txt
 ### Kafka
 
 ```bash
-# Start ZooKeeper and Kafka (runs in background as launchd services)
-brew services start zookeeper
+# Start Kafka in KRaft mode (no ZooKeeper)
 brew services start kafka
 
 # Create the topic (only needed once)
@@ -204,6 +209,12 @@ CRYPTO_DB_PATH=/absolute/path/to/data-world/data/crypto_raw.duckdb
 ```bash
 task dbt:deps              # install dbt packages (elementary + dbt_utils)
 task dbt:elementary:init   # create Elementary tracking tables (run once)
+```
+
+### Dagster orchestration
+
+```bash
+task dagster:install       # install the orchestration package into the venv (run once)
 ```
 
 ### Dashboard dependencies
@@ -270,6 +281,15 @@ task crypto:consumer   # Kafka → DuckDB + live_data.json
 | `task refresh:statsbomb` | StatsBomb ingest → `dbt:build` |
 | `task refresh:all` | Spotify + StatsBomb ingest → `dbt:build` |
 
+### Orchestration (Dagster)
+
+Dagster wraps Spotify ingestion, StatsBomb ingestion, and all dbt models as software-defined assets. A crypto sensor watches for new trade data and triggers dbt builds automatically.
+
+| Command | Description |
+|---|---|
+| `task dagster:dev` | Start Dagster UI + daemon at http://localhost:3000 |
+| `task dagster:install` | Install the orchestration package into the venv (run once) |
+
 ## Viewing data directly
 
 - **DBeaver** — connect to `data/spotify.duckdb` or `data/crypto_raw.duckdb` in Read-Only mode
@@ -277,6 +297,16 @@ task crypto:consumer   # Kafka → DuckDB + live_data.json
 - **Harlequin** (TUI) — `pip install harlequin && harlequin data/spotify.duckdb`
 
 > Open `crypto_raw.duckdb` in read-only mode when the consumer is running to avoid lock conflicts.
+
+## Developer tooling
+
+Three Claude Code slash commands are registered in `.claude/commands/` for common development tasks:
+
+| Command | Description |
+|---|---|
+| `/explore-dataset <domain\|table>` | Profile a raw DuckDB dataset before building models; saves an EDA report to `.claude/eda/` |
+| `/test-failures [scope]` | Run dbt tests, diagnose failures by querying affected tables, and output a report with suggested fixes |
+| `/dbt-develop` | Scaffold a new dbt model (SQL + YAML) following project conventions |
 
 ## DuckDB version alignment
 
