@@ -136,6 +136,35 @@ tasks:
     cmds:
       - bash -c "source {{.VENV}} && cd data-ingestion && python -m crypto.consumer"
 
+  # ── dbt Payments ──────────────────────────────────────────────────────────────
+
+  dbt:payments:run:
+    desc: Run all payments dbt models (staging_payments + payment marts)
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt run --select staging.payments+ marts.payments+"
+
+  dbt:payments:test:
+    desc: Run all payments dbt tests
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt test --select staging.payments+ marts.payments+"
+
+  dbt:payments:build:
+    desc: Run and test all payments dbt models
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt build --select staging.payments+ marts.payments+"
+
+  # ── Payments Streaming ──────────────────────────────────────────────────────
+
+  payments:producer:
+    desc: "Start the synthetic payments → Kafka producer (payments.requests + payments.rejected)"
+    cmds:
+      - bash -c "source {{.VENV}} && cd data-ingestion && python -m payments.producer"
+
+  payments:consumer:
+    desc: "Start the Kafka → DuckDB consumer (raw_payments.raw_requests + raw_rejections)"
+    cmds:
+      - bash -c "source {{.VENV}} && cd data-ingestion && python -m payments.consumer"
+
   # ── Schema Migration ────────────────────────────────────────────────────────
 
   migrate:schemas:

@@ -9,6 +9,9 @@ spotify:
         - path: ../data/crypto_raw.duckdb
           alias: crypto_raw
           read_only: true
+        - path: ../data/payments_raw.duckdb
+          alias: payments_raw
+          read_only: true
 
 elementary:
   target: dev

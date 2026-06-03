@@ -1,0 +1,42 @@
+version: 2
+
+unit_tests:
+  - name: payment_status_resolves_outcomes
+    model: payment_status
+    description: >
+      Asserts the accepted / rejected / pending CASE logic against a fixed
+      evaluation time (12:00:00 UTC) with a 10-minute grace window. Covers: a
+      rejection wins regardless of timing, the grace window elapsing to accepted,
+      the exact >= boundary, and a still-pending payment inside its window.
+    overrides:
+      macros:
+        # test the full (non-incremental) path so there is no {{ this }} self-reference
+        is_incremental: false
+        payments_now: "'2026-01-01 12:00:00+00'::timestamptz"
+    given:
+      - input: ref('stg_payments__requests')
+        rows:
+          # rejected long ago
+          - { payment_id: "p_rejected_old",      amount: 10.00, requested_at: "2026-01-01 11:00:00+00" }
+          # no rejection, well past the 10-min grace -> accepted
+          - { payment_id: "p_accepted_old",      amount: 20.00, requested_at: "2026-01-01 11:00:00+00" }
+          # no rejection, requested exactly 10 min ago -> accepted (tests the >= boundary)
+          - { payment_id: "p_accepted_boundary", amount: 30.00, requested_at: "2026-01-01 11:50:00+00" }
+          # no rejection, requested just under 10 min ago -> still pending
+          - { payment_id: "p_pending_boundary",  amount: 40.00, requested_at: "2026-01-01 11:50:01+00" }
+          # no rejection, recent -> pending
+          - { payment_id: "p_pending_recent",    amount: 50.00, requested_at: "2026-01-01 11:55:00+00" }
+          # rejection arrived while still inside the grace window -> rejected wins
+          - { payment_id: "p_rejected_in_grace", amount: 60.00, requested_at: "2026-01-01 11:55:00+00" }
+      - input: ref('stg_payments__rejections')
+        rows:
+          - { payment_id: "p_rejected_old",      rejected_at: "2026-01-01 11:05:00+00" }
+          - { payment_id: "p_rejected_in_grace", rejected_at: "2026-01-01 11:56:00+00" }
+    expect:
+      rows:
+        - { payment_id: "p_rejected_old",      amount: 10.00, requested_at: "2026-01-01 11:00:00+00", rejected_at: "2026-01-01 11:05:00+00", status: "rejected", status_evaluated_at: "2026-01-01 12:00:00+00" }
+        - { payment_id: "p_accepted_old",      amount: 20.00, requested_at: "2026-01-01 11:00:00+00", rejected_at: null, status: "accepted", status_evaluated_at: "2026-01-01 12:00:00+00" }
+        - { payment_id: "p_accepted_boundary", amount: 30.00, requested_at: "2026-01-01 11:50:00+00", rejected_at: null, status: "accepted", status_evaluated_at: "2026-01-01 12:00:00+00" }
+        - { payment_id: "p_pending_boundary",  amount: 40.00, requested_at: "2026-01-01 11:50:01+00", rejected_at: null, status: "pending",  status_evaluated_at: "2026-01-01 12:00:00+00" }
+        - { payment_id: "p_pending_recent",    amount: 50.00, requested_at: "2026-01-01 11:55:00+00", rejected_at: null, status: "pending",  status_evaluated_at: "2026-01-01 12:00:00+00" }
+        - { payment_id: "p_rejected_in_grace", amount: 60.00, requested_at: "2026-01-01 11:55:00+00", rejected_at: "2026-01-01 11:56:00+00", status: "rejected", status_evaluated_at: "2026-01-01 12:00:00+00" }

@@ -28,6 +28,9 @@ models:
       crypto:
         +materialized: view
         +schema: staging_crypto
+      payments:
+        +materialized: view
+        +schema: staging_payments
     marts:
       spotify:
         +materialized: table
@@ -38,10 +41,16 @@ models:
       crypto:
         +materialized: incremental
         +schema: marts
+      payments:
+        +materialized: incremental
+        +schema: marts
   elementary:
     +schema: elementary
     +materialized: table
 
 vars:
+  # Bucket size (minutes) for payments_by_minute. 1 = finest/realtime, 5 = coarser
+  # + faster dashboard. Run payments_by_minute with --full-refresh after changing.
+  payments_bucket_minutes: 1
   elementary:
     database_name: "spotify"

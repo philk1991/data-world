@@ -1,0 +1,53 @@
+version: 2
+
+sources:
+  - name: raw_payments
+    database: payments_raw
+    schema: raw_payments
+    tables:
+      - name: raw_requests
+        description: >
+          Raw payment request events consumed from the 'payments.requests' Kafka
+          topic. One row per payment attempt (payment_id, amount, requested_at).
+          Append-only — at-least-once delivery means payment_id may repeat, we
+          take the first based on immutable assumption.
+        # Ingestion-health monitoring on the load timestamp (consumed_at):
+        #   volume   — flags the consumer landing abnormally few/many rows per hour
+        #   freshness — flags new data no longer arriving (consumer or Kafka down)
+        # severity=warn: anomaly tests are probabilistic and need history to train a
+        # baseline — promote to error once enough runs have accumulated.
+        tests:
+          - elementary.volume_anomalies:
+              arguments:
+                timestamp_column: consumed_at
+                time_bucket:
+                  period: hour
+                  count: 1
+              config:
+                severity: warn
+          - elementary.freshness_anomalies:
+              arguments:
+                timestamp_column: consumed_at
+              config:
+                severity: warn
+      - name: raw_rejections
+        description: >
+          Raw payment rejection events consumed from the 'payments.rejected' Kafka
+          topic. One row per rejected payment (payment_id, rejected_at). Arrives up
+          to 10 minutes after the matching request. Append-only.
+        # Same ingestion-health monitoring as raw_requests. A sudden drop in
+        # rejection volume can mask a broken rejection feed — worth watching.
+        tests:
+          - elementary.volume_anomalies:
+              arguments:
+                timestamp_column: consumed_at
+                time_bucket:
+                  period: hour
+                  count: 1
+              config:
+                severity: warn
+          - elementary.freshness_anomalies:
+              arguments:
+                timestamp_column: consumed_at
+              config:
+                severity: warn

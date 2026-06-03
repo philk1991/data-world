@@ -1,0 +1,61 @@
+version: 2
+
+models:
+  - name: stg_payments__requests
+    description: >
+      Staged payment requests. One row per payment_id after deduplicating
+      at-least-once Kafka deliveries (earliest consumed_at wins, assuming immutable).
+    meta:
+      grain: one row per payment_id
+      purpose: Clean and type raw payment request events, deduplicating on
+        payment_id so downstream models can treat it as a unique key.
+    columns:
+      - name: payment_id
+        description: Unique payment identifier (UUID) assigned at request time.
+        tests:
+          - not_null
+          - unique
+      - name: amount
+        description: Payment amount in USD.
+        tests:
+          - not_null
+      - name: requested_at
+        description: UTC timestamp of when the payment was requested.
+        tests:
+          - not_null
+      - name: consumed_at
+        description: UTC timestamp of when the consumer wrote this row to DuckDB.
+        tests:
+          - not_null
+
+  - name: stg_payments__rejections
+    description: >
+      Staged payment rejections. One row per rejected payment_id after
+      deduplicating at-least-once Kafka deliveries (earliest consumed_at wins assuming immutable).
+    meta:
+      grain: one row per payment_id
+      purpose: Clean and type raw payment rejection events, deduplicating on
+        payment_id so downstream models can join one-to-one against requests.
+      relationships:
+        correlates_with:
+          - "stg_payments__requests: each rejection should match exactly one request payment_id"
+    columns:
+      - name: payment_id
+        description: Payment identifier of the rejected payment. Matches a request payment_id. Test relationship, if it not in payments it could indicate fault with Kafka producer.
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('stg_payments__requests')
+                field: payment_id
+      - name: rejected_at
+        description: >
+          UTC timestamp of when the payment was rejected. Can arrive up to 10 minutes
+          after the matching request's requested_at.
+        tests:
+          - not_null
+      - name: consumed_at
+        description: UTC timestamp of when the consumer wrote this row to DuckDB.
+        tests:
+          - not_null

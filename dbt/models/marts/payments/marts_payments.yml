@@ -1,0 +1,90 @@
+version: 2
+
+models:
+  - name: payment_status
+    description: >
+      One row per payment with its resolved outcome (accepted / rejected /
+      pending). Resolves the late-arriving rejection: a payment is pending until a
+      rejection arrives or the 10-minute grace window elapses (then accepted).
+      Incrementally rebuilt with a 20-minute look-back so the still-pending tail is
+      re-evaluated and merged on payment_id each run.
+    meta:
+      grain: one row per payment_id
+      purpose: Resolve each payment's final outcome by joining requests to
+        late-arriving rejections under a 10-minute grace window, so downstream
+        aggregates can count accepted/rejected/pending payments.
+      business_question: Was this payment accepted, rejected, or still within its
+        rejection grace window?
+      seasonality: The most recent ~10 minutes always contain pending rows that have
+        not yet cleared their grace window — this is expected and a business known
+        caveat.
+    columns:
+      - name: payment_id
+        description: Unique payment identifier.
+        tests:
+          - not_null
+          - unique
+      - name: amount
+        description: Payment amount in USD, carried from the request. not_null is enforced upstream in stg_payments__requests.
+      - name: requested_at
+        description: UTC timestamp of the payment request. not_null is enforced upstream in stg_payments__requests.
+      - name: rejected_at
+        description: UTC timestamp of the rejection. Null for accepted or pending payments.
+      - name: status
+        description: >
+          Resolved outcome. 'rejected' if a rejection arrived; 'accepted' if the
+          10-minute grace window elapsed with no rejection; 'pending' otherwise.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["accepted", "rejected", "pending"]
+      - name: status_evaluated_at
+        description: UTC timestamp of when this row's status was last computed by dbt.
+        
+  - name: payments_by_minute
+    description: >
+      Per-bucket counts and USD amounts of accepted / rejected / pending payments.
+      The pre-aggregated serving table for the near-real-time dashboard. One row per
+      time bucket (size set by the payments_bucket_minutes var — 1 or 5 minutes);
+      incrementally rebuilt with a 20-minute look-back so recent buckets update as
+      their payments settle.
+    meta:
+      grain: one row per request_bucket
+      purpose: Aggregate resolved payment statuses into per-bucket counts and dollar
+        sums per outcome, giving the dashboard a small time-series to chart without
+        scanning the per-payment table.
+      business_question: How many payments — and how many dollars — were accepted vs
+        rejected over time?
+      seasonality: The latest 1–2 buckets carry pending counts that resolve on
+        subsequent runs; treat the most recent buckets as provisional.
+    columns:
+      - name: request_bucket
+        description: >
+          UTC timestamp truncated to the start of the request's time bucket (bucket
+          size set by the payments_bucket_minutes var). Natural key.
+        tests:
+          - not_null
+          - unique
+      # Count columns omit not_null: count() can never return null (would be a
+      # tautological test). amount_total likewise — sum() over a non-empty bucket
+      # of a not_null column is always non-null. The grain key (request_bucket) is
+      # where the meaningful contract lives.
+      - name: payments_total
+        description: Total payments requested in the bucket.
+      - name: payments_accepted
+        description: Payments accepted in the bucket.
+      - name: payments_rejected
+        description: Payments rejected in the bucket.
+      - name: payments_pending
+        description: Payments still within their grace window in the bucket (provisional).
+      - name: amount_total
+        description: Total USD requested in the bucket.
+      - name: amount_accepted
+        description: USD accepted in the bucket. Null if no accepted payments.
+      - name: amount_rejected
+        description: USD rejected in the bucket. Null if no rejected payments.
+      - name: amount_pending
+        description: USD still pending in the bucket. Null if no pending payments.
+      - name: refreshed_at
+        description: UTC timestamp of when this bucket was last computed by dbt.
