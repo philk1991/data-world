@@ -201,6 +201,13 @@ tasks:
     cmds:
       - bash -c "source {{.VENV}} && cd data-ingestion && python ingest_statsbomb.py"
 
+  # ── NBA Ingestion ─────────────────────────────────────────────────────────────
+
+  ingest:nba:
+    desc: Download the Kaggle NBA dataset (core + extended) and load into DuckDB
+    cmds:
+      - bash -c "source {{.VENV}} && cd data-ingestion && python ingest_nba.py"
+
   # ── Dagster Orchestration ────────────────────────────────────────────────────
 
   dagster:dev:
@@ -228,9 +235,16 @@ tasks:
       - task: ingest:statsbomb
       - task: dbt:build
 
+  refresh:nba:
+    desc: Ingest NBA data then build and test all dbt models
+    cmds:
+      - task: ingest:nba
+      - task: dbt:build
+
   refresh:all:
-    desc: Full refresh of all sources — Spotify + StatsBomb — then build all dbt models
+    desc: Full refresh of all sources — Spotify + StatsBomb + NBA — then build all dbt models
     cmds:
       - task: ingest
       - task: ingest:statsbomb
+      - task: ingest:nba
       - task: dbt:build

@@ -1,0 +1,26 @@
+version: 2
+
+sources:
+  - name: raw_nba
+    schema: raw_nba
+    tables:
+      - name: raw_nba_games
+        description: Raw game-level records (one row per game) from the Kaggle NBA dataset, 1946–present.
+      - name: raw_nba_player_statistics
+        description: Raw traditional player box scores. One row per player per game.
+      - name: raw_nba_team_statistics
+        description: Raw traditional team box scores. One row per team per game.
+      - name: raw_nba_players
+        description: Raw player biographical records. One row per player.
+      - name: raw_nba_team_histories
+        description: Raw franchise history records (name changes, relocations). One row per franchise era.
+      - name: raw_nba_player_statistics_extended
+        description: >
+          Raw advanced player box scores (one row per player per game), available
+          for most games since 1996. Adds ratings, shooting efficiency, usage,
+          pace and team-share metrics on top of the traditional box score.
+      - name: raw_nba_team_statistics_extended
+        description: >
+          Raw advanced team box scores (one row per team per game), available for
+          most games since 1996. Adds ratings, four-factor and pace metrics on top
+          of the traditional team box score.

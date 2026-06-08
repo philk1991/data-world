@@ -31,6 +31,9 @@ models:
       payments:
         +materialized: view
         +schema: staging_payments
+      nba:
+        +materialized: view
+        +schema: staging_nba
     marts:
       spotify:
         +materialized: table

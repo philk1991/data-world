@@ -1,0 +1,308 @@
+version: 2
+
+models:
+  - name: stg_nba_games
+    description: >
+      One row per NBA game, 1946–present. Renames raw columns and derives
+      home_team_won from the winning team id.
+    meta:
+      grain: one row per game_id
+      purpose: Clean and rename raw game records into a tidy game-level table.
+    columns:
+      - name: game_id
+        description: Unique NBA game identifier.
+        tests:
+          - not_null
+          - unique
+      - name: game_datetime_est
+        description: Scheduled tip-off timestamp (US Eastern).
+        tests:
+          - not_null
+      - name: game_date
+        description: Calendar date of the game.
+        tests:
+          - not_null
+      - name: game_type
+        description: Type of game (Regular Season, Playoffs, etc.).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - "Regular Season"
+                  - "Playoffs"
+                  - "Play-in Tournament"
+                  - "Preseason"
+                  - "All-Star Game"
+                  - "NBA Cup"
+                  - "NBA Emirates Cup"
+                  - "Emirates NBA Cup"
+      - name: home_team_id
+        description: Team id of the home side.
+        tests:
+          - not_null
+      - name: away_team_id
+        description: Team id of the away side.
+        tests:
+          - not_null
+      - name: home_score
+        description: Final points scored by the home team.
+      - name: away_score
+        description: Final points scored by the away team.
+      - name: winner_team_id
+        description: Team id of the winning side.
+        tests:
+          - not_null
+      - name: home_team_won
+        description: True when the home team won (winner_team_id = home_team_id).
+        tests:
+          - not_null
+      - name: attendance
+        description: Reported attendance; null for many older games.
+      - name: ingested_at
+        description: Timestamp when the source row was ingested.
+        tests:
+          - not_null
+
+  - name: stg_nba_player_statistics
+    description: >
+      Traditional player box scores, one row per player per game. Stat columns
+      are null for players who did not play (see comment / starting_position).
+    meta:
+      grain: one row per (game_id, person_id)
+      purpose: Clean and rename raw traditional player box scores.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - game_id
+              - person_id
+    columns:
+      - name: game_id
+        description: Game the box score belongs to.
+        tests:
+          - not_null
+      - name: person_id
+        description: Player the box score belongs to; a handful of historical rows have no player id.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: player_team_id
+        description: Team the player played for; null for many pre-modern games where team ids were not recorded.
+      - name: is_home
+        description: True when the player's team was the home side.
+      - name: is_win
+        description: True when the player's team won; null when the result is unknown.
+      - name: minutes_played
+        description: Minutes played, parsed to a numeric value; null for DNP.
+      - name: points
+        description: Points scored; null for players who did not play.
+      - name: ingested_at
+        description: Timestamp when the source row was ingested.
+        tests:
+          - not_null
+
+  - name: stg_nba_team_statistics
+    description: Traditional team box scores, one row per team per game.
+    meta:
+      grain: one row per (game_id, team_id)
+      purpose: Clean and rename raw traditional team box scores.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - game_id
+              - team_id
+    columns:
+      - name: game_id
+        description: Game the box score belongs to.
+        tests:
+          - not_null
+      - name: team_id
+        description: Team the box score belongs to.
+        tests:
+          - not_null
+      - name: opponent_team_id
+        description: Opposing team id.
+        tests:
+          - not_null
+      - name: is_home
+        description: True when this team was the home side.
+      - name: is_win
+        description: True when this team won; null when the result is unknown.
+      - name: team_score
+        description: Points scored by this team.
+      - name: opponent_score
+        description: Points scored by the opponent.
+      - name: ingested_at
+        description: Timestamp when the source row was ingested.
+        tests:
+          - not_null
+
+  - name: stg_nba_players
+    description: Player biographies, one row per player.
+    meta:
+      grain: one row per person_id
+      purpose: Clean and rename raw player bios; cast position/league flags to booleans.
+    columns:
+      - name: person_id
+        description: Unique player identifier.
+        tests:
+          - not_null
+          - unique
+      - name: first_name
+        description: Player first name; a couple of historical records have none.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: last_name
+        description: Player last name; a couple of historical records have none.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: birth_date
+        description: Date of birth; null when unknown.
+      - name: height_inches
+        description: Listed height in inches; null when unknown.
+      - name: body_weight_lbs
+        description: Listed weight in pounds; null when unknown.
+      - name: is_guard
+        description: True when the player is listed as a guard.
+      - name: is_forward
+        description: True when the player is listed as a forward.
+      - name: is_center
+        description: True when the player is listed as a center.
+      - name: draft_year
+        description: Year the player was drafted; null if undrafted/unknown.
+      - name: ingested_at
+        description: Timestamp when the source row was ingested.
+        tests:
+          - not_null
+
+  - name: stg_nba_team_histories
+    description: Franchise histories tracking relocations and name changes, one row per franchise era.
+    meta:
+      grain: one row per (team_id, season_founded)
+      purpose: Clean and rename raw franchise history records.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - team_id
+              - season_founded
+    columns:
+      - name: team_id
+        description: Franchise/team identifier (stable across an era).
+        tests:
+          - not_null
+      - name: team_name
+        description: Team name during this era.
+        tests:
+          - not_null
+      - name: team_abbrev
+        description: Team abbreviation during this era.
+      - name: season_founded
+        description: First season of this franchise era.
+        tests:
+          - not_null
+      - name: season_active_till
+        description: Last season of this franchise era.
+      - name: league
+        description: League the franchise played in (NBA, BAA, ABA, etc.).
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Timestamp when the source row was ingested.
+        tests:
+          - not_null
+
+  - name: stg_nba_player_statistics_extended
+    description: >
+      Advanced player box scores (available for most games since ~1996), one row
+      per player per game. All raw advanced metrics (ratings, shooting efficiency,
+      usage, pace, team-share percentages) are renamed to snake_case and passed
+      through; only key, dimension and headline columns are documented here.
+    meta:
+      grain: one row per (game_id, person_id)
+      purpose: Clean and rename raw advanced player box scores.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - game_id
+              - person_id
+    columns:
+      - name: game_id
+        description: Game the box score belongs to.
+        tests:
+          - not_null
+      - name: person_id
+        description: Player the box score belongs to.
+        tests:
+          - not_null
+      - name: player_team_id
+        description: Team the player played for; null for some older games where team ids were not recorded.
+      - name: offensive_rating
+        description: Points produced per 100 possessions.
+      - name: defensive_rating
+        description: Points allowed per 100 possessions.
+      - name: net_rating
+        description: Offensive rating minus defensive rating.
+      - name: usage_percentage
+        description: Estimated share of team plays used by the player while on court.
+      - name: true_shooting_percentage
+        description: Shooting efficiency accounting for 2s, 3s and free throws.
+      - name: player_impact_estimate
+        description: PIE — share of the game's total statistical contribution.
+      - name: ingested_at
+        description: Timestamp when the source row was ingested.
+        tests:
+          - not_null
+
+  - name: stg_nba_team_statistics_extended
+    description: >
+      Advanced team box scores (available for most games since ~1996), one row per
+      team per game. All raw advanced metrics (ratings, four-factor, pace) are
+      renamed to snake_case and passed through; only key, dimension and headline
+      columns are documented here.
+    meta:
+      grain: one row per (game_id, team_id)
+      purpose: Clean and rename raw advanced team box scores.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - game_id
+              - team_id
+    columns:
+      - name: game_id
+        description: Game the box score belongs to.
+        tests:
+          - not_null
+      - name: team_id
+        description: Team the box score belongs to.
+        tests:
+          - not_null
+      - name: opponent_team_id
+        description: Opposing team id.
+        tests:
+          - not_null
+      - name: offensive_rating
+        description: Points scored per 100 possessions.
+      - name: defensive_rating
+        description: Points allowed per 100 possessions.
+      - name: net_rating
+        description: Offensive rating minus defensive rating.
+      - name: pace
+        description: Estimated possessions per 48 minutes.
+      - name: effective_field_goal_percentage
+        description: Field goal percentage adjusted for the extra value of 3-pointers.
+      - name: true_shooting_percentage
+        description: Shooting efficiency accounting for 2s, 3s and free throws.
+      - name: ingested_at
+        description: Timestamp when the source row was ingested.
+        tests:
+          - not_null
