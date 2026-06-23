@@ -47,6 +47,9 @@ models:
       payments:
         +materialized: incremental
         +schema: marts
+      nba:
+        +materialized: table
+        +schema: marts
   elementary:
     +schema: elementary
     +materialized: table

@@ -1,0 +1,597 @@
+version: 2
+
+models:
+  - name: nba_game_results
+    description: >
+      One row per NBA game combining game metadata and result with both teams'
+      traditional box score lines, pivoted onto a home/away axis. Box score
+      columns are null for older games where team statistics were not recorded.
+      Ordered by game_date descending.
+    meta:
+      grain: one row per game_id
+      purpose: Join game metadata with home/away team box scores via conditional
+        aggregation to produce a single analysis-ready row per game.
+      business_question: How did each game play out — result, margin, and the
+        shooting, rebounding and ball-movement lines for each side?
+      relationships:
+        decomposes_into:
+          - "stg_nba_games: source of game metadata, scores and result"
+          - "stg_nba_team_statistics: source of per-team box scores, pivoted to home/away"
+    columns:
+      - name: game_id
+        description: Unique NBA game identifier.
+        tests:
+          - not_null
+          - unique
+      - name: game_date
+        description: Calendar date of the game.
+        tests:
+          - not_null
+      - name: game_datetime_est
+        description: Scheduled tip-off timestamp (US Eastern).
+        tests:
+          - not_null
+      - name: game_type
+        description: Type of game (Regular Season, Playoffs, etc.).
+        tests:
+          - not_null
+      - name: home_team_id
+        description: Team id of the home side.
+        tests:
+          - not_null
+      - name: home_team_name
+        description: Name of the home team.
+      - name: away_team_id
+        description: Team id of the away side.
+        tests:
+          - not_null
+      - name: away_team_name
+        description: Name of the away team.
+      - name: home_score
+        description: Final points scored by the home team.
+      - name: away_score
+        description: Final points scored by the away team.
+      - name: point_margin
+        description: Home score minus away score. Positive means the home team won.
+      - name: home_team_won
+        description: True when the home team won.
+        tests:
+          - not_null
+      - name: attendance
+        description: Reported attendance; null for many older games.
+      - name: arena_name
+        description: Name of the arena the game was played in.
+      - name: home_field_goals_made
+        description: Field goals made by the home team.
+      - name: home_field_goals_attempted
+        description: Field goals attempted by the home team.
+      - name: home_three_pointers_made
+        description: Three pointers made by the home team.
+      - name: home_rebounds_total
+        description: Total rebounds by the home team.
+      - name: home_assists
+        description: Assists by the home team.
+      - name: home_turnovers
+        description: Turnovers by the home team.
+      - name: home_points_in_the_paint
+        description: Points in the paint scored by the home team.
+      - name: away_field_goals_made
+        description: Field goals made by the away team.
+      - name: away_field_goals_attempted
+        description: Field goals attempted by the away team.
+      - name: away_three_pointers_made
+        description: Three pointers made by the away team.
+      - name: away_rebounds_total
+        description: Total rebounds by the away team.
+      - name: away_assists
+        description: Assists by the away team.
+      - name: away_turnovers
+        description: Turnovers by the away team.
+      - name: away_points_in_the_paint
+        description: Points in the paint scored by the away team.
+      - name: ingested_at
+        description: Timestamp when the game record was ingested.
+        tests:
+          - not_null
+
+  - name: nba_player_career_stats
+    description: >
+      One row per player aggregating their traditional box score totals,
+      per-game averages and shooting efficiency across every game they appeared
+      in, enriched with player biography. Only games the player actually played
+      (minutes_played is not null) are counted. Ordered by total_points
+      descending. Career figures cover only games present in the dataset.
+    meta:
+      grain: one row per person_id
+      purpose: Aggregate per-game box scores up to a career-level row per player,
+        joined with bio for position, draft and height context.
+      business_question: Who are the most prolific scorers in the dataset, and
+        what do their career averages and shooting splits look like?
+      relationships:
+        decomposes_into:
+          - "stg_nba_player_statistics: source of all aggregated box score totals"
+          - "stg_nba_players: source of name, position flags, draft year and height"
+    columns:
+      - name: person_id
+        description: Unique player identifier.
+        tests:
+          - not_null
+          - unique
+      - name: first_name
+        description: Player first name, from the bio table.
+      - name: last_name
+        description: Player last name, from the bio table.
+      - name: is_guard
+        description: True when the player is listed as a guard.
+      - name: is_forward
+        description: True when the player is listed as a forward.
+      - name: is_center
+        description: True when the player is listed as a center.
+      - name: draft_year
+        description: Year the player was drafted; null if undrafted/unknown.
+      - name: height_inches
+        description: Listed height in inches; null when unknown.
+      - name: first_game_date
+        description: >
+          Date of the player's earliest game in the dataset. Null for a handful
+          of historical players whose box score rows carry no game date.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: last_game_date
+        description: >
+          Date of the player's most recent game in the dataset. Null for a handful
+          of historical players whose box score rows carry no game date.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: games_played
+        description: Distinct games the player appeared in (with recorded minutes).
+        tests:
+          - not_null
+      - name: total_points
+        description: Total points scored across all games.
+        tests:
+          - not_null
+      - name: total_rebounds
+        description: Total rebounds across all games.
+      - name: total_assists
+        description: Total assists across all games.
+      - name: total_steals
+        description: Total steals across all games; null for pre-modern games.
+      - name: total_blocks
+        description: Total blocks across all games; null for pre-modern games.
+      - name: total_turnovers
+        description: Total turnovers across all games; null for pre-modern games.
+      - name: points_per_game
+        description: Average points per game played.
+      - name: rebounds_per_game
+        description: Average rebounds per game played.
+      - name: assists_per_game
+        description: Average assists per game played.
+      - name: career_field_goal_pct
+        description: Career field goal percentage (made / attempted), 0-1.
+      - name: career_three_point_pct
+        description: Career three point percentage (made / attempted), 0-1.
+      - name: career_free_throw_pct
+        description: Career free throw percentage (made / attempted), 0-1.
+
+  - name: nba_team_season_summary
+    description: >
+      One row per team per regular season with win/loss record, home/away wins
+      and scoring averages. Season is derived from the game date (the NBA season
+      spans Oct-Apr, so months before July belong to the prior start year).
+      Restricted to Regular Season games. Ordered by season then win percentage.
+    meta:
+      grain: one row per (team_id, season_start_year)
+      purpose: Aggregate regular-season team box scores into a season-level
+        standings row per team, deriving the season from the game date.
+      business_question: How did each team perform in a given regular season —
+        record, home/away split and scoring margin?
+      relationships:
+        decomposes_into:
+          - "stg_nba_team_statistics: source of per-game team results and scores"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - team_id
+              - season_start_year
+    columns:
+      - name: team_id
+        description: Franchise/team identifier. Combined with season, forms the natural key.
+        tests:
+          - not_null
+      - name: season_start_year
+        description: Calendar year the season started (e.g. 2023 for the 2023-24 season).
+        tests:
+          - not_null
+      - name: season_label
+        description: Human-readable season label (e.g. "2023-24").
+        tests:
+          - not_null
+      - name: games_played
+        description: Regular season games played by the team that season.
+        tests:
+          - not_null
+      - name: wins
+        description: Regular season wins.
+        tests:
+          - not_null
+      - name: losses
+        description: Regular season losses.
+        tests:
+          - not_null
+      - name: home_wins
+        description: Wins in games where the team was the home side.
+        tests:
+          - not_null
+      - name: away_wins
+        description: Wins in games where the team was the away side.
+        tests:
+          - not_null
+      - name: win_pct
+        description: Wins divided by decided games (wins + losses), 0-1.
+      - name: points_for_per_game
+        description: Average points scored per game.
+      - name: points_against_per_game
+        description: Average points conceded per game.
+      - name: point_margin_per_game
+        description: Average scoring margin per game (points for minus against).
+
+  - name: nba_team_dim
+    description: >
+      Conformed franchise dimension, one row per team_id carrying the team's
+      current identity (city, name, abbreviation, league) with relocation and
+      rename history rolled up from the franchise eras in stg_nba_team_histories.
+      Intended as the join target that gives every team_id a readable label.
+    meta:
+      grain: one row per team_id
+      purpose: Resolve each team_id to its latest franchise identity and expose
+        relocation/rename history as a single dimension row.
+      business_question: What is this team called today, and has the franchise
+        relocated or been renamed over its history?
+      relationships:
+        decomposes_into:
+          - "stg_nba_team_histories: source of every franchise era; latest era kept via QUALIFY"
+    columns:
+      - name: team_id
+        description: Franchise/team identifier. Unique per row.
+        tests:
+          - not_null
+          - unique
+      - name: current_team_city
+        description: City of the franchise's most recent era.
+        tests:
+          - not_null
+      - name: current_team_name
+        description: Team name of the franchise's most recent era.
+        tests:
+          - not_null
+      - name: current_full_name
+        description: City and name concatenated (e.g. "Los Angeles Lakers").
+        tests:
+          - not_null
+      - name: current_team_abbrev
+        description: Team abbreviation of the most recent era.
+      - name: current_league
+        description: League of the most recent era (NBA, BAA, ABA, etc.).
+        tests:
+          - not_null
+      - name: current_era_season_founded
+        description: First season of the franchise's most recent era.
+        tests:
+          - not_null
+      - name: current_era_active_till
+        description: Last season of the current era; null when still active.
+      - name: franchise_first_season
+        description: Earliest founding season across all of the franchise's eras.
+        tests:
+          - not_null
+      - name: franchise_era_count
+        description: Number of distinct eras (relocations/renames) on record.
+        tests:
+          - not_null
+      - name: has_relocated_or_renamed
+        description: True when the franchise has more than one era on record.
+        tests:
+          - not_null
+
+  - name: nba_team_advanced_profile
+    description: >
+      One row per team per regular season of advanced efficiency metrics
+      (ratings, pace, four-factor, shot profile) from the advanced team box
+      scores. Only seasons from ~1996 onward are present, since advanced metrics
+      were not recorded earlier. Per-game metrics are summarised with a simple
+      mean. Ordered by season then net rating descending.
+    meta:
+      grain: one row per (team_id, season_start_year)
+      purpose: Summarise per-game advanced team metrics into a season-level
+        efficiency profile that explains how a team achieved its record.
+      business_question: How efficient was each team in a given season — offence,
+        defence, pace and shot selection?
+      seasonality: Coverage starts ~1996; pace and three-point attempt rate trend
+        upward over time as the league's playing style has evolved.
+      relationships:
+        decomposes_into:
+          - "stg_nba_team_statistics_extended: source of all per-game advanced metrics"
+        correlates_with:
+          - "nba_team_season_summary: same grain; pairs win/loss record with the efficiency behind it"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - team_id
+              - season_start_year
+    columns:
+      - name: team_id
+        description: Team identifier. Combined with season, forms the natural key.
+        tests:
+          - not_null
+      - name: season_start_year
+        description: Calendar year the season started (e.g. 2023 for 2023-24).
+        tests:
+          - not_null
+      - name: season_label
+        description: Human-readable season label (e.g. "2023-24").
+        tests:
+          - not_null
+      - name: games_played
+        description: Regular season games with advanced data that season.
+        tests:
+          - not_null
+      - name: offensive_rating
+        description: Average points scored per 100 possessions.
+      - name: defensive_rating
+        description: Average points allowed per 100 possessions.
+      - name: net_rating
+        description: Offensive rating minus defensive rating.
+      - name: pace
+        description: Average estimated possessions per 48 minutes.
+      - name: effective_field_goal_pct
+        description: Field goal percentage adjusted for the value of 3-pointers, 0-1.
+      - name: true_shooting_pct
+        description: Shooting efficiency accounting for 2s, 3s and free throws, 0-1.
+      - name: assist_pct
+        description: Average share of made field goals that were assisted, 0-1.
+      - name: rebound_pct
+        description: Average share of available rebounds secured, 0-1.
+      - name: turnover_pct
+        description: Average share of possessions ending in a turnover, 0-1.
+      - name: three_point_attempt_rate
+        description: Average share of field goal attempts taken from three, 0-1.
+      - name: points_in_paint_share
+        description: Average share of points scored in the paint, 0-1.
+      - name: fast_break_points_share
+        description: Average share of points scored on fast breaks, 0-1.
+
+  - name: nba_player_advanced_career
+    description: >
+      One row per player summarising advanced career efficiency, enriched with
+      bio. Sourced from the advanced player box scores (~1996 onward), so earlier
+      careers are absent. Rate metrics are minutes-weighted so high-minute games
+      count for more than cameos. Ordered by career triple-doubles then net rating.
+    meta:
+      grain: one row per person_id
+      purpose: Aggregate per-game advanced player metrics into a minutes-weighted
+        career efficiency line, with double/triple-double counts.
+      business_question: Which players have been the most efficient and impactful
+        of the advanced-stats era, and who racks up the most triple-doubles?
+      seasonality: Coverage starts ~1996; players whose careers ended before then
+        do not appear.
+      relationships:
+        decomposes_into:
+          - "stg_nba_player_statistics_extended: source of all per-game advanced metrics and dd/td flags"
+          - "stg_nba_players: source of name and position flags"
+        correlates_with:
+          - "nba_player_career_stats: same grain; pairs counting totals with efficiency"
+    columns:
+      - name: person_id
+        description: Unique player identifier.
+        tests:
+          - not_null
+          - unique
+      - name: first_name
+        description: Player first name, from the bio table.
+      - name: last_name
+        description: Player last name, from the bio table.
+      - name: is_guard
+        description: True when the player is listed as a guard.
+      - name: is_forward
+        description: True when the player is listed as a forward.
+      - name: is_center
+        description: True when the player is listed as a center.
+      - name: games_with_advanced
+        description: Distinct games with advanced data and recorded minutes.
+        tests:
+          - not_null
+      - name: minutes_per_game
+        description: Average minutes played across those games.
+      - name: double_doubles
+        description: Count of double-double games in the advanced-stats era.
+        tests:
+          - not_null
+      - name: triple_doubles
+        description: Count of triple-double games in the advanced-stats era.
+        tests:
+          - not_null
+      - name: usage_pct
+        description: Minutes-weighted usage rate — share of team plays used, 0-1.
+      - name: true_shooting_pct
+        description: Minutes-weighted true shooting percentage, 0-1.
+      - name: effective_field_goal_pct
+        description: Minutes-weighted effective field goal percentage, 0-1.
+      - name: offensive_rating
+        description: Minutes-weighted points produced per 100 possessions.
+      - name: defensive_rating
+        description: Minutes-weighted points allowed per 100 possessions.
+      - name: net_rating
+        description: Minutes-weighted offensive minus defensive rating.
+      - name: assist_pct
+        description: Minutes-weighted assist percentage, 0-1.
+      - name: rebound_pct
+        description: Minutes-weighted rebound percentage, 0-1.
+      - name: player_impact_estimate
+        description: Minutes-weighted PIE — share of game's statistical contribution, 0-1.
+
+  - name: nba_player_season_stats
+    description: >
+      One row per player per season per game type (Regular Season, Playoffs,
+      etc.) of traditional box score totals, per-game averages and shooting
+      splits, enriched with bio. Season is derived from the game date. A player
+      traded mid-season is combined into one row per game type, with
+      primary_team_id set to the team they played the most games for. Only games
+      actually played count. Splitting by game_type lets visualisations compare
+      regular-season and playoff production. Ordered by season then total points
+      descending.
+    meta:
+      grain: one row per (person_id, season_start_year, game_type)
+      purpose: Aggregate per-game box scores to a season-and-game-type line per
+        player, the season-grain counterpart to nba_player_career_stats.
+      business_question: How did each player perform in a given season, split by
+        regular season vs playoffs, and how do their numbers trend over time?
+      relationships:
+        decomposes_into:
+          - "stg_nba_player_statistics: source of all aggregated box score totals"
+          - "stg_nba_players: source of name and bio context"
+        correlates_with:
+          - "nba_player_career_stats: career rollup of these same season rows"
+          - "nba_team_dim: join on primary_team_id for the player's main team that season"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - person_id
+              - season_start_year
+              - game_type
+    columns:
+      - name: person_id
+        description: Player identifier. Part of the natural key.
+        tests:
+          - not_null
+      - name: first_name
+        description: Player first name, from the bio table.
+      - name: last_name
+        description: Player last name, from the bio table.
+      - name: season_start_year
+        description: Calendar year the season started (e.g. 2023 for 2023-24).
+        tests:
+          - not_null
+      - name: season_label
+        description: Human-readable season label (e.g. "2023-24").
+        tests:
+          - not_null
+      - name: game_type
+        description: Type of game these totals cover (Regular Season, Playoffs,
+          etc.). Part of the natural key.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - "Regular Season"
+                  - "Playoffs"
+                  - "Play-in Tournament"
+                  - "Preseason"
+                  - "All-Star Game"
+                  - "NBA Cup"
+                  - "NBA Emirates Cup"
+                  - "Emirates NBA Cup"
+                  - "in-season-knockout"
+      - name: primary_team_id
+        description: Team the player played the most games for that season. Null
+          for old seasons where team ids were not recorded.
+      - name: games_played
+        description: Distinct games of this type the player appeared in that season.
+        tests:
+          - not_null
+      - name: total_points
+        description: Total points scored that season in this game type.
+        tests:
+          - not_null
+      - name: total_rebounds
+        description: Total rebounds that season.
+      - name: total_assists
+        description: Total assists that season.
+      - name: total_steals
+        description: Total steals that season; null for pre-modern seasons.
+      - name: total_blocks
+        description: Total blocks that season; null for pre-modern seasons.
+      - name: total_turnovers
+        description: Total turnovers that season; null for pre-modern seasons.
+      - name: points_per_game
+        description: Average points per game that season.
+      - name: rebounds_per_game
+        description: Average rebounds per game that season.
+      - name: assists_per_game
+        description: Average assists per game that season.
+      - name: field_goal_pct
+        description: Season field goal percentage (made / attempted), 0-1.
+      - name: three_point_pct
+        description: Season three point percentage (made / attempted), 0-1.
+      - name: free_throw_pct
+        description: Season free throw percentage (made / attempted), 0-1.
+
+  - name: nba_team_head_to_head
+    description: >
+      All-time matchup record, one row per ordered (team_id, opponent_team_id)
+      pair. A team's row against an opponent is its record from its own
+      perspective; the reverse matchup is a separate row. Restricted to
+      competitive meetings (Regular Season and Playoffs). Ordered by games_played
+      descending.
+    meta:
+      grain: one row per (team_id, opponent_team_id)
+      purpose: Aggregate every competitive meeting between two franchises into a
+        single all-time head-to-head record per team perspective.
+      business_question: What is a team's all-time record against a given
+        opponent, and how lopsided is the rivalry?
+      relationships:
+        decomposes_into:
+          - "stg_nba_team_statistics: source of every per-team, per-game result"
+        correlates_with:
+          - "nba_team_dim: join on team_id or opponent_team_id for readable names"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - team_id
+              - opponent_team_id
+    columns:
+      - name: team_id
+        description: Team whose perspective this record is from. Part of the natural key.
+        tests:
+          - not_null
+      - name: opponent_team_id
+        description: Opposing team. Part of the natural key.
+        tests:
+          - not_null
+      - name: games_played
+        description: Total competitive meetings between the two teams.
+        tests:
+          - not_null
+      - name: wins
+        description: Wins by team_id over opponent_team_id.
+        tests:
+          - not_null
+      - name: losses
+        description: Losses by team_id to opponent_team_id.
+        tests:
+          - not_null
+      - name: win_pct
+        description: Wins divided by decided meetings, 0-1.
+      - name: avg_points_for
+        description: Average points scored by team_id in the matchup.
+      - name: avg_points_against
+        description: Average points conceded by team_id in the matchup.
+      - name: avg_point_margin
+        description: Average scoring margin (points for minus against).
+      - name: first_meeting_date
+        description: Date of the earliest meeting on record.
+        tests:
+          - not_null
+      - name: last_meeting_date
+        description: Date of the most recent meeting on record.
+        tests:
+          - not_null
