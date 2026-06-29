@@ -19,3 +19,9 @@ crypto_dbt_job = define_asset_job(
     selection=AssetSelection.groups("crypto_dbt"),
     description="Run dbt staging + OHLCV mart models over raw crypto trades",
 )
+
+nba_pipeline_job = define_asset_job(
+    name="nba_pipeline",
+    selection=AssetSelection.groups("nba_ingest") | AssetSelection.groups("nba_dbt"),
+    description="Full-replace ingest of the Kaggle NBA dataset then run dbt staging + mart models",
+)

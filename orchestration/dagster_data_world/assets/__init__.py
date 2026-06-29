@@ -9,6 +9,7 @@ from dagster_data_world.assets.statsbomb import (
     raw_sb_events,
     raw_sb_lineups,
 )
+from dagster_data_world.assets.nba import nba_assets
 from dagster_data_world.assets.dbt_assets import all_dbt_assets, dbt_project
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "raw_sb_matches",
     "raw_sb_events",
     "raw_sb_lineups",
+    "nba_assets",
     "all_dbt_assets",
     "dbt_project",
 ]

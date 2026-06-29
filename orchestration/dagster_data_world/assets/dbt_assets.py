@@ -18,6 +18,14 @@ _SOURCE_TO_ASSET: dict[str, AssetKey] = {
     "raw_sb_matches": AssetKey(["raw_sb_matches"]),
     "raw_sb_events": AssetKey(["raw_sb_events"]),
     "raw_sb_lineups": AssetKey(["raw_sb_lineups"]),
+    # Each NBA source maps to its own full-replace ingest asset (same name).
+    "raw_nba_games": AssetKey(["raw_nba_games"]),
+    "raw_nba_player_statistics": AssetKey(["raw_nba_player_statistics"]),
+    "raw_nba_team_statistics": AssetKey(["raw_nba_team_statistics"]),
+    "raw_nba_players": AssetKey(["raw_nba_players"]),
+    "raw_nba_team_histories": AssetKey(["raw_nba_team_histories"]),
+    "raw_nba_player_statistics_extended": AssetKey(["raw_nba_player_statistics_extended"]),
+    "raw_nba_team_statistics_extended": AssetKey(["raw_nba_team_statistics_extended"]),
 }
 
 
@@ -30,6 +38,8 @@ class _DataWorldDbtTranslator(DagsterDbtTranslator):
             return "statsbomb_dbt"
         if "crypto" in path:
             return "crypto_dbt"
+        if "nba" in path:
+            return "nba_dbt"
         return "dbt"
 
     def get_asset_key(self, dbt_resource_props: dict) -> AssetKey:

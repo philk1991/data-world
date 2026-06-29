@@ -10,12 +10,22 @@ from dagster_data_world.assets import (
     raw_sb_matches,
     raw_sb_events,
     raw_sb_lineups,
+    nba_assets,
     all_dbt_assets,
     dbt_project,
 )
 from dagster_data_world.resources import SpotifyClientResource
-from dagster_data_world.jobs import spotify_pipeline_job, statsbomb_pipeline_job, crypto_dbt_job
-from dagster_data_world.schedules import spotify_daily_schedule, statsbomb_weekly_schedule
+from dagster_data_world.jobs import (
+    spotify_pipeline_job,
+    statsbomb_pipeline_job,
+    crypto_dbt_job,
+    nba_pipeline_job,
+)
+from dagster_data_world.schedules import (
+    spotify_daily_schedule,
+    statsbomb_weekly_schedule,
+    nba_daily_schedule,
+)
 from dagster_data_world.sensors.crypto_sensor import crypto_new_data_sensor
 from dagster_data_world.constants import DUCKDB_PATH, DBT_PROJECT_DIR
 
@@ -28,6 +38,7 @@ defs = Definitions(
         raw_sb_matches,
         raw_sb_events,
         raw_sb_lineups,
+        *nba_assets,
         all_dbt_assets,
     ],
     resources={
@@ -41,7 +52,7 @@ defs = Definitions(
             profiles_dir=str(DBT_PROJECT_DIR),
         ),
     },
-    jobs=[spotify_pipeline_job, statsbomb_pipeline_job, crypto_dbt_job],
-    schedules=[spotify_daily_schedule, statsbomb_weekly_schedule],
+    jobs=[spotify_pipeline_job, statsbomb_pipeline_job, crypto_dbt_job, nba_pipeline_job],
+    schedules=[spotify_daily_schedule, statsbomb_weekly_schedule, nba_daily_schedule],
     sensors=[crypto_new_data_sensor],
 )
