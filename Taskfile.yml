@@ -208,6 +208,13 @@ tasks:
     cmds:
       - bash -c "source {{.VENV}} && cd data-ingestion && python ingest_nba.py"
 
+  # ── OpenF1 Ingestion ──────────────────────────────────────────────────────────
+
+  ingest:openf1:
+    desc: "Ingest the OpenF1 season (meetings, sessions + per-session laps/pit/stints/weather/drivers)"
+    cmds:
+      - bash -c "source {{.VENV}} && cd data-ingestion && python ingest_openf1.py"
+
   # ── Dagster Orchestration ────────────────────────────────────────────────────
 
   dagster:dev:

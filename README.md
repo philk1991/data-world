@@ -131,6 +131,20 @@ Real-time trade ticks streamed from [Binance public WebSocket API](https://devel
 | BTC/USDT | `raw_crypto.raw_trades` | Every executed trade tick (append-only) |
 | ETH/USDT | `raw_crypto.raw_trades` | Every executed trade tick (append-only) |
 
+### OpenF1 (batch)
+
+Formula 1 timing data from the [OpenF1 API](https://openf1.org). No authentication required. Meetings and sessions are full-replaced per season; the per-session tables are incremental — already-loaded sessions are skipped.
+
+| Endpoint | Schema.Table | Description |
+|---|---|---|
+| `/meetings` | `raw_openf1.raw_openf1_meetings` | Grand Prix weekends for the season |
+| `/sessions` | `raw_openf1.raw_openf1_sessions` | Practice / qualifying / race sessions |
+| `/drivers` | `raw_openf1.raw_openf1_drivers` | Driver entry list per session |
+| `/laps` | `raw_openf1.raw_openf1_laps` | One row per driver per lap (incremental) |
+| `/pit` | `raw_openf1.raw_openf1_pit` | Pit stops per session (incremental) |
+| `/stints` | `raw_openf1.raw_openf1_stints` | Tyre stints per session (incremental) |
+| `/weather` | `raw_openf1.raw_openf1_weather` | Weather time series per session (incremental) |
+
 ## dbt models
 
 All models live in `dbt/` and target `data/spotify.duckdb` as the primary database, with `data/crypto_raw.duckdb` attached read-only as `crypto_raw`.
@@ -235,6 +249,7 @@ All commands run from the root of `data-world/` using [Task](https://taskfile.de
 | `task ingest` | Clear Spotify cache and run the full Spotify ingest (triggers browser auth on first run) |
 | `task ingest:no-cache-clear` | Run Spotify ingest using the existing cached token |
 | `task ingest:statsbomb` | Run the StatsBomb ingest (incremental — skips already-loaded matches) |
+| `task ingest:openf1` | Run the OpenF1 ingest for 2024 → current season (incremental — skips already-loaded sessions). Set `OPENF1_START_YEAR` / `OPENF1_END_YEAR` to change the range and `OPENF1_SESSION_LIMIT` to cap sessions per run |
 
 ### Crypto streaming
 

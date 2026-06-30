@@ -32,6 +32,14 @@ Downloads historical NBA box scores (core + extended, 1947–present) from the [
 
 See [data-ingestion/nba/README.md](nba/README.md) for credential setup and output table schemas.
 
+### OpenF1 (batch)
+
+Fetches Formula 1 timing data (meetings, sessions, drivers, laps, pit stops, stints, weather) from the [OpenF1 API](https://openf1.org). No authentication required. By default it ingests every season from 2024 through the current calendar year. `meetings` and `sessions` are full-replaced per season (delete-by-year, so the range accumulates); the five per-session tables are incremental — already-loaded sessions are skipped, so the script resumes safely after a partial run. OpenF1 rate-limits, so requests are paced with 429 backoff. Set `OPENF1_START_YEAR` / `OPENF1_END_YEAR` to change the range and optionally `OPENF1_SESSION_LIMIT` (cap sessions per run, newest first).
+
+| Entry point | Destination | Task command |
+|---|---|---|
+| `data-ingestion/ingest_openf1.py` | `data/spotify.duckdb` → `raw_openf1.*` | `task ingest:openf1` |
+
 ### Crypto — Binance (streaming)
 
 Streams real-time trade ticks for BTC/USDT and ETH/USDT from the [Binance public WebSocket API](https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams). No authentication required. Runs as two long-lived processes: a producer that pushes ticks into a Kafka topic, and a consumer that reads from Kafka and writes to DuckDB plus a live JSON sidecar.
