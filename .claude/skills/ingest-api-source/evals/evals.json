@@ -1,0 +1,26 @@
+{
+  "skill_name": "ingest-api-source",
+  "evals": [
+    {
+      "id": 0,
+      "name": "jsonplaceholder-multi-entity-nested",
+      "prompt": "I want to add a new data source to data-world. Pull data from the JSONPlaceholder API at https://jsonplaceholder.typicode.com — I need the posts and the users loaded into DuckDB so I can model them with dbt later.",
+      "expected_output": "A new data-ingestion/jsonplaceholder/ package with ingestion/posts.py and ingestion/users.py (each exposing fetch_/load_), an ingest_jsonplaceholder.py entry point, and an ingest:jsonplaceholder Taskfile entry. Running it creates raw_jsonplaceholder.raw_jsonplaceholder_posts (100 rows) and raw_jsonplaceholder_users (10 rows), each with an ingested_at column. The users table flattens the nested address/company objects into scalar columns rather than storing raw JSON.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "pokeapi-pagination",
+      "prompt": "Create an ingestion pipeline for the PokéAPI. I want the full list of pokemon from https://pokeapi.co/api/v2/pokemon — just the name and the url for each one. Load it into DuckDB.",
+      "expected_output": "A data-ingestion/pokeapi/ package with ingestion/pokemon.py and an ingest_pokeapi.py entry point. fetch_pokemon follows the paginated variant (loops the `next` cursor / indexes payload['results']) so it pulls all ~1300 pokemon, not just the first page. Running it creates raw_pokeapi.raw_pokeapi_pokemon with > 1000 rows, columns name + url + ingested_at.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "incremental-comments-per-post",
+      "prompt": "Add an ingestion pipeline that pulls JSONPlaceholder comments into DuckDB, one post at a time. Fetch the comments for each post id from https://jsonplaceholder.typicode.com/comments?postId=<id> for posts 1 through 10. Make it incremental — if I re-run it, posts that are already loaded should be skipped rather than re-fetched.",
+      "expected_output": "A data-ingestion/jsonplaceholder_comments/ (or comments under a jsonplaceholder package) pipeline using the incremental load strategy: a get_loaded_ids(conn) helper, delete-before-insert per post_id, and an entry point that skips post ids already present. First run loads comments for posts 1-10 (50 rows, 5 per post) into raw_*.*_comments with a post_id key + ingested_at. A second run skips all 10 and inserts no duplicates.",
+      "files": []
+    }
+  ]
+}
