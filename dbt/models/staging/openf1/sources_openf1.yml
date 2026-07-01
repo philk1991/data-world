@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: raw_openf1
+    schema: raw_openf1
+    tables:
+      - name: raw_openf1_meetings
+        description: Formula 1 grand prix / testing meetings (events) per season, ingested from the OpenF1 API.
+      - name: raw_openf1_sessions
+        description: Practice, qualifying, and race sessions belonging to a meeting, ingested from the OpenF1 API.
+      - name: raw_openf1_drivers
+        description: Driver roster per session, ingested from the OpenF1 API.
+      - name: raw_openf1_laps
+        description: Per-lap timing data per driver per session, ingested from the OpenF1 API.
+      - name: raw_openf1_pit
+        description: Pit stop events per driver per session, ingested from the OpenF1 API.
+      - name: raw_openf1_stints
+        description: Tyre stints (compound + lap range) per driver per session, ingested from the OpenF1 API.
+      - name: raw_openf1_weather
+        description: Track and weather observations sampled through each session, ingested from the OpenF1 API.

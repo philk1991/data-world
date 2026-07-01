@@ -1,0 +1,394 @@
+version: 2
+
+models:
+  - name: stg_openf1__meetings
+    description: >
+      Staged Formula 1 meetings (grand prix weekends and testing events) from
+      the OpenF1 API. One row per meeting.
+    meta:
+      grain: one row per meeting_key
+      purpose: Rename raw OpenF1 meeting columns and cast string timestamps to
+        TIMESTAMP, making meetings analysis-ready.
+    columns:
+      - name: meeting_key
+        description: OpenF1 unique identifier for a meeting.
+        tests:
+          - not_null
+          - unique
+      - name: meeting_name
+        description: Short meeting name (e.g. "Bahrain Grand Prix").
+        tests:
+          - not_null
+      - name: meeting_official_name
+        description: Official meeting name as published by the FIA.
+        tests:
+          - not_null
+      - name: location
+        description: Locality where the meeting takes place.
+        tests:
+          - not_null
+      - name: country_key
+        description: OpenF1 country identifier.
+        tests:
+          - not_null
+      - name: country_code
+        description: ISO 3166-1 alpha-3 country code.
+        tests:
+          - not_null
+      - name: country_name
+        description: Human-readable country name.
+        tests:
+          - not_null
+      - name: circuit_key
+        description: OpenF1 circuit identifier.
+        tests:
+          - not_null
+      - name: circuit_short_name
+        description: Short name of the circuit.
+        tests:
+          - not_null
+      - name: gmt_offset
+        description: GMT offset for the meeting location (e.g. "03:00:00").
+        tests:
+          - not_null
+      - name: meeting_start_at
+        description: UTC timestamp when the meeting begins.
+        tests:
+          - not_null
+      - name: meeting_end_at
+        description: UTC timestamp when the meeting ends.
+        tests:
+          - not_null
+      - name: year
+        description: Season (calendar year) the meeting belongs to.
+        tests:
+          - not_null
+      - name: is_cancelled
+        description: True if the meeting was cancelled.
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the OpenF1 API.
+        tests:
+          - not_null
+
+  - name: stg_openf1__sessions
+    description: >
+      Staged Formula 1 sessions (Practice / Qualifying / Race / Sprint, etc.)
+      from the OpenF1 API. One row per session.
+    meta:
+      grain: one row per session_key
+      purpose: Rename raw OpenF1 session columns and cast string timestamps
+        to TIMESTAMP, making sessions analysis-ready.
+    columns:
+      - name: session_key
+        description: OpenF1 unique identifier for a session.
+        tests:
+          - not_null
+          - unique
+      - name: session_type
+        description: Type of session (Practice, Qualifying, Race, etc.).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["Practice", "Qualifying", "Race", "Sprint", "Sprint Qualifying"]
+      - name: session_name
+        description: Display name of the session (e.g. "Race", "Sprint Qualifying").
+        tests:
+          - not_null
+      - name: session_start_at
+        description: UTC timestamp when the session begins.
+        tests:
+          - not_null
+      - name: session_end_at
+        description: UTC timestamp when the session ends.
+        tests:
+          - not_null
+      - name: meeting_key
+        description: Foreign key to the parent meeting.
+        tests:
+          - not_null
+      - name: circuit_key
+        description: OpenF1 circuit identifier.
+        tests:
+          - not_null
+      - name: circuit_short_name
+        description: Short name of the circuit hosting the session.
+        tests:
+          - not_null
+      - name: country_code
+        description: ISO 3166-1 alpha-3 country code.
+        tests:
+          - not_null
+      - name: country_name
+        description: Human-readable country name.
+        tests:
+          - not_null
+      - name: location
+        description: Locality where the session takes place.
+        tests:
+          - not_null
+      - name: gmt_offset
+        description: GMT offset for the session location (e.g. "03:00:00").
+        tests:
+          - not_null
+      - name: year
+        description: Season (calendar year) the session belongs to.
+        tests:
+          - not_null
+      - name: is_cancelled
+        description: True if the session was cancelled.
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the OpenF1 API.
+        tests:
+          - not_null
+
+  - name: stg_openf1__drivers
+    description: >
+      Staged driver roster per session from the OpenF1 API. One row per
+      driver per session.
+    meta:
+      grain: one row per (session_key, driver_number)
+      purpose: Rename raw OpenF1 driver columns and cast ingested_at to
+        TIMESTAMP, making driver rosters analysis-ready.
+    columns:
+      - name: meeting_key
+        description: Foreign key to the parent meeting.
+        tests:
+          - not_null
+      - name: session_key
+        description: Foreign key to the parent session.
+        tests:
+          - not_null
+      - name: driver_number
+        description: Car / driver number (unique per session).
+        tests:
+          - not_null
+      - name: broadcast_name
+        description: Name as displayed on broadcast graphics (e.g. "M VERSTAPPEN").
+        tests:
+          - not_null
+      - name: full_name
+        description: Full driver name (e.g. "Max VERSTAPPEN").
+        tests:
+          - not_null
+      - name: name_acronym
+        description: Three-letter driver acronym (e.g. "VER").
+        tests:
+          - not_null
+      - name: team_name
+        description: Name of the constructor / team.
+        tests:
+          - not_null
+      - name: team_colour
+        description: Hex team colour as used on broadcast graphics.
+        tests:
+          - not_null
+      - name: first_name
+        description: Driver's first name.
+        tests:
+          - not_null
+      - name: last_name
+        description: Driver's last name.
+        tests:
+          - not_null
+      - name: country_code
+        description: ISO 3166-1 alpha-3 country code of the driver's nationality. May be null for some historical drivers.
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the OpenF1 API.
+        tests:
+          - not_null
+
+  - name: stg_openf1__laps
+    description: >
+      Staged per-lap timing data per driver per session from the OpenF1 API.
+      One row per lap.
+    meta:
+      grain: one row per (session_key, driver_number, lap_number)
+      purpose: Rename raw OpenF1 lap columns, cast lap_start_at to TIMESTAMP,
+        and surface sector / speed telemetry.
+    columns:
+      - name: meeting_key
+        description: Foreign key to the parent meeting.
+        tests:
+          - not_null
+      - name: session_key
+        description: Foreign key to the parent session.
+        tests:
+          - not_null
+      - name: driver_number
+        description: Car / driver number.
+        tests:
+          - not_null
+      - name: lap_number
+        description: 1-indexed lap number within the session.
+        tests:
+          - not_null
+      - name: lap_start_at
+        description: UTC timestamp when the lap started. May be null if the API did not record a start time.
+      - name: lap_duration
+        description: Total lap time in seconds. May be null if timing is incomplete.
+      - name: duration_sector_1
+        description: Sector 1 time in seconds. May be null if timing is incomplete.
+      - name: duration_sector_2
+        description: Sector 2 time in seconds. May be null if timing is incomplete.
+      - name: duration_sector_3
+        description: Sector 3 time in seconds. May be null if timing is incomplete.
+      - name: i1_speed
+        description: Speed (km/h) recorded at the first intermediate point. May be null if the trap did not trigger.
+      - name: i2_speed
+        description: Speed (km/h) recorded at the second intermediate point. May be null if the trap did not trigger.
+      - name: st_speed
+        description: Speed (km/h) recorded on the pit straight. May be null if the trap did not trigger.
+      - name: is_pit_out_lap
+        description: True if the lap began in the pit lane (out-lap from a stop).
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the OpenF1 API.
+        tests:
+          - not_null
+
+  - name: stg_openf1__pit
+    description: >
+      Staged pit stop events per driver per session from the OpenF1 API.
+      One row per pit stop.
+    meta:
+      grain: one row per (session_key, driver_number, lap_number)
+      purpose: Rename raw OpenF1 pit columns and cast the event timestamp
+        to TIMESTAMP, splitting total pit time into stop and lane components.
+    columns:
+      - name: session_key
+        description: Foreign key to the parent session.
+        tests:
+          - not_null
+      - name: meeting_key
+        description: Foreign key to the parent meeting.
+        tests:
+          - not_null
+      - name: driver_number
+        description: Car / driver number.
+        tests:
+          - not_null
+      - name: lap_number
+        description: Lap on which the pit stop occurred.
+        tests:
+          - not_null
+      - name: pit_at
+        description: UTC timestamp of the pit stop.
+        tests:
+          - not_null
+      - name: pit_duration
+        description: Total time spent in the pit lane (seconds). May be null if the API did not record a duration.
+      - name: stop_duration
+        description: Time the car was stationary (seconds). May be null if not recorded.
+      - name: lane_duration
+        description: Time spent moving through the pit lane (seconds). May be null if not recorded.
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the OpenF1 API.
+        tests:
+          - not_null
+
+  - name: stg_openf1__stints
+    description: >
+      Staged tyre stints per driver per session from the OpenF1 API. One row
+      per stint (a stint is a continuous run on one set of tyres).
+    meta:
+      grain: one row per (session_key, driver_number, stint_number)
+      purpose: Rename raw OpenF1 stint columns, normalising compound to a
+        clean VARCHAR and carrying stint bounds.
+    columns:
+      - name: meeting_key
+        description: Foreign key to the parent meeting.
+        tests:
+          - not_null
+      - name: session_key
+        description: Foreign key to the parent session.
+        tests:
+          - not_null
+      - name: driver_number
+        description: Car / driver number.
+        tests:
+          - not_null
+      - name: stint_number
+        description: 1-indexed stint number within the session.
+        tests:
+          - not_null
+      - name: lap_start
+        description: First lap of the stint. May be null if the stint is ongoing or bounds are unavailable.
+      - name: lap_end
+        description: Last lap of the stint. May be null if the stint is ongoing or bounds are unavailable.
+      - name: compound
+        description: Tyre compound used for the stint.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["SOFT", "MEDIUM", "HARD", "INTERMEDIATE", "WET", "UNKNOWN"]
+      - name: tyre_age_at_start
+        description: Age of the tyres (in laps) at the start of the stint.
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the OpenF1 API.
+        tests:
+          - not_null
+
+  - name: stg_openf1__weather
+    description: >
+      Staged track and weather observations sampled through each session from
+      the OpenF1 API. One row per observation.
+    meta:
+      grain: one row per observation (session_key, observed_at)
+      purpose: Rename raw OpenF1 weather columns and cast the observation
+        timestamp to TIMESTAMP.
+      seasonality: Sampled at variable cadence (roughly every minute) while
+        a session is live.
+    columns:
+      - name: session_key
+        description: Foreign key to the parent session.
+        tests:
+          - not_null
+      - name: meeting_key
+        description: Foreign key to the parent meeting.
+        tests:
+          - not_null
+      - name: observed_at
+        description: UTC timestamp of the observation.
+        tests:
+          - not_null
+      - name: air_temperature
+        description: Air temperature in degrees Celsius.
+        tests:
+          - not_null
+      - name: track_temperature
+        description: Track surface temperature in degrees Celsius.
+        tests:
+          - not_null
+      - name: humidity
+        description: Relative humidity (%).
+        tests:
+          - not_null
+      - name: pressure
+        description: Atmospheric pressure (mbar).
+        tests:
+          - not_null
+      - name: rainfall
+        description: 1 if rain was detected at the observation time, else 0.
+        tests:
+          - not_null
+      - name: wind_direction
+        description: Wind direction in degrees (0–359).
+        tests:
+          - not_null
+      - name: wind_speed
+        description: Wind speed in m/s.
+        tests:
+          - not_null
+      - name: ingested_at
+        description: Timestamp when this record was ingested from the OpenF1 API.
+        tests:
+          - not_null
