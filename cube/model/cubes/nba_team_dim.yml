@@ -1,0 +1,36 @@
+cubes:
+  - name: nba_team_dim
+    sql_table: marts.nba_team_dim
+    description: >
+      Conformed franchise dimension, one row per team_id carrying the team's
+      current identity (city, name, abbreviation, league) with relocation and
+      rename history rolled up from the franchise eras. Standalone cube — not
+      joined to nba_game_results, which already carries denormalized home/away
+      team names.
+
+    dimensions:
+      - name: team_id
+        sql: team_id
+        type: number
+        primary_key: true
+        description: Franchise/team identifier.
+
+      - name: current_full_name
+        sql: current_full_name
+        type: string
+        description: City and name concatenated (e.g. "Los Angeles Lakers").
+
+      - name: current_league
+        sql: current_league
+        type: string
+        description: League of the most recent era (NBA, BAA, ABA, etc.).
+
+      - name: has_relocated_or_renamed
+        sql: has_relocated_or_renamed
+        type: boolean
+        description: True when the franchise has more than one era on record.
+
+    measures:
+      - name: count
+        type: count
+        description: Number of franchises.

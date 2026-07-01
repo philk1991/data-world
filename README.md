@@ -35,6 +35,8 @@ data-world/
 │   ├── schedules/             # Cron-based schedules
 │   ├── sensors/               # crypto_sensor — triggers dbt on new trade data
 │   └── resources/             # Spotify API client resource
+├── cube/                      # Cube semantic layer (reads marts.* directly)
+│   └── model/cubes/           # Cube data model (YAML)
 ├── data/                      # DuckDB files + live JSON sidecar (gitignored)
 │   ├── spotify.duckdb         # Spotify + StatsBomb data
 │   ├── crypto_raw.duckdb      # Raw crypto trades (consumer-owned)
@@ -98,6 +100,29 @@ dbt build (run separately, read-only attach to crypto_raw.duckdb)
 
 > The crypto dashboard reads `live_data.json` rather than querying DuckDB directly.
 > This avoids write-lock conflicts between the consumer and the dashboard.
+
+### Semantic layer (Cube)
+
+```
+data/spotify.duckdb (marts schema)
+        │
+        ▼
+      cube/ (Cube dev server, @cubejs-backend/duckdb-driver)
+        │
+        ▼
+http://localhost:4000
+  Playground · SQL API (:15432) · REST/GraphQL API
+```
+
+Cube models `marts.nba_game_results`, `marts.nba_team_dim`,
+`marts.top_tracks_by_period` and `marts.top_artists_by_period` directly — no
+separate ingestion or dbt step. It runs standalone via Task, the same way the
+dashboards do, rather than as a Dagster asset: there's nothing for it to
+materialize, it's a long-running query service.
+
+> Cube's DuckDB driver always opens `spotify.duckdb` read-write (no read-only
+> option). Don't run `task cube:dev` at the same time as `task dbt:run` or the
+> Dagster spotify/nba ingest jobs, which also need write access to the same file.
 
 ## Data sources
 
@@ -238,6 +263,15 @@ task dashboard:install
 task dashboard:crypto:install
 ```
 
+### Cube semantic layer
+
+```bash
+task cube:install
+```
+
+Copy `cube/.env.example` to `cube/.env` and set `CUBEJS_DB_DUCKDB_DATABASE_PATH`
+to the absolute path of `data/spotify.duckdb`.
+
 ## Usage
 
 All commands run from the root of `data-world/` using [Task](https://taskfile.dev).
@@ -288,6 +322,12 @@ task crypto:consumer   # Kafka → DuckDB + live_data.json
 | `task dashboard:crypto:dev` | Start crypto dashboard at http://localhost:5174 |
 | `task dashboard:crypto:build` | Build crypto dashboard for production |
 
+### Semantic layer
+
+| Command | Description |
+|---|---|
+| `task cube:dev` | Start the Cube dev server + Playground at http://localhost:4000 (don't run alongside `task dbt:run` or the Dagster spotify/nba jobs) |
+
 ### Full refresh
 
 | Command | Description |
@@ -325,4 +365,4 @@ Three Claude Code slash commands are registered in `.claude/commands/` for commo
 
 ## DuckDB version alignment
 
-The Python (`duckdb==1.2.1`) and Node.js (`duckdb@1.2.1`) packages must use the **same version**. A mismatch causes the newer version to attempt a file format migration requiring exclusive write access, which conflicts with other processes. Both are pinned to `1.2.1`.
+The Python (`duckdb==1.4.4`) and Node.js (`duckdb@1.4.4`) packages must use the **same version**. A mismatch causes the newer version to attempt a file format migration requiring exclusive write access, which conflicts with other processes. Both are pinned to `1.4.4` — this also matches the `duckdb` version bundled by Cube's `@cubejs-backend/duckdb-driver` (see [Semantic layer (Cube)](#semantic-layer-cube)), which connects to the same `spotify.duckdb` file.

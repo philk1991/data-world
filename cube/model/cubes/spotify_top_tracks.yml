@@ -1,0 +1,65 @@
+cubes:
+  - name: spotify_top_tracks
+    sql_table: marts.top_tracks_by_period
+    description: >
+      One row per track showing its ranking across all three Spotify time
+      periods side by side (short_term ~4 weeks, medium_term ~6 months,
+      long_term all time). Null rank means the track did not appear in the
+      top 50 for that period. A point-in-time snapshot from the last ingest.
+
+    dimensions:
+      - name: track_id
+        sql: track_id
+        type: string
+        primary_key: true
+        description: Spotify track ID.
+
+      - name: track_name
+        sql: track_name
+        type: string
+        description: Display name of the track.
+
+      - name: artist_names
+        sql: artist_names
+        type: string
+        description: Comma-separated list of artist names for this track.
+
+      - name: album_name
+        sql: album_name
+        type: string
+        description: Name of the album this track belongs to.
+
+      - name: explicit
+        sql: explicit
+        type: boolean
+        description: Whether the track has explicit content.
+
+      - name: rank_short_term
+        sql: rank_short_term
+        type: number
+        description: Track rank over the last ~4 weeks. Null if not in top 50.
+
+      - name: rank_medium_term
+        sql: rank_medium_term
+        type: number
+        description: Track rank over the last ~6 months. Null if not in top 50.
+
+      - name: rank_long_term
+        sql: rank_long_term
+        type: number
+        description: Track rank over all time. Null if not in top 50.
+
+    measures:
+      - name: count
+        type: count
+        description: Number of tracks.
+
+      - name: avg_popularity
+        sql: popularity
+        type: avg
+        description: Average Spotify popularity score (0-100) across matching tracks.
+
+      - name: max_popularity
+        sql: popularity
+        type: max
+        description: Highest Spotify popularity score (0-100) among matching tracks.

@@ -255,3 +255,17 @@ tasks:
       - task: ingest:statsbomb
       - task: ingest:nba
       - task: dbt:build
+
+  # ── Cube (semantic layer) ────────────────────────────────────────────────────
+
+  cube:install:
+    desc: Install Cube semantic layer Node.js dependencies
+    dir: cube
+    cmds:
+      - npm install
+
+  cube:dev:
+    desc: "Start the Cube dev server + Playground (http://localhost:4000). Don't run alongside task dbt:run or the Dagster spotify/nba ingest jobs — the DuckDB driver always opens spotify.duckdb read-write."
+    dir: cube
+    cmds:
+      - npm run dev

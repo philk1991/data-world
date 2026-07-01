@@ -1,0 +1,55 @@
+cubes:
+  - name: spotify_top_artists
+    sql_table: marts.top_artists_by_period
+    description: >
+      One row per artist showing their ranking across all three Spotify time
+      periods side by side (short_term ~4 weeks, medium_term ~6 months,
+      long_term all time). Null rank means the artist did not appear in the
+      top 50 for that period. A point-in-time snapshot from the last ingest.
+
+    dimensions:
+      - name: artist_id
+        sql: artist_id
+        type: string
+        primary_key: true
+        description: Spotify artist ID.
+
+      - name: artist_name
+        sql: artist_name
+        type: string
+        description: Display name of the artist.
+
+      - name: genres
+        sql: genres
+        type: string
+        description: Comma-separated list of genres associated with the artist.
+
+      - name: rank_short_term
+        sql: rank_short_term
+        type: number
+        description: Artist rank over the last ~4 weeks. Null if not in top 50.
+
+      - name: rank_medium_term
+        sql: rank_medium_term
+        type: number
+        description: Artist rank over the last ~6 months. Null if not in top 50.
+
+      - name: rank_long_term
+        sql: rank_long_term
+        type: number
+        description: Artist rank over all time. Null if not in top 50.
+
+    measures:
+      - name: count
+        type: count
+        description: Number of artists.
+
+      - name: avg_popularity
+        sql: popularity
+        type: avg
+        description: Average Spotify popularity score (0-100) across matching artists.
+
+      - name: max_followers
+        sql: followers
+        type: max
+        description: Highest Spotify follower count among matching artists.

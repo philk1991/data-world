@@ -1,0 +1,69 @@
+cubes:
+  - name: nba_game_results
+    sql_table: marts.nba_game_results
+    description: >
+      One row per NBA game combining game metadata and result with both teams'
+      traditional box score lines, pivoted onto a home/away axis. Box score
+      columns are null for older games where team statistics were not recorded.
+
+    dimensions:
+      - name: game_id
+        sql: game_id
+        type: number
+        primary_key: true
+        description: Unique NBA game identifier.
+
+      - name: game_date
+        sql: game_date
+        type: time
+        description: Calendar date of the game.
+
+      - name: game_type
+        sql: game_type
+        type: string
+        description: Type of game (Regular Season, Playoffs, etc.).
+
+      - name: home_team_name
+        sql: home_team_name
+        type: string
+        description: Name of the home team.
+
+      - name: away_team_name
+        sql: away_team_name
+        type: string
+        description: Name of the away team.
+
+      - name: arena_name
+        sql: arena_name
+        type: string
+        description: Name of the arena the game was played in.
+
+      - name: home_team_won
+        sql: home_team_won
+        type: boolean
+        description: True when the home team won.
+
+    measures:
+      - name: count
+        type: count
+        description: Number of games.
+
+      - name: avg_point_margin
+        sql: point_margin
+        type: avg
+        description: Average home score minus away score. Positive favours the home team.
+
+      - name: avg_home_score
+        sql: home_score
+        type: avg
+        description: Average final points scored by the home team.
+
+      - name: avg_away_score
+        sql: away_score
+        type: avg
+        description: Average final points scored by the away team.
+
+      - name: home_win_rate
+        sql: "CASE WHEN {CUBE}.home_team_won THEN 1.0 ELSE 0.0 END"
+        type: avg
+        description: Share of games in this slice won by the home team.
