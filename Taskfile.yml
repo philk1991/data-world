@@ -109,7 +109,7 @@ tasks:
 
   # ── dbt Crypto ──────────────────────────────────────────────────────────────
 
-  dbt:cryhe un:
+  dbt:crypto:run:
     desc: Run all crypto dbt models (staging_crypto + OHLCV marts)
     cmds:
       - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt run --select staging.crypto+ marts.crypto+"
@@ -194,8 +194,6 @@ tasks:
 
   # ── StatsBomb Ingestion ──────────────────────────────────────────────────────
 
-  # ── Bomb Ingestion ───────────────────────────────────────────────────────
-
   ingest:statsbomb:
     desc: Run the StatsBomb open data ingest pipeline (incremental)
     cmds:
@@ -247,6 +245,17 @@ tasks:
     cmds:
       - task: ingest:nba
       - task: dbt:build
+
+  refresh:openf1:
+    desc: Ingest OpenF1 data then build and test all dbt models
+    cmds:
+      - task: ingest:openf1
+      - task: dbt:build
+
+  refresh:payments:
+    desc: Build and test payments dbt models only (payments has no one-shot ingest task -- run task payments:producer / task payments:consumer separately to land raw data first)
+    cmds:
+      - task: dbt:payments:build
 
   refresh:all:
     desc: Full refresh of all sources — Spotify + StatsBomb + NBA — then build all dbt models

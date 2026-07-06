@@ -50,3 +50,14 @@ Streams real-time trade ticks for BTC/USDT and ETH/USDT from the [Binance public
 | Consumer | `data-ingestion/crypto/consumer.py` | `data/crypto_raw.duckdb` + `data/live_data.json` | `task crypto:consumer` |
 
 See [data-ingestion/crypto/README.md](crypto/README.md) for Kafka setup and topic configuration.
+
+### Payments — synthetic (streaming)
+
+A practice build for near-real-time payment accept/reject analytics: a synthetic producer emits payment requests, ~15% of which are rejected on a second topic after a random 0–10 minute delay. No external API. Runs as two long-lived processes, the same shape as crypto, but is **not** wired into Dagster — run it manually.
+
+| Component | Entry point | Destination | Task command |
+|---|---|---|---|
+| Producer | `data-ingestion/payments/producer.py` | Kafka `payments.requests` + `payments.rejected` topics | `task payments:producer` |
+| Consumer | `data-ingestion/payments/consumer.py` | `data/payments_raw.duckdb` | `task payments:consumer` |
+
+See [data-ingestion/payments/README.md](payments/README.md) for the late-arriving-rejection design and dbt resolution logic.

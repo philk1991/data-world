@@ -9,28 +9,40 @@ data-world/
 ├── data-ingestion/            # Python ingestion pipelines
 │   ├── ingest.py              # Spotify entry point
 │   ├── ingest_statsbomb.py    # StatsBomb entry point
+│   ├── ingest_nba.py          # NBA entry point (Kaggle bulk dataset)
+│   ├── ingest_openf1.py       # OpenF1 entry point
 │   ├── spotify/               # OAuth + API fetch logic
 │   ├── statsbomb/             # GitHub fetch logic
-│   └── crypto/                # Binance WebSocket → Kafka
-│       ├── producer.py        # WebSocket → Kafka topic
-│       └── consumer.py        # Kafka → DuckDB + live JSON sidecar
+│   ├── nba/                   # kagglehub download + full-replace load
+│   ├── openf1/                # OpenF1 fetch logic (rate-limit backoff)
+│   ├── crypto/                # Binance WebSocket → Kafka
+│   │   ├── producer.py        # WebSocket → Kafka topic
+│   │   └── consumer.py        # Kafka → DuckDB + live JSON sidecar
+│   └── payments/              # Synthetic payments → Kafka (practice build)
+│       ├── producer.py        # Synthetic events → two Kafka topics
+│       └── consumer.py        # Kafka → DuckDB (requests + late rejections)
 ├── dbt/                       # Transformation layer (all sources)
 │   ├── models/
 │   │   ├── staging/
 │   │   │   ├── spotify/       # Cleaned views over raw Spotify tables
 │   │   │   ├── statsbomb/     # Cleaned views over raw StatsBomb tables
-│   │   │   └── crypto/        # Cleaned views over raw trade ticks
+│   │   │   ├── nba/           # Cleaned views over raw NBA box scores
+│   │   │   ├── openf1/        # Cleaned views over raw F1 timing data
+│   │   │   ├── crypto/        # Cleaned views over raw trade ticks
+│   │   │   └── payments/      # Cleaned views over raw payment/rejection events
 │   │   └── marts/
 │   │       ├── spotify/       # Analysis-ready Spotify tables
 │   │       ├── statsbomb/     # Analysis-ready football tables
-│   │       └── crypto/        # Incremental OHLCV candle tables
+│   │       ├── nba/           # Analysis-ready NBA game/team/player tables
+│   │       ├── crypto/        # Incremental OHLCV candle tables
+│   │       └── payments/      # Incremental accept/reject status + per-minute tables
 │   ├── macros/                # generate_schema_name override
-│   └── profiles.yml           # DuckDB connection + crypto_raw attach
+│   └── profiles.yml           # DuckDB connection + crypto_raw / payments_raw attach
 ├── dashboards/
 │   ├── spotify/               # SvelteKit app — Spotify listening data
 │   └── crypto/                # SvelteKit app — real-time trade feed
 ├── orchestration/             # Dagster package (dagster_data_world)
-│   ├── assets/                # Software-defined assets (Spotify, StatsBomb, dbt)
+│   ├── assets/                # Software-defined assets (Spotify, StatsBomb, NBA, dbt)
 │   ├── jobs/                  # Job definitions
 │   ├── schedules/             # Cron-based schedules
 │   ├── sensors/               # crypto_sensor — triggers dbt on new trade data
@@ -38,13 +50,16 @@ data-world/
 ├── cube/                      # Cube semantic layer (reads marts.* directly)
 │   └── model/cubes/           # Cube data model (YAML)
 ├── data/                      # DuckDB files + live JSON sidecar (gitignored)
-│   ├── spotify.duckdb         # Spotify + StatsBomb data
+│   ├── spotify.duckdb         # Spotify + StatsBomb + NBA + OpenF1 data
 │   ├── crypto_raw.duckdb      # Raw crypto trades (consumer-owned)
-│   └── live_data.json         # Atomic JSON sidecar written by consumer
+│   ├── payments_raw.duckdb    # Raw payment requests + rejections (consumer-owned)
+│   └── live_data.json         # Atomic JSON sidecar written by the crypto consumer
 ├── scripts/                   # One-off utility scripts
 ├── Taskfile.yml               # Task runner
 └── requirements.txt           # Python dependencies
 ```
+
+> Payments is a practice build (see [data-ingestion/payments/README.md](data-ingestion/payments/README.md)) — it follows the same producer/consumer shape as crypto but is not wired into Dagster; run it manually via Task.
 
 ## Architecture
 
@@ -101,6 +116,29 @@ dbt build (run separately, read-only attach to crypto_raw.duckdb)
 > The crypto dashboard reads `live_data.json` rather than querying DuckDB directly.
 > This avoids write-lock conflicts between the consumer and the dashboard.
 
+### Streaming pipeline (Payments)
+
+```
+synthetic producer
+    │  payments.requests, payments.rejected (0-10 min late)
+    ▼
+Kafka (localhost:9092)
+    │
+    ▼
+payments/consumer.py
+    └──▶ data/payments_raw.duckdb   (raw_payments.raw_requests / raw_rejections)
+
+dbt build (run separately, read-only attach to payments_raw.duckdb)
+    └──▶ staging_payments.stg_payments__requests / stg_payments__rejections
+    └──▶ marts.payment_status        (pending → accepted/rejected via bounded look-back)
+    └──▶ marts.payments_by_minute    (accepted/rejected counts and $ amounts over time)
+```
+
+> A practice build for late-arriving events: a payment is `pending` until either
+> a rejection lands or a 10-minute grace window elapses. Unlike crypto, payments
+> has no Dagster asset, job, or sensor — it's run manually via
+> `task payments:producer` / `task payments:consumer` / `task dbt:payments:build`.
+
 ### Semantic layer (Cube)
 
 ```
@@ -114,11 +152,20 @@ http://localhost:4000
   Playground · SQL API (:15432) · REST/GraphQL API
 ```
 
-Cube models `marts.nba_game_results`, `marts.nba_team_dim`,
-`marts.top_tracks_by_period` and `marts.top_artists_by_period` directly — no
-separate ingestion or dbt step. It runs standalone via Task, the same way the
-dashboards do, rather than as a Dagster asset: there's nothing for it to
-materialize, it's a long-running query service.
+Cube models five marts directly (`cube/model/cubes/`) — no separate ingestion
+or dbt step:
+
+| Cube | Mart table |
+|---|---|
+| `nba_game_results` | `marts.nba_game_results` |
+| `nba_player_season_stats` | `marts.nba_player_season_stats` |
+| `nba_team_dim` | `marts.nba_team_dim` |
+| `spotify_top_artists` | `marts.top_artists_by_period` |
+| `spotify_top_tracks` | `marts.top_tracks_by_period` |
+
+It runs standalone via Task, the same way the dashboards do, rather than as a
+Dagster asset: there's nothing for it to materialize, it's a long-running
+query service. Use `/cube-develop` to scaffold a new cube on top of another mart.
 
 > Cube's DuckDB driver always opens `spotify.duckdb` read-write (no read-only
 > option). Don't run `task cube:dev` at the same time as `task dbt:run` or the
@@ -156,6 +203,15 @@ Real-time trade ticks streamed from [Binance public WebSocket API](https://devel
 | BTC/USDT | `raw_crypto.raw_trades` | Every executed trade tick (append-only) |
 | ETH/USDT | `raw_crypto.raw_trades` | Every executed trade tick (append-only) |
 
+### Payments (synthetic, streaming)
+
+A practice build simulating near-real-time payment accept/reject analytics, with rejections arriving on a second topic up to 10 minutes after the original request. No external API — a synthetic producer generates the events. See [data-ingestion/payments/README.md](data-ingestion/payments/README.md).
+
+| Topic | Schema.Table | Description |
+|---|---|---|
+| `payments.requests` | `raw_payments.raw_requests` | Every payment request (append-only) |
+| `payments.rejected` | `raw_payments.raw_rejections` | Rejections, published 0–10 min after the request |
+
 ### OpenF1 (batch)
 
 Formula 1 timing data from the [OpenF1 API](https://openf1.org). No authentication required. Meetings and sessions are full-replaced per season; the per-session tables are incremental — already-loaded sessions are skipped.
@@ -172,7 +228,7 @@ Formula 1 timing data from the [OpenF1 API](https://openf1.org). No authenticati
 
 ## dbt models
 
-All models live in `dbt/` and target `data/spotify.duckdb` as the primary database, with `data/crypto_raw.duckdb` attached read-only as `crypto_raw`.
+All models live in `dbt/` and target `data/spotify.duckdb` as the primary database, with `data/crypto_raw.duckdb` and `data/payments_raw.duckdb` each attached read-only (`crypto_raw`, `payments_raw`).
 
 [Elementary](https://docs.elementary-data.com) is integrated as a dbt package. It captures test results, model run history, and row counts into an `elementary` schema on every `dbt build`, and the `edr` CLI generates an HTML observability report from that data.
 
@@ -187,7 +243,23 @@ All models live in `dbt/` and target `data/spotify.duckdb` as the primary databa
 | `stg_sb_matches` | `staging_statsbomb` | Matches with derived `match_result` and `goal_difference` |
 | `stg_sb_events` | `staging_statsbomb` | Events with `seconds_elapsed`; location x/y pre-parsed |
 | `stg_sb_lineups` | `staging_statsbomb` | Player lineup rows |
+| `stg_nba_games` | `staging_nba` | One row per game; derives `home_team_won` from the winning team id |
+| `stg_nba_player_statistics` | `staging_nba` | Traditional player box scores, one row per player per game |
+| `stg_nba_team_statistics` | `staging_nba` | Traditional team box scores, one row per team per game |
+| `stg_nba_players` | `staging_nba` | Player biographies, one row per player |
+| `stg_nba_team_histories` | `staging_nba` | Franchise histories tracking relocations and renames, one row per era |
+| `stg_nba_player_statistics_extended` | `staging_nba` | Advanced player box scores (~1996 onward), one row per player per game |
+| `stg_nba_team_statistics_extended` | `staging_nba` | Advanced team box scores (~1996 onward), one row per team per game |
+| `stg_openf1__meetings` | `staging_openf1` | Grand Prix weekends and testing events, one row per meeting |
+| `stg_openf1__sessions` | `staging_openf1` | Practice/qualifying/race/sprint sessions, one row per session |
+| `stg_openf1__drivers` | `staging_openf1` | Driver roster per session |
+| `stg_openf1__laps` | `staging_openf1` | Per-lap timing data, one row per lap |
+| `stg_openf1__pit` | `staging_openf1` | Pit stop events, one row per stop |
+| `stg_openf1__stints` | `staging_openf1` | Tyre stints, one row per continuous run on a tyre set |
+| `stg_openf1__weather` | `staging_openf1` | Track/weather observations sampled through each session |
 | `stg_crypto_trades` | `staging_crypto` | Typed trade ticks with `notional_value` |
+| `stg_payments__requests` | `staging_payments` | Payment requests, deduped on `payment_id` (earliest `consumed_at` wins) |
+| `stg_payments__rejections` | `staging_payments` | Payment rejections, deduped on `payment_id` |
 
 ### Marts (tables)
 
@@ -197,8 +269,18 @@ All models live in `dbt/` and target `data/spotify.duckdb` as the primary databa
 | `top_tracks_by_period` | `marts` | One row per track with rank across all three time ranges |
 | `sb_match_summary` | `marts` | One row per match with aggregate event counts |
 | `sb_player_stats` | `marts` | One row per (player, team) with aggregate stats |
+| `nba_game_results` | `marts` | One row per game with both teams' box scores pivoted onto a home/away axis |
+| `nba_player_career_stats` | `marts` | One row per player, career-level box score totals and shooting splits |
+| `nba_player_season_stats` | `marts` | One row per (player, season, game_type) box score totals |
+| `nba_player_advanced_career` | `marts` | One row per player, minutes-weighted advanced career efficiency (~1996 on) |
+| `nba_team_dim` | `marts` | Conformed franchise dimension, one row per `team_id` with relocation/rename history |
+| `nba_team_season_summary` | `marts` | One row per (team, season) win/loss record and scoring averages |
+| `nba_team_advanced_profile` | `marts` | One row per (team, season) advanced efficiency metrics (~1996 on) |
+| `nba_team_head_to_head` | `marts` | All-time matchup record, one row per ordered (team, opponent) pair |
 | `ohlcv_1m` | `marts` | 1-minute OHLCV candles per trading pair (incremental) |
 | `ohlcv_1h` | `marts` | 1-hour OHLCV candles per trading pair (incremental) |
+| `payment_status` | `marts` | One row per payment with resolved outcome (accepted/rejected/pending); incremental with a 20-min look-back |
+| `payments_by_minute` | `marts` | Pre-aggregated accepted/rejected/pending counts and $ amounts per time bucket; incremental |
 
 ## Setup
 
@@ -224,24 +306,19 @@ pip install -r requirements.txt
 # Start Kafka in KRaft mode (no ZooKeeper)
 brew services start kafka
 
-# Create the topic (only needed once)
+# Create the crypto topic (only needed once)
 kafka-topics --create --topic crypto.trades --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+
+# Create the two payments topics (only needed once)
+kafka-topics --create --topic payments.requests --bootstrap-server localhost:9092 --partitions 2 --replication-factor 1
+kafka-topics --create --topic payments.rejected --bootstrap-server localhost:9092 --partitions 2 --replication-factor 1
 ```
 
 ### Configure
 
-Create a `.env` file in the project root:
+Copy `.env.example` to `.env` in the project root and fill in the values. It covers Spotify OAuth credentials, Kaggle API credentials (required for NBA ingestion), optional OpenF1 range/limit vars, and DuckDB path overrides (`DUCKDB_PATH`, `CRYPTO_DB_PATH`, `PAYMENTS_DB_PATH`, `LIVE_JSON_PATH`).
 
-```
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
-SPOTIFY_REDIRECT_URI=http://127.0.0.1:8888/callback
-
-DUCKDB_PATH=/absolute/path/to/data-world/data/spotify.duckdb
-CRYPTO_DB_PATH=/absolute/path/to/data-world/data/crypto_raw.duckdb
-```
-
-> Both `DUCKDB_PATH` and `CRYPTO_DB_PATH` must be absolute paths.
+> Any DuckDB/JSON path variable you set must be an absolute path.
 
 ### dbt packages and Elementary
 
@@ -283,6 +360,7 @@ All commands run from the root of `data-world/` using [Task](https://taskfile.de
 | `task ingest` | Clear Spotify cache and run the full Spotify ingest (triggers browser auth on first run) |
 | `task ingest:no-cache-clear` | Run Spotify ingest using the existing cached token |
 | `task ingest:statsbomb` | Run the StatsBomb ingest (incremental — skips already-loaded matches) |
+| `task ingest:nba` | Download the Kaggle NBA dataset (core + extended) and full-replace load into DuckDB |
 | `task ingest:openf1` | Run the OpenF1 ingest for 2024 → current season (incremental — skips already-loaded sessions). Set `OPENF1_START_YEAR` / `OPENF1_END_YEAR` to change the range and `OPENF1_SESSION_LIMIT` to cap sessions per run |
 
 ### Crypto streaming
@@ -299,6 +377,20 @@ task crypto:consumer   # Kafka → DuckDB + live_data.json
 | `task crypto:producer` | Stream BTC/USDT and ETH/USDT ticks from Binance into Kafka |
 | `task crypto:consumer` | Consume from Kafka, write to DuckDB, and update the live JSON sidecar |
 
+### Payments streaming
+
+Start both processes in separate terminals:
+
+```bash
+task payments:producer   # Synthetic payments → Kafka (requests + delayed rejections)
+task payments:consumer   # Kafka → DuckDB
+```
+
+| Command | Description |
+|---|---|
+| `task payments:producer` | Emit synthetic payment requests to `payments.requests`, with ~15% rejected on `payments.rejected` after a 0–10 min delay |
+| `task payments:consumer` | Consume both topics, write to `raw_payments.raw_requests` / `raw_rejections` |
+
 ### dbt
 
 | Command | Description |
@@ -310,7 +402,8 @@ task crypto:consumer   # Kafka → DuckDB + live_data.json
 | `task dbt:docs` | Generate and serve dbt docs in the browser |
 | `task dbt:run:select MODEL=<name>` | Run a specific model |
 | `task dbt:test:select MODEL=<name>` | Test a specific model |
-| `task dbt:crypto:build` | Run and test crypto models only |
+| `task dbt:crypto:run` / `:test` / `:build` | Run/test/build crypto models only |
+| `task dbt:payments:run` / `:test` / `:build` | Run/test/build payments models only |
 | `task edr:report` | Generate and open the Elementary observability report |
 
 ### Dashboards
@@ -334,11 +427,14 @@ task crypto:consumer   # Kafka → DuckDB + live_data.json
 |---|---|
 | `task refresh` | Spotify ingest → `dbt:build` |
 | `task refresh:statsbomb` | StatsBomb ingest → `dbt:build` |
-| `task refresh:all` | Spotify + StatsBomb ingest → `dbt:build` |
+| `task refresh:nba` | NBA ingest → `dbt:build` |
+| `task refresh:openf1` | OpenF1 ingest → `dbt:build` |
+| `task refresh:payments` | `dbt:payments:build` only — payments has no one-shot ingest task; run the producer/consumer separately first to land raw data |
+| `task refresh:all` | Spotify + StatsBomb + NBA ingest → `dbt:build` |
 
 ### Orchestration (Dagster)
 
-Dagster wraps Spotify ingestion, StatsBomb ingestion, and all dbt models as software-defined assets. A crypto sensor watches for new trade data and triggers dbt builds automatically.
+Dagster wraps Spotify, StatsBomb, and NBA ingestion, plus all dbt models, as software-defined assets (`spotify_pipeline`, `statsbomb_pipeline`, `nba_pipeline` jobs, each on its own schedule). Crypto has no ingest asset — a `crypto_sensor` instead polls `crypto_raw.duckdb` for new trade data and triggers the `crypto_dbt` job. Payments is not orchestrated at all: no asset, job, sensor, or schedule — it's run manually via the Task commands above, the same way it would be run outside Dagster.
 
 | Command | Description |
 |---|---|
@@ -347,21 +443,23 @@ Dagster wraps Spotify ingestion, StatsBomb ingestion, and all dbt models as soft
 
 ## Viewing data directly
 
-- **DBeaver** — connect to `data/spotify.duckdb` or `data/crypto_raw.duckdb` in Read-Only mode
-- **DuckDB CLI** — `duckdb data/spotify.duckdb` or `duckdb data/crypto_raw.duckdb`
+- **DBeaver** — connect to `data/spotify.duckdb`, `data/crypto_raw.duckdb`, or `data/payments_raw.duckdb` in Read-Only mode
+- **DuckDB CLI** — `duckdb data/spotify.duckdb`, `duckdb data/crypto_raw.duckdb`, or `duckdb data/payments_raw.duckdb`
 - **Harlequin** (TUI) — `pip install harlequin && harlequin data/spotify.duckdb`
 
-> Open `crypto_raw.duckdb` in read-only mode when the consumer is running to avoid lock conflicts.
+> Open `crypto_raw.duckdb` / `payments_raw.duckdb` in read-only mode when their consumer is running to avoid lock conflicts.
 
 ## Developer tooling
 
-Three Claude Code slash commands are registered in `.claude/commands/` for common development tasks:
+Claude Code skills are registered in `.claude/skills/` for common development tasks:
 
 | Command | Description |
 |---|---|
 | `/explore-dataset <domain\|table>` | Profile a raw DuckDB dataset before building models; saves an EDA report to `.claude/eda/` |
 | `/test-failures [scope]` | Run dbt tests, diagnose failures by querying affected tables, and output a report with suggested fixes |
 | `/dbt-develop` | Scaffold a new dbt model (SQL + YAML) following project conventions |
+| `/ingest-api-source` | Scaffold a new batch API → DuckDB ingestion pipeline following the Spotify/StatsBomb/NBA pattern |
+| `/cube-develop` | Scaffold a new Cube model on top of an existing dbt mart |
 
 ## DuckDB version alignment
 
