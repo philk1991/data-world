@@ -22,3 +22,7 @@ orchestration/*.egg-info/
 
 # Data files
 data-ingestion/data/
+
+# Skill-creator eval scratch (transcripts, benchmarks) — not shipped with the skill
+.claude/skills/*-workspace/
+.claude/worktrees/

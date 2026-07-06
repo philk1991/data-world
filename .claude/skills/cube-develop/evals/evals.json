@@ -1,0 +1,59 @@
+{
+  "skill_name": "cube-develop",
+  "evals": [
+    {
+      "id": 0,
+      "name": "crypto-ohlcv-composite-grain",
+      "prompt": "Build a Cube model for the ohlcv_1h mart in cube/model/cubes/. I want to be able to chart price and volume over time in the Cube Playground.",
+      "expected_output": "cube/model/cubes/ohlcv_1h.yml with sql_table: marts.ohlcv_1h. Dimensions include symbol and candle_open_time, both marked primary_key: true (composite grain per dbt meta.grain). Measures include count plus avg/max on open/high/low/close and sum (or avg) on volume/notional_volume/trade_count, each with a description matching the phrasing pattern. No ingested_at dimension (the mart doesn't have one, so none should be invented).",
+      "files": [],
+      "expectations": [
+        "cube/model/cubes/ohlcv_1h.yml exists and is valid YAML",
+        "sql_table is exactly 'marts.ohlcv_1h'",
+        "Both symbol and candle_open_time dimensions are marked primary_key: true",
+        "candle_open_time dimension has type: time",
+        "A count measure exists with type: count",
+        "At least one measure exists for each of open, high, low, close (avg and/or max)",
+        "volume, notional_volume and trade_count each have at least one measure",
+        "No ingested_at dimension or measure appears anywhere in the file",
+        "Every dimension/measure name referenced via sql: corresponds to an actual column in the ohlcv_1h mart",
+        "The user was asked which mart to build on and/or which metrics to include, rather than the file being written silently with no interaction"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "statsbomb-match-summary-sum-measures",
+      "prompt": "Add a Cube model on top of the sb_match_summary dbt mart so we can build a matches dashboard in Cube.",
+      "expected_output": "cube/model/cubes/sb_match_summary.yml with sql_table: marts.sb_match_summary. match_id is the sole primary_key dimension. Dimensions include competition_name, season_name, home_team_name, away_team_name, match_result, competition_stage; ingested_at is excluded. Measures include count plus sum-style measures (not avg) on the total_* columns (total_shots, total_passes, total_dribbles, total_pressures, total_carries) since these are per-match totals being aggregated across matches, plus something on home_score/away_score/goal_difference (avg is defensible here). Descriptions on both dimensions and measures are adapted from (not copied verbatim in the case of the top-level description) the dbt model's description/columns, with the 'Ordered by match_date descending' clause dropped from the top-level description.",
+      "files": [],
+      "expectations": [
+        "cube/model/cubes/sb_match_summary.yml exists and is valid YAML",
+        "sql_table is exactly 'marts.sb_match_summary'",
+        "match_id is the only dimension marked primary_key: true",
+        "ingested_at does not appear as a dimension",
+        "A count measure exists",
+        "total_shots, total_passes, total_dribbles, total_pressures and total_carries each have a measure of type sum rather than avg",
+        "The top-level cube description does not contain the phrase 'Ordered by' or 'descending'",
+        "Dimension descriptions are non-empty and topically match the corresponding dbt column description",
+        "Every dimension/measure sql: value corresponds to an actual column in the sb_match_summary mart"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "statsbomb-player-stats-composite-and-nullable",
+      "prompt": "I need a Cube model for sb_player_stats so I can slice player activity stats by country and team.",
+      "expected_output": "cube/model/cubes/sb_player_stats.yml with sql_table: marts.sb_player_stats. player_id and team both marked primary_key: true (composite grain). country_name included as a dimension despite being nullable. Measures include count plus sum-style measures on total_events/total_passes/total_shots/total_dribbles/total_pressures/total_carries/total_duration_minutes (dataset totals, not per-game averages) and likely sum or avg on lineup_appearances/matches_in_events. Descriptions follow the fixed phrasing pattern from the skill's conventions reference.",
+      "files": [],
+      "expectations": [
+        "cube/model/cubes/sb_player_stats.yml exists and is valid YAML",
+        "sql_table is exactly 'marts.sb_player_stats'",
+        "Both player_id and team dimensions are marked primary_key: true",
+        "country_name appears as a dimension despite being nullable in the source data",
+        "A count measure exists",
+        "total_events, total_passes, total_shots, total_dribbles, total_pressures, total_carries and total_duration_minutes each have a sum-type measure (not avg)",
+        "Every dimension/measure sql: value corresponds to an actual column in the sb_player_stats mart",
+        "The skill introspected the live table/dbt docs rather than inventing column names from memory (no hallucinated columns)"
+      ]
+    }
+  ]
+}

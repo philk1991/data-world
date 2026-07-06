@@ -1,0 +1,130 @@
+cubes:
+  - name: nba_player_season_stats
+    sql_table: marts.nba_player_season_stats
+    description: >
+      One row per player per season per game type (Regular Season, Playoffs,
+      etc.) of traditional box score totals, per-game averages and shooting
+      splits, enriched with bio. Season is derived from the game date. A
+      player traded mid-season is combined into one row per game type, with
+      primary_team_id set to the team they played the most games for. Only
+      games actually played count. Splitting by game_type lets visualisations
+      compare regular-season and playoff production.
+
+    dimensions:
+      - name: person_id
+        sql: person_id
+        type: number
+        primary_key: true
+        description: Player identifier. Part of the natural key.
+
+      - name: first_name
+        sql: first_name
+        type: string
+        description: Player first name, from the bio table.
+
+      - name: last_name
+        sql: last_name
+        type: string
+        description: Player last name, from the bio table.
+
+      - name: season_start_year
+        sql: season_start_year
+        type: number
+        primary_key: true
+        description: Calendar year the season started (e.g. 2023 for 2023-24).
+
+      - name: season_label
+        sql: season_label
+        type: string
+        description: Human-readable season label (e.g. "2023-24").
+
+      - name: game_type
+        sql: game_type
+        type: string
+        primary_key: true
+        description: Type of game these totals cover (Regular Season, Playoffs, etc.). Part of the natural key.
+
+      - name: primary_team_id
+        sql: primary_team_id
+        type: number
+        description: Team the player played the most games for that season. Null for old seasons where team ids were not recorded.
+
+    measures:
+      - name: count
+        type: count
+        description: Number of player-season-game_type rows.
+
+      - name: sum_games_played
+        sql: games_played
+        type: sum
+        description: Total games played across matching rows.
+
+      - name: sum_total_points
+        sql: total_points
+        type: sum
+        description: Total points scored across matching rows.
+
+      - name: max_total_points
+        sql: total_points
+        type: max
+        description: Highest single-season point total among matching rows.
+
+      - name: sum_total_rebounds
+        sql: total_rebounds
+        type: sum
+        description: Total rebounds across matching rows.
+
+      - name: sum_total_assists
+        sql: total_assists
+        type: sum
+        description: Total assists across matching rows.
+
+      - name: sum_total_steals
+        sql: total_steals
+        type: sum
+        description: Total steals across matching rows.
+
+      - name: sum_total_blocks
+        sql: total_blocks
+        type: sum
+        description: Total blocks across matching rows.
+
+      - name: sum_total_turnovers
+        sql: total_turnovers
+        type: sum
+        description: Total turnovers across matching rows.
+
+      - name: avg_points_per_game
+        sql: points_per_game
+        type: avg
+        description: Average points per game across matching rows.
+
+      - name: max_points_per_game
+        sql: points_per_game
+        type: max
+        description: Highest single-season points-per-game average among matching rows.
+
+      - name: avg_rebounds_per_game
+        sql: rebounds_per_game
+        type: avg
+        description: Average rebounds per game across matching rows.
+
+      - name: avg_assists_per_game
+        sql: assists_per_game
+        type: avg
+        description: Average assists per game across matching rows.
+
+      - name: avg_field_goal_pct
+        sql: field_goal_pct
+        type: avg
+        description: Average field goal percentage across matching rows.
+
+      - name: avg_three_point_pct
+        sql: three_point_pct
+        type: avg
+        description: Average three point percentage across matching rows.
+
+      - name: avg_free_throw_pct
+        sql: free_throw_pct
+        type: avg
+        description: Average free throw percentage across matching rows.
