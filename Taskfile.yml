@@ -1,5 +1,10 @@
 version: '3'
 
+includes:
+  # Verano recommendation & personalisation learning build (self-contained
+  # subproject with its own dbt project + verano.duckdb). Run as `task verano:*`.
+  verano: verano/Taskfile.yml
+
 vars:
   VENV: .venv/bin/activate
   DBT_DIR: dbt

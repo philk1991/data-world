@@ -1,0 +1,52 @@
+version: 2
+
+# Bronze = raw landed data, written by the data-generation scripts (Layer 1).
+# dbt begins at silver and reads bronze via source(). Table-level descriptions
+# only, per the repo convention.
+
+sources:
+  - name: bronze_catalogue
+    schema: bronze_catalogue
+    tables:
+      - name: categories
+        description: Department -> leaf category hierarchy (2 levels).
+      - name: products
+        description: Product groups / styles — the parent of variants.
+      - name: product_variants
+        description: Sellable SKU grain (product group x colour x size).
+
+  - name: bronze_customers
+    schema: bronze_customers
+    tables:
+      - name: customer_versions
+        description: One row per (customer, version) — SCD source for consent/attribute history.
+
+  - name: bronze_events
+    schema: bronze_events
+    tables:
+      - name: events
+        description: Raw-grain clickstream. customer_id populated only on deterministic identity-signal events. Carries hidden _true_* ground truth for evaluation.
+
+  - name: bronze_orders
+    schema: bronze_orders
+    tables:
+      - name: orders
+        description: First-party order headers.
+      - name: order_lines
+        description: First-party order lines, with returns.
+      - name: marketplace_orders
+        description: Mirakl-style marketplace order headers (different schema — reconciled in silver).
+      - name: marketplace_order_lines
+        description: Mirakl-style marketplace order lines, with refunds.
+
+  - name: bronze_search
+    schema: bronze_search
+    tables:
+      - name: search_logs
+        description: Search events with results shown, click position and conversion.
+
+  - name: bronze_email
+    schema: bronze_email
+    tables:
+      - name: email_events
+        description: Email send/open/click events; clicks carry an encoded_customer_id identity signal.

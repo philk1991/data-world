@@ -1,0 +1,22 @@
+# Verano learning-build dependencies.
+#
+# Install into the repo's existing .venv so the duckdb version stays pinned to
+# 1.4.4 (matching the rest of data-world — see the DuckDB constraint in the root
+# CLAUDE.md). Stage 1 (data generation) needs nothing beyond what the repo
+# already has (duckdb, pandas, numpy); the rest are pulled in for later stages.
+#
+#   source .venv/bin/activate && pip install -r verano/requirements.txt
+
+# --- Stage 1: data generation (already present in repo, listed for clarity) ---
+duckdb==1.4.4
+pandas>=2.2
+numpy>=1.26
+
+# --- Stage 5: ML ---
+scikit-learn>=1.4
+# Embeddings: default backend. Skip if using the TF-IDF fallback (VERANO_EMBEDDINGS=tfidf).
+sentence-transformers>=2.6
+
+# --- Stage 6: serving ---
+fastapi>=0.110
+uvicorn>=0.29

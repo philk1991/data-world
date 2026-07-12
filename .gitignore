@@ -23,6 +23,14 @@ orchestration/*.egg-info/
 # Data files
 data-ingestion/data/
 
+# Verano learning build — generated/derived artifacts (all regenerable)
+verano/data/*.duckdb
+verano/dbt/target/
+verano/dbt/dbt_packages/
+verano/dbt/logs/
+verano/.env
+
 # Skill-creator eval scratch (transcripts, benchmarks) — not shipped with the skill
 .claude/skills/*-workspace/
 .claude/worktrees/
+verano/dbt/.user.yml

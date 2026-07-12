@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: silver_email__email_events
+    description: Email send/open/click events; clicks carry an encoded_customer_id identity signal.
+    columns:
+      - name: email_event_id
+        description: Email event natural key.
+        tests: [not_null, unique]
+      - name: customer_id
+        description: Recipient customer id.
+        tests: [not_null]
+      - name: event_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: [sent, open, click]
+      - name: event_at
+        tests: [not_null]
+      - name: encoded_customer_id
+        description: Present on click rows only — the deterministic identity signal.

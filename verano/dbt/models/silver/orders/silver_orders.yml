@@ -1,0 +1,74 @@
+version: 2
+
+models:
+  - name: silver_orders__orders
+    description: First-party order headers, typed.
+    columns:
+      - name: order_id
+        description: Order natural key.
+        tests: [not_null, unique]
+      - name: order_channel
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["first_party"]
+      - name: order_status
+        tests:
+          - not_null
+          - accepted_values:
+              values: [completed, cancelled]
+      - name: net_amount
+        tests: [not_null]
+
+  - name: silver_orders__order_lines
+    description: First-party order lines with return flags.
+    columns:
+      - name: line_id
+        description: Line natural key.
+        tests: [not_null, unique]
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_orders__orders')
+              field: order_id
+      - name: variant_id
+        tests: [not_null]
+      - name: is_returned
+        tests: [not_null]
+
+  - name: silver_orders__marketplace_orders
+    description: >
+      Mirakl marketplace order headers reconciled to the first-party shape.
+      Mirakl states mapped onto the canonical order_status; carries commission.
+    columns:
+      - name: order_id
+        description: Mirakl order id, conformed as order_id.
+        tests: [not_null, unique]
+      - name: order_channel
+        tests:
+          - accepted_values:
+              values: ["marketplace"]
+      - name: order_status
+        description: Canonical status mapped from the Mirakl order_state.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [completed, in_progress, cancelled, unknown]
+      - name: commission_amount
+        description: Marketplace commission in GBP — a margin difference vs first-party.
+        tests: [not_null]
+
+  - name: silver_orders__marketplace_order_lines
+    description: Mirakl marketplace order lines reconciled to the first-party line shape.
+    columns:
+      - name: line_id
+        tests: [not_null, unique]
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_orders__marketplace_orders')
+              field: order_id
+      - name: variant_id
+        tests: [not_null]

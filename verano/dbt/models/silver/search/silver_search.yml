@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: silver_search__search_logs
+    description: Search events with results shown, click position and conversion.
+    columns:
+      - name: search_id
+        description: Search natural key.
+        tests: [not_null, unique]
+      - name: event_at
+        tests: [not_null]
+      - name: anonymous_id
+        tests: [not_null]
+      - name: query_text
+        tests: [not_null]
+      - name: converted
+        description: True if the search led to an add-to-cart/purchase.
+        tests: [not_null]

@@ -1,0 +1,45 @@
+name: verano
+version: '1.0.0'
+config-version: 2
+
+profile: verano
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Medallion layering. Bronze is written by the data-generation scripts (raw
+# landed), so dbt has no bronze models — only sources. Silver = cleaned/typed
+# views (one per bronze table). identity = intermediate resolution logic. gold =
+# business marts (dims, facts, 360s). See README for the medallion <-> repo
+# (raw/staging/marts) mapping.
+models:
+  verano:
+    silver:
+      +materialized: view
+      catalogue:
+        +schema: silver_catalogue
+      customers:
+        +schema: silver_customers
+      events:
+        +schema: silver_events
+      orders:
+        +schema: silver_orders
+      search:
+        +schema: silver_search
+      email:
+        +schema: silver_email
+    identity:
+      +materialized: table
+      +schema: identity
+    gold:
+      +materialized: table
+      +schema: gold

@@ -1,0 +1,62 @@
+version: '3'
+
+# Verano learning-build tasks. Included into the root Taskfile under the
+# `verano:` namespace, so run these as e.g. `task verano:gen:all`.
+# Commands assume the working directory is the repo root (the main Taskfile's
+# location), which is Task's default for included files.
+
+vars:
+  VENV: .venv/bin/activate
+  GEN_DIR: verano/data-generation
+  DBT_DIR: verano/dbt
+
+tasks:
+
+  # ── Layer 1: synthetic data generation → bronze ──────────────────────────────
+
+  gen:all:
+    desc: Generate all synthetic fashion data and land it in the bronze_* schemas
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.GEN_DIR}} && python generate.py"
+
+  gen:profile:
+    desc: Print a sanity summary of the generated bronze data (counts, ratios, spikes)
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.GEN_DIR}} && python profile.py"
+
+  # ── Layers 2–3: dbt (silver → identity → gold) ───────────────────────────────
+
+  dbt:debug:
+    desc: Check the dbt project can connect to verano.duckdb
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt debug"
+
+  dbt:build:
+    desc: Run then test all dbt models (silver, identity, gold)
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt build"
+
+  dbt:run:
+    desc: Run all dbt models without testing
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt run"
+
+  dbt:test:
+    desc: Run all dbt tests
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt test"
+
+  # ── Layer 3: identity resolution ─────────────────────────────────────────────
+
+  identity:eval:
+    desc: Score identity resolution (bridge + graph) against the hidden ground truth
+    cmds:
+      - bash -c "source {{.VENV}} && python verano/eval/identity_eval.py"
+
+  # ── End-to-end refresh ───────────────────────────────────────────────────────
+
+  refresh:
+    desc: Regenerate bronze then rebuild all dbt models
+    cmds:
+      - task: gen:all
+      - task: dbt:build

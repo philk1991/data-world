@@ -1,0 +1,12 @@
+verano:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # Relative to the dbt/ dir (dbt runs from here). The generators write the
+      # same file's bronze_* schemas before dbt runs.
+      path: ../data/verano.duckdb
+      threads: 4
+      # Default schema when a model doesn't set +schema. All our models do, so
+      # this only ever holds dbt's own metadata.
+      schema: main

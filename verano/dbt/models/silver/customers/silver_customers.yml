@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: silver_customers__versions
+    description: >
+      Customer version history (SCD source). Grain = one row per (customer_id,
+      version_number). Most customers have a single version; a minority change
+      consent, size, loyalty tier or region over the window.
+    columns:
+      - name: customer_id
+        description: Customer natural key (repeats across versions).
+        tests: [not_null]
+      - name: version_number
+        description: 1-based version index within a customer's history.
+        tests: [not_null]
+      - name: effective_at
+        description: When this version became effective (valid_from in gold).
+        tests: [not_null]
+      - name: change_reason
+        description: What triggered this version.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [signup, consent_withdrawal, loyalty_upgrade, size_change, region_move]
+      - name: brand_line_affinity
+        tests:
+          - accepted_values:
+              values: ["Verano", "Petite", "Dusk"]
+      - name: email_consent
+        description: Marketing email consent at this version.
+        tests: [not_null]
+      - name: data_processing_consent
+        tests: [not_null]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [customer_id, version_number]

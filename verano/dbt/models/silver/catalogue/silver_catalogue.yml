@@ -1,0 +1,79 @@
+version: 2
+
+models:
+  - name: silver_catalogue__categories
+    description: Category hierarchy nodes (department + leaf), typed.
+    columns:
+      - name: category_id
+        description: Stable category slug (natural key).
+        tests: [not_null, unique]
+      - name: category_name
+        description: Human-readable category name.
+        tests: [not_null]
+      - name: parent_category_id
+        description: Parent category slug; null for top-level departments.
+      - name: category_level
+        description: 1 = department, 2 = leaf category.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2]
+      - name: department
+        description: Owning department.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["Clothing", "Accessories"]
+
+  - name: silver_catalogue__products
+    description: Product groups (styles) — the parent of variants.
+    columns:
+      - name: product_group_id
+        description: Product group natural key.
+        tests: [not_null, unique]
+      - name: category_id
+        description: Leaf category slug.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_catalogue__categories')
+              field: category_id
+      - name: brand_line
+        description: Verano / Petite / Dusk.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["Verano", "Petite", "Dusk"]
+      - name: base_price
+        description: Group base price in GBP.
+        tests: [not_null]
+
+  - name: silver_catalogue__variants
+    description: Sellable SKU grain (product group x colour x size).
+    columns:
+      - name: variant_id
+        description: SKU natural key.
+        tests: [not_null, unique]
+      - name: product_group_id
+        description: Parent product group.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_catalogue__products')
+              field: product_group_id
+      - name: size_range
+        description: standard / petite / one_size.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["standard", "petite", "one_size"]
+      - name: brand_line
+        tests:
+          - accepted_values:
+              values: ["Verano", "Petite", "Dusk"]
+      - name: price
+        description: Variant price in GBP.
+        tests: [not_null]
+      - name: is_in_stock
+        description: Derived — stock_level > 0.
+        tests: [not_null]

@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: bridge_identity
+    description: >
+      anonymous_id -> customer_id links, split into a deterministic tier
+      (in-session signals) and a probabilistic tier (device fingerprint / shared
+      IP), each with its own confidence. The tiers are never merged as equal.
+    columns:
+      - name: anonymous_id
+        description: Cookie / device id.
+        tests: [not_null]
+      - name: customer_id
+        description: Resolved customer id for this link.
+        tests: [not_null]
+      - name: link_method
+        description: Signal that produced the link.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [login, email_click_encoded, checkout_email, device_fingerprint, shared_ip]
+      - name: confidence_tier
+        description: deterministic or probabilistic — kept strictly separate.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [deterministic, probabilistic]
+      - name: confidence
+        description: Link confidence score (1.0 = certain).
+        tests: [not_null]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [anonymous_id, customer_id, link_method]
+
+  - name: identity_graph
+    description: >
+      Session-level identity resolution with two keys: customer_id_strict
+      (deterministic only) and customer_id_extended (deterministic else
+      probabilistic). One row per session.
+    columns:
+      - name: session_id
+        description: Session natural key.
+        tests: [not_null, unique]
+      - name: resolution_tier
+        description: How the session was resolved.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [deterministic, probabilistic, unresolved]
+      - name: customer_id_strict
+        description: Deterministic customer id; null when only probabilistic (or no) evidence exists.
+      - name: customer_id_extended
+        description: Deterministic id if present, else the probabilistic id; null if unresolved.

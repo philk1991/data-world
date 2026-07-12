@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: silver_events__events
+    description: >
+      Cleaned, typed clickstream at raw event grain, with a derived session_id
+      (30-minute inactivity rule). customer_id is populated only on deterministic
+      identity-signal events. _true_* columns are evaluation-only.
+    columns:
+      - name: event_id
+        description: Event natural key.
+        tests: [not_null, unique]
+      - name: event_at
+        description: Event timestamp.
+        tests: [not_null]
+      - name: event_type
+        description: Type of interaction.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [page_view, search, add_to_cart, purchase, login, email_click, loyalty_signup]
+      - name: anonymous_id
+        description: Cookie / device id. Present on every event.
+        tests: [not_null]
+      - name: session_id
+        description: Derived session key (anonymous_id + running session index).
+        tests: [not_null]
+      - name: customer_id
+        description: Deterministic customer id — only on login / email_click / loyalty_signup / purchase(known). Null otherwise.
+      - name: traffic_source
+        tests:
+          - accepted_values:
+              values: [organic, direct, paid_search, email, social, affiliate]
+
+  - name: silver_events__sessions
+    description: One row per derived session with funnel counts and in-session identity.
+    columns:
+      - name: session_id
+        description: Session natural key.
+        tests: [not_null, unique]
+      - name: anonymous_id
+        tests: [not_null]
+      - name: session_start
+        tests: [not_null]
+      - name: is_identified
+        description: True if any event in the session carried a deterministic customer_id.
+        tests: [not_null]
+      - name: is_converted
+        description: True if the session contains a purchase.
+        tests: [not_null]
