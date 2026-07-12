@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: fact_event
+    description: >
+      Event-grain fact with resolved customer keys (strict + extended) attached via
+      the identity graph. Raw PII and ground-truth columns dropped.
+    columns:
+      - name: event_id
+        tests: [not_null, unique]
+      - name: event_type
+        tests:
+          - accepted_values:
+              values: [page_view, search, add_to_cart, purchase, login, email_click, loyalty_signup]
+      - name: resolution_tier
+        tests:
+          - accepted_values:
+              values: [deterministic, probabilistic, unresolved]
+
+  - name: fact_search
+    description: Search-grain fact with the cookie-resolved customer attached.
+    columns:
+      - name: search_id
+        tests: [not_null, unique]
+
+  - name: gold_session_summary
+    description: Session-grain mart — funnel metrics, duration and resolved customer.
+    columns:
+      - name: session_id
+        tests: [not_null, unique]
+      - name: resolution_tier
+        tests:
+          - accepted_values:
+              values: [deterministic, probabilistic, unresolved]

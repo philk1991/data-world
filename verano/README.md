@@ -130,7 +130,10 @@ Every event also carries hidden `_true_customer_id` / `_true_session_id`
       ground truth: deterministic **100% precision**; `device_fingerprint` **62%**;
       `shared_ip` **0%** (pure household-IP noise — the case for tiering). Strict key
       100% precision / 82% recall; extended key 84% / 89% — the precision↔recall dial.
-- [ ] Layer 4 — gold marts (dims, facts, SCD2)
+- [x] **Layer 4** — gold marts (`task verano:dbt:build --select gold`): `dim_customer`
+      (Type-2 SCD, one current row/customer), `dim_product` (1,939 variants) + `dim_category`,
+      `fact_order`/`fact_order_line` (first-party + marketplace unioned), `fact_event`/`fact_search`
+      (identity-resolved), `gold_session_summary`, `fact_customer_engagement`, and `gold_customer_360`
 - [ ] Layer 5 — ML modules (popularity → co-purchase → CF → propensity → embeddings → ranking)
 - [ ] Layer 6 — FastAPI serving
 - [ ] Stretch — Dagster asset graph

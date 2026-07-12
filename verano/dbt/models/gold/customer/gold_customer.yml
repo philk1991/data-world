@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: dim_customer
+    description: >
+      Type-2 slowly-changing customer dimension built from the version history.
+      valid_from/valid_to bound each version; is_current flags the live row.
+    columns:
+      - name: customer_sk
+        description: Surrogate key (customer_id + version_number).
+        tests: [not_null, unique]
+      - name: customer_id
+        description: Natural key (repeats across versions).
+        tests: [not_null]
+      - name: valid_from
+        tests: [not_null]
+      - name: is_current
+        tests: [not_null]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [customer_id, version_number]
+
+  - name: fact_customer_engagement
+    description: Customer-grain web + email engagement (web attributed via extended key).
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+
+  - name: gold_customer_360
+    description: >
+      Assembled one-row-per-customer view: current attributes + order/RFM + returns
+      + engagement. The presentation mart for serving and ML feature builders.
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+      - name: n_orders
+        tests: [not_null]
+      - name: lifecycle_stage
+        tests:
+          - accepted_values:
+              values: [prospect, active, lapsing]

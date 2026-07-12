@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: fact_order
+    description: Conformed order fact — first-party + Mirakl marketplace unioned.
+    columns:
+      - name: order_id
+        tests: [not_null, unique]
+      - name: order_channel
+        tests:
+          - not_null
+          - accepted_values:
+              values: [first_party, marketplace]
+      - name: order_status
+        tests:
+          - accepted_values:
+              values: [completed, cancelled, in_progress, unknown]
+      - name: net_amount
+        tests: [not_null]
+
+  - name: fact_order_line
+    description: Conformed order-line fact — first-party + marketplace lines unioned.
+    columns:
+      - name: line_id
+        tests: [not_null, unique]
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('fact_order')
+              field: order_id
+      - name: variant_id
+        tests: [not_null]
+      - name: order_channel
+        tests:
+          - accepted_values:
+              values: [first_party, marketplace]

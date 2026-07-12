@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: dim_category
+    description: Category dimension with the parent (department) name flattened on.
+    columns:
+      - name: category_id
+        tests: [not_null, unique]
+      - name: category_level
+        tests:
+          - accepted_values:
+              values: [1, 2]
+
+  - name: dim_product
+    description: Product dimension at variant (SKU) grain, with product_group_id parent.
+    columns:
+      - name: variant_id
+        description: SKU natural key.
+        tests: [not_null, unique]
+      - name: category_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_category')
+              field: category_id
+      - name: brand_line
+        tests:
+          - accepted_values:
+              values: ["Verano", "Petite", "Dusk"]
+      - name: price
+        tests: [not_null]
+
+  - name: fact_product_performance
+    description: Browsing funnel + sales + returns per variant (dim_product spine).
+    columns:
+      - name: variant_id
+        tests: [not_null, unique]
+      - name: view_count
+        tests: [not_null]
+      - name: units_sold
+        tests: [not_null]
