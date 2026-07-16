@@ -143,5 +143,9 @@ Every event also carries hidden `_true_customer_id` / `_true_session_id`
       6. **ranking** (transparent weighted blend of all signals + availability + size expansion).
       Note: the generator carries per-customer latent taste + purchase propensity so CF and
       propensity have real signal to learn (see data-generation/config.py).
-- [ ] Layer 6 — FastAPI serving
+- [x] **Layer 6** — FastAPI serving (`task verano:serve` → http://localhost:8000/docs), reads
+      `ml.*` READ-ONLY: `POST /search/rerank` (query-time personalisation, size-deduped),
+      `GET /website/recommendations/{customer_id}` (homepage ranking / PDP co-purchase, with
+      popularity cold-start fallback), `GET /email/batch-export` (**consent-gated** — 36.8% of
+      scored customers excluded for no marketing consent).
 - [ ] Stretch — Dagster asset graph
