@@ -191,6 +191,22 @@ P_PURCHASE_GIVEN_CART = 0.35      # -> ~7.7% session purchase rate
 P_SEARCH = 0.30                   # session includes a search
 P_MARKETPLACE_ORDER = 0.15        # share of orders that are Mirakl marketplace orders
 
+# Individual taste — each customer gravitates to a preferred pattern / price band /
+# brand line / colour, biasing WHICH product groups they browse and buy. This is
+# the item-level affinity structure that collaborative filtering learns (without it
+# CF can only recover popularity). Pattern/price/brand are product-group level, so
+# they give the strongest group-grain signal; colour is variant-level flavour.
+PREF_PATTERN_BOOST = 3.0
+PREF_PRICE_BOOST = 1.5
+PREF_BRAND_BOOST = 2.0
+PREF_COLOUR_BOOST = 1.5
+
+# Latent purchase propensity — a persistent per-customer multiplier on cart/purchase
+# probability. Because it persists across the whole window, past behaviour (RFM,
+# engagement) predicts future purchase, which is what the propensity model learns.
+PROPENSITY_SIGMA = 0.7            # lognormal spread of the multiplier (median 1.0)
+PROPENSITY_CLIP = (0.2, 3.0)
+
 TRAFFIC_SOURCES = ["organic", "direct", "paid_search", "email", "social", "affiliate"]
 TRAFFIC_SOURCE_WEIGHTS = [0.30, 0.22, 0.18, 0.12, 0.13, 0.05]
 

@@ -56,6 +56,15 @@ def build_customers(rng: np.random.Generator) -> tuple[pd.DataFrame, pd.DataFram
         marketing_consent = email_consent and bool(rng.random() < 0.85)
         data_processing_consent = bool(rng.random() < 0.98)
 
+        # Latent taste + purchase propensity (persistent per customer). These drive
+        # the simulation (item selection + conversion) and are carried on the bronze
+        # customer record, but the silver/gold models don't select them — they stay
+        # out of the feature store so the propensity model can't cheat off them.
+        pref_pattern = str(rng.choice(C.PATTERNS))
+        pref_colour = str(rng.choice(C.COLOURS))
+        price_affinity = str(rng.choice(C.PRICE_BANDS, p=[0.35, 0.45, 0.20]))
+        propensity = float(np.clip(rng.lognormal(0.0, C.PROPENSITY_SIGMA), *C.PROPENSITY_CLIP))
+
         # Version 1 — established at signup.
         state = dict(
             customer_id=customer_id, first_name=first, last_name=last, email=email,
@@ -64,6 +73,8 @@ def build_customers(rng: np.random.Generator) -> tuple[pd.DataFrame, pd.DataFram
             loyalty_member=loyalty_member, loyalty_tier=tier,
             email_consent=email_consent, marketing_consent=marketing_consent,
             data_processing_consent=data_processing_consent,
+            pref_pattern=pref_pattern, pref_colour=pref_colour,
+            price_affinity=price_affinity, propensity=propensity,
         )
         versions.append({**state, "version_number": 1,
                          "effective_at": pd.Timestamp(signup),

@@ -53,6 +53,48 @@ tasks:
     cmds:
       - bash -c "source {{.VENV}} && python verano/eval/identity_eval.py"
 
+  # ── Layer 4: ML modules ──────────────────────────────────────────────────────
+
+  ml:popularity:
+    desc: "ML 1/6 — popularity & trending (cold-start fallback)"
+    cmds:
+      - bash -c "source {{.VENV}} && cd verano/ml && python popularity.py"
+
+  ml:copurchase:
+    desc: "ML 2/6 — item-item co-purchase (customers also bought)"
+    cmds:
+      - bash -c "source {{.VENV}} && cd verano/ml && python co_purchase.py"
+
+  ml:cf:
+    desc: "ML 3/6 — collaborative filtering (matrix factorisation)"
+    cmds:
+      - bash -c "source {{.VENV}} && cd verano/ml && python collaborative.py"
+
+  ml:propensity:
+    desc: "ML 4/6 — purchase propensity (logistic regression)"
+    cmds:
+      - bash -c "source {{.VENV}} && cd verano/ml && python propensity.py"
+
+  ml:embeddings:
+    desc: "ML 5/6 — product & customer embeddings"
+    cmds:
+      - bash -c "source {{.VENV}} && cd verano/ml && python embeddings.py"
+
+  ml:ranking:
+    desc: "ML 6/6 — blended ranking / re-ranking"
+    cmds:
+      - bash -c "source {{.VENV}} && cd verano/ml && python ranking.py"
+
+  ml:all:
+    desc: Run all six ML modules in order
+    cmds:
+      - task: ml:popularity
+      - task: ml:copurchase
+      - task: ml:cf
+      - task: ml:propensity
+      - task: ml:embeddings
+      - task: ml:ranking
+
   # ── End-to-end refresh ───────────────────────────────────────────────────────
 
   refresh:

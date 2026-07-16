@@ -14,8 +14,12 @@ numpy>=1.26
 
 # --- Stage 5: ML ---
 scikit-learn>=1.4
-# Embeddings: default backend. Skip if using the TF-IDF fallback (VERANO_EMBEDDINGS=tfidf).
-sentence-transformers>=2.6
+# Embeddings default to the scikit-learn TF-IDF + SVD backend (VERANO_EMBEDDINGS=tfidf),
+# which needs no extra deps. The sentence-transformers backend requires torch >= 2.4;
+# that has NO wheels for x86-64 macOS (this machine), and the available torch 2.2.x is
+# incompatible with numpy 2.x, so it's disabled here. Uncomment to try on Apple Silicon
+# or Linux, and set VERANO_EMBEDDINGS=sentence-transformers.
+# sentence-transformers>=2.6
 
 # --- Stage 6: serving ---
 fastapi>=0.110

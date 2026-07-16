@@ -134,6 +134,14 @@ Every event also carries hidden `_true_customer_id` / `_true_session_id`
       (Type-2 SCD, one current row/customer), `dim_product` (1,939 variants) + `dim_category`,
       `fact_order`/`fact_order_line` (first-party + marketplace unioned), `fact_event`/`fact_search`
       (identity-resolved), `gold_session_summary`, `fact_customer_engagement`, and `gold_customer_360`
-- [ ] Layer 5 — ML modules (popularity → co-purchase → CF → propensity → embeddings → ranking)
+- [x] **Layer 5** — ML modules (`task verano:ml:all`), each writing an inspectable `ml.*` table:
+      1. **popularity/trending** (cold-start fallback) · 2. **co-purchase** (product-group grain,
+      commercially sensible "also bought") · 3. **collaborative filtering** (item-based kNN on
+      *browsing* signal — hit-rate@10 **0.17 > popularity 0.16**) · 4. **propensity** (temporal
+      split, balanced LR — **ROC-AUC 0.78, PR-AUC 0.39, 3.4× decile lift**) · 5. **embeddings**
+      (TF-IDF+SVD; sentence-transformers unavailable on x86-64 macOS — see requirements.txt) ·
+      6. **ranking** (transparent weighted blend of all signals + availability + size expansion).
+      Note: the generator carries per-customer latent taste + purchase propensity so CF and
+      propensity have real signal to learn (see data-generation/config.py).
 - [ ] Layer 6 — FastAPI serving
 - [ ] Stretch — Dagster asset graph

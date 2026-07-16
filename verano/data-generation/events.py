@@ -55,13 +55,21 @@ def _rand_ip(rng: np.random.Generator) -> str:
 
 
 def _build_variant_index(variants: pd.DataFrame):
-    """cat_id -> {size -> [variant dicts]} plus cat_id -> [variant dicts]."""
-    cat_size: dict[str, dict[str, list[dict]]] = {}
-    cat_all: dict[str, list[dict]] = {}
+    """cat_id -> list of variant dicts, plus aligned numpy attribute arrays for
+    fast preference-weighted selection."""
+    cat_variants: dict[str, list[dict]] = {}
     for v in variants.to_dict("records"):
-        cat_all.setdefault(v["category_id"], []).append(v)
-        cat_size.setdefault(v["category_id"], {}).setdefault(v["size"], []).append(v)
-    return cat_all, cat_size
+        cat_variants.setdefault(v["category_id"], []).append(v)
+    cat_arrays: dict[str, dict[str, np.ndarray]] = {}
+    for cat, lst in cat_variants.items():
+        cat_arrays[cat] = {
+            "size": np.array([v["size"] for v in lst]),
+            "colour": np.array([v["colour"] for v in lst]),
+            "pattern": np.array([v["pattern"] for v in lst]),
+            "price_band": np.array([v["price_band"] for v in lst]),
+            "brand": np.array([v["brand_line"] for v in lst]),
+        }
+    return cat_variants, cat_arrays
 
 
 def _session_datetime(rng: np.random.Generator, months: list[tuple[int, int]],
@@ -81,17 +89,31 @@ def _session_datetime(rng: np.random.Generator, months: list[tuple[int, int]],
     return day.replace(hour=hour, minute=int(rng.integers(0, 60)), second=int(rng.integers(0, 60)))
 
 
-def _pick_variant(rng, cat_id, home_size, cat_all, cat_size, filter_size: bool):
-    """Choose a variant in a category, optionally biased to the customer's size."""
-    size_map = cat_size.get(cat_id, {})
-    if filter_size and home_size in size_map:
-        pool, used_size = size_map[home_size], home_size
-    else:
-        pool = cat_all.get(cat_id, [])
-        used_size = None
-    if not pool:
+def _pick_variant(rng, cat_id, vis, cat_variants, cat_arrays, filter_size: bool):
+    """Choose a variant in a category, biased to the visitor's size (browsing) and
+    their latent taste (pattern / price band / brand / colour). The taste bias is
+    what gives collaborative filtering a learnable item-level affinity."""
+    lst = cat_variants.get(cat_id)
+    if not lst:
         return None, None
-    return pool[int(rng.integers(len(pool)))], used_size
+    A = cat_arrays[cat_id]
+
+    if filter_size and vis["home_size"] in A["size"]:
+        cand = np.where(A["size"] == vis["home_size"])[0]
+        used_size = vis["home_size"]
+    else:
+        cand = np.arange(len(lst))
+        used_size = None
+    if len(cand) == 0:
+        cand, used_size = np.arange(len(lst)), None
+
+    w = np.ones(len(cand))
+    w += C.PREF_PATTERN_BOOST * (A["pattern"][cand] == vis["pref_pattern"])
+    w += C.PREF_PRICE_BOOST * (A["price_band"][cand] == vis["price_affinity"])
+    w += C.PREF_BRAND_BOOST * (A["brand"][cand] == vis["brand"])
+    w += C.PREF_COLOUR_BOOST * (A["colour"][cand] == vis["pref_colour"])
+    j = int(cand[rng.choice(len(cand), p=w / w.sum())])
+    return lst[j], used_size
 
 
 def _build_query(rng, cat_noun_by_id, cat_id, home_size, brand) -> str:
@@ -109,8 +131,8 @@ def _build_query(rng, cat_noun_by_id, cat_id, home_size, brand) -> str:
 
 def build_events(rng: np.random.Generator, customers_current: pd.DataFrame,
                  variants: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    cat_all, cat_size = _build_variant_index(variants)
-    leaf_categories = list(cat_all.keys())
+    cat_variants, cat_arrays = _build_variant_index(variants)
+    leaf_categories = list(cat_variants.keys())
     months = _window_months()
     month_p = np.array([_TRAFFIC_MONTH_WEIGHT.get(m, 1.0) for _, m in months])
     month_p = month_p / month_p.sum()
@@ -133,7 +155,10 @@ def build_events(rng: np.random.Generator, customers_current: pd.DataFrame,
                                  home_size=c["home_size"], brand=c["brand_line_affinity"],
                                  prefers_petite=c["prefers_petite"],
                                  loyalty_member=c["loyalty_member"],
+                                 pref_pattern=c["pref_pattern"], pref_colour=c["pref_colour"],
+                                 price_affinity=c["price_affinity"], propensity=c["propensity"],
                                  fav_category=str(rng.choice(leaf_categories)),
+                                 fav_category2=str(rng.choice(leaf_categories)),
                                  n_sessions=n_sessions))
     for i in range(C.N_ANON_VISITORS):
         n_sessions = 1 + int(rng.poisson(C.MEAN_SESSIONS_ANON))
@@ -141,15 +166,24 @@ def build_events(rng: np.random.Generator, customers_current: pd.DataFrame,
                              home_size=str(rng.choice(C.SIZES_STANDARD)),
                              brand=str(rng.choice(C.BRAND_LINES)), prefers_petite=False,
                              loyalty_member=False,
+                             pref_pattern=str(rng.choice(C.PATTERNS)),
+                             pref_colour=str(rng.choice(C.COLOURS)),
+                             price_affinity=str(rng.choice(C.PRICE_BANDS)),
+                             propensity=float(np.clip(rng.lognormal(0.0, C.PROPENSITY_SIGMA), *C.PROPENSITY_CLIP)),
                              fav_category=str(rng.choice(leaf_categories)),
+                             fav_category2=str(rng.choice(leaf_categories)),
                              n_sessions=n_sessions))
 
     # Shared household IP pool (a few visitors collide on these — probabilistic noise).
     household_ips = [_rand_ip(rng) for _ in range(400)]
 
-    def category_weights(month, fav):
+    def category_weights(month, fav, fav2):
+        # Each visitor concentrates on a primary + secondary favourite category.
+        # This per-customer category affinity (on top of the within-category style
+        # taste) is what gives CF distinct profiles it can beat popularity with.
         w = seasonal_by_month[month].copy()
-        w[leaf_categories.index(fav)] *= 2.5  # visitors browse their favourite consistently
+        w[leaf_categories.index(fav)] *= 6.0
+        w[leaf_categories.index(fav2)] *= 3.0
         return w / w.sum()
 
     # ── Generate sessions ────────────────────────────────────────────────────
@@ -179,7 +213,7 @@ def build_events(rng: np.random.Generator, customers_current: pd.DataFrame,
             session_id = f"S{ses_n:07d}"
             t = _session_datetime(rng, months, month_p)
             month = t.month
-            cat_p = category_weights(month, vis["fav_category"])
+            cat_p = category_weights(month, vis["fav_category"], vis["fav_category2"])
             source = str(rng.choice(C.TRAFFIC_SOURCES, p=C.TRAFFIC_SOURCE_WEIGHTS))
 
             # Decide deterministic signals up front (known customers only).
@@ -214,7 +248,7 @@ def build_events(rng: np.random.Generator, customers_current: pd.DataFrame,
             # Entry event.
             if email_sourced:
                 promo, _ = _pick_variant(rng, str(rng.choice(leaf_categories, p=cat_p)),
-                                         vis["home_size"], cat_all, cat_size, False)
+                                         vis, cat_variants, cat_arrays, False)
                 base_event(at=at, etype="email_click", page_type="email_landing",
                            customer_id=vis["true_id"],
                            product_id=promo["variant_id"] if promo else None,
@@ -238,8 +272,8 @@ def build_events(rng: np.random.Generator, customers_current: pd.DataFrame,
             for _ in range(n_views):
                 cat_id = str(rng.choice(leaf_categories, p=cat_p))
                 filter_size = vis["known"] and rng.random() < C.P_FILTER_TO_HOME_SIZE
-                var, used_size = _pick_variant(rng, cat_id, vis["home_size"],
-                                               cat_all, cat_size, filter_size)
+                var, used_size = _pick_variant(rng, cat_id, vis,
+                                               cat_variants, cat_arrays, filter_size)
                 if var is None:
                     continue
                 if rng.random() < 0.5:  # PLP (browse) view
@@ -258,7 +292,7 @@ def build_events(rng: np.random.Generator, customers_current: pd.DataFrame,
                 cat_id = str(rng.choice(leaf_categories, p=cat_p))
                 query = _build_query(rng, C.CATEGORY_NOUNS, cat_id, vis["home_size"], vis["brand"])
                 results_count = int(rng.integers(0, 120))
-                clicked_var, _ = _pick_variant(rng, cat_id, vis["home_size"], cat_all, cat_size, False)
+                clicked_var, _ = _pick_variant(rng, cat_id, vis, cat_variants, cat_arrays, False)
                 clicked = clicked_var is not None and results_count > 0 and rng.random() < 0.45
                 s_at = step()
                 base_event(at=s_at, etype="search", page_type="search",
@@ -277,20 +311,20 @@ def build_events(rng: np.random.Generator, customers_current: pd.DataFrame,
                     _true_customer_id=vis["true_id"],
                 ))
 
-            # Cart + conversion.
-            if viewed and rng.random() < C.P_ADD_TO_CART:
+            # Cart + conversion — scaled by the visitor's latent purchase propensity.
+            if viewed and rng.random() < min(1.0, C.P_ADD_TO_CART * vis["propensity"]):
                 basket = [viewed[int(rng.integers(len(viewed)))]]
                 base_event(at=step(), etype="add_to_cart", page_type="pdp",
                            product_id=basket[0]["variant_id"],
                            category_id=basket[0]["category_id"], brand_line=basket[0]["brand_line"],
                            quantity=1)
 
-                if rng.random() < C.P_PURCHASE_GIVEN_CART:
+                if rng.random() < min(1.0, C.P_PURCHASE_GIVEN_CART * vis["propensity"]):
                     # Cross-sell: add a commercially sensible complementary item.
                     seed_cat = basket[0]["category_id"]
                     if seed_cat in C.COMPLEMENTS and rng.random() < C.P_CROSS_SELL:
                         comp_cat = str(rng.choice(C.COMPLEMENTS[seed_cat]))
-                        comp, _ = _pick_variant(rng, comp_cat, vis["home_size"], cat_all, cat_size, False)
+                        comp, _ = _pick_variant(rng, comp_cat, vis, cat_variants, cat_arrays, False)
                         if comp is not None:
                             basket.append(comp)
 
