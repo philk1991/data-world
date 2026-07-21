@@ -283,3 +283,30 @@ tasks:
     dir: cube
     cmds:
       - npm run dev
+
+  # ── nao (analytics agent) ─────────────────────────────────────────────────────
+
+  nao:install:
+    desc: "Create nao's isolated venv and install nao-core. Kept separate from .venv on purpose — nao-core pulls protobuf 7, which conflicts with dbt/dagster in the shared venv."
+    cmds:
+      - python3.12 -m venv nao/.venv
+      - nao/.venv/bin/pip install --upgrade pip --quiet
+      - nao/.venv/bin/pip install nao-core
+
+  nao:sync:
+    desc: "Refresh nao's context from the DuckDB marts (writes nao/databases/**). Reads marts.nba_* — don't run alongside task cube:dev, task dbt:run, or the Dagster NBA ingest, which hold a read-write lock on spotify.duckdb."
+    dir: nao
+    cmds:
+      - .venv/bin/nao sync
+
+  nao:debug:
+    desc: "Validate nao config and test the DuckDB connection (LLM check runs only if a provider is set). Same DuckDB lock caveat as nao:sync."
+    dir: nao
+    cmds:
+      - .venv/bin/nao debug
+
+  nao:dev:
+    desc: "Start the nao chat UI (http://localhost:5005). Requires an LLM provider in nao_config.yaml — none set by default (see CLAUDE.md). Opens spotify.duckdb READ-ONLY; still don't run alongside a read-write holder (task cube:dev / task dbt:run / Dagster NBA ingest)."
+    dir: nao
+    cmds:
+      - .venv/bin/nao chat

@@ -25,6 +25,19 @@ All batch and bulk sources share a single DuckDB file (`data/spotify.duckdb`), e
 
 `cube/` runs a standalone Cube dev server (`task cube:dev`) that reads dbt marts directly (`marts.*` in `spotify.duckdb`) via `@cubejs-backend/duckdb-driver` — no ingestion or dbt step of its own. It is not a Dagster asset since there's nothing for it to materialize. Cube's DuckDB driver always opens the file read-write, so never run `task cube:dev` alongside `task dbt:run` or a Dagster job that writes `spotify.duckdb`. Use `/cube-develop` to scaffold a new cube on top of a mart.
 
+### Analytics agent (nao)
+
+`nao/` runs [nao](https://github.com/getnao/nao) (`nao-core`, Apache 2.0), a self-hosted agentic analytics agent: `nao sync` builds a file-based context (schema docs under `nao/databases/`, hand-authored context under `nao/docs/`, agent instructions in `nao/RULES.md`) and `task nao:dev` (`nao chat`) serves a chat UI that turns natural-language questions into SQL. It is **complementary to Cube, not competing**: Cube serves defined metrics to BI tools/dashboards, nao answers ad-hoc NL questions over the same marts. Like Cube, it materializes nothing and is **not wired into Dagster** — it only reads.
+
+Currently scoped to the eight NBA marts (`marts.nba_*` in `spotify.duckdb`), via the `include:` glob in `nao/nao_config.yaml`.
+
+Operational caveats specific to nao:
+
+- **Isolated venv.** nao lives in its own `nao/.venv` (created by `task nao:install`), **not** the shared `.venv`. `nao-core` pulls `protobuf` 7, which conflicts with `dbt-core`/`dbt-adapters`/`dagster`/`grpcio-status` (all pin protobuf <7); installing it into `.venv` breaks dbt and Dagster. All `nao:*` tasks invoke `nao/.venv/bin/nao` directly.
+- **DuckDB access is read-only.** nao's DuckDB connector opens `spotify.duckdb` with `read_only=True` (for file-backed paths), so — unlike Cube, which forces read-write — nao will not migrate or write the file. It is still a DuckDB reader, so it cannot open the file while another process holds a read-write lock, and while nao holds it a writer cannot get in. Same rule of thumb as Cube: don't run `task nao:sync`/`task nao:dev` alongside `task cube:dev`, `task dbt:run`, or the Dagster NBA ingest.
+- **LLM provider is deferred.** The current release (`nao-core` 0.0.34) supports only `provider: openai | anthropic` — there is no Ollama provider and no per-model config field, so a zero-cost local-LLM setup is not available yet. `llm:` is left unset in `nao_config.yaml`; `nao sync`/`nao debug` work without it, but `nao chat` needs a provider (add an `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` to `nao/.env` and set `llm:` — a one-line change). This release also has no `nao test` command (only `chat`/`debug`/`init`/`sync`).
+- Local chat sessions use an embedded SQLite store (no Postgres needed). Config in `nao/nao_config.yaml`, secrets/paths in `nao/.env` (see `nao/.env.example`). Validate a setup with `task nao:debug`.
+
 ### dbt conventions
 
 Models follow a two-layer structure: `staging/` (views, light cleaning) → `marts/` (tables, analysis-ready). Each data source gets its own subdirectory under both layers.

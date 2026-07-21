@@ -1,0 +1,18 @@
+# Local secrets and environment
+.env
+.nao-secret
+
+# Isolated Python venv for nao-core (kept out of the shared .venv because
+# nao-core pulls protobuf 7, which conflicts with dbt/dagster). Recreate with
+# `task nao:install`.
+.venv/
+
+# Auto-generated context from `nao sync` (rebuild any time from the warehouse).
+databases/
+repos/
+
+# Local chat session store (SQLite) if created in-project
+*.sqlite
+*.sqlite3
+
+__pycache__/

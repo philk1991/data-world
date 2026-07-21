@@ -1,0 +1,43 @@
+# nao project configuration — https://docs.getnao.io
+#
+# Scoped to the NBA mart layer only (marts.nba_*) so nao's context stays small
+# and focused. nao reads the same spotify.duckdb file as Cube, but opens it
+# READ-ONLY (see ibis.duckdb.connect(..., read_only=True) for file-backed DBs),
+# so it will not migrate or write the file. It is still a DuckDB reader, so it
+# cannot open the file while another process holds a read-write lock on it
+# (e.g. Cube's dev server, `task dbt:run`, or the Dagster NBA ingest job).
+project_name: nba
+
+databases:
+  - name: nba-duckdb
+    type: duckdb
+    # Absolute path, injected from nao/.env (same convention as DUCKDB_PATH /
+    # CUBEJS_DB_DUCKDB_DATABASE_PATH elsewhere in this repo). nao resolves
+    # ${{ env('...') }} at config-load time and reads .env from the project dir.
+    path: "${{ env('NAO_DUCKDB_PATH') }}"
+    # Accessors run during `nao sync` to build the context markdown per table.
+    accessors:
+      - columns      # column names + types
+      - preview      # a small sample of rows
+      - description  # table/column descriptions
+    # Glob patterns matched against "<schema>.<table>". Empty = everything;
+    # this keeps nao scoped to the eight NBA marts only.
+    include:
+      - "marts.nba_*"
+    exclude: []
+
+repos: []
+
+# LLM is intentionally left unset. The current nao release (nao-core 0.0.34)
+# only supports provider: openai | anthropic — there is no Ollama provider and
+# no per-model config field, so the plan's zero-cost local-Ollama path is not
+# available yet. Choose a provider before running `nao chat`:
+#
+#   llm:
+#     provider: anthropic          # or: openai
+#     api_key: "${{ env('ANTHROPIC_API_KEY') }}"
+#
+# See nao/.env.example and the "Analytics agent (nao)" section of CLAUDE.md.
+llm: null
+
+slack: null
