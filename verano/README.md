@@ -38,7 +38,7 @@ and **own DuckDB file** (`verano/data/verano.duckdb`), so it never contends with
 verano/
   data-generation/   # Layer 1 — writes bronze_*  (config.py is the "dial panel")
   dbt/               # Layers 2–3 — own dbt project (profile: verano)
-  ml/                # Layer 4 — six inspectable modules (writes ml_*)
+  ml/                # Layer 4 — six inspectable modules (writes ml.*)
   serving/           # Layer 5 — FastAPI, reads verano.duckdb READ-ONLY
   data/verano.duckdb
 ```
@@ -120,21 +120,28 @@ Every event also carries hidden `_true_customer_id` / `_true_session_id`
 
 ## Build status
 
-- [x] **Layer 1** — synthetic data → bronze (`task verano:gen:all` / `gen:profile`)
-- [x] **Layer 2** — silver dbt models (`task verano:dbt:build --select silver`): typed/conformed
-      views per bronze table, 30-min-gap sessionization (99.96% session purity vs
-      ground truth), and the Mirakl → canonical order reconciliation
-- [x] **Layer 3** — identity resolution (`task verano:dbt:build --select identity`,
-      score with `task verano:identity:eval`). `bridge_identity` (deterministic +
-      probabilistic tiers) + `identity_graph` (strict vs extended keys). Measured vs
-      ground truth: deterministic **100% precision**; `device_fingerprint` **62%**;
-      `shared_ip` **0%** (pure household-IP noise — the case for tiering). Strict key
-      100% precision / 82% recall; extended key 84% / 89% — the precision↔recall dial.
-- [x] **Layer 4** — gold marts (`task verano:dbt:build --select gold`): `dim_customer`
-      (Type-2 SCD, one current row/customer), `dim_product` (1,939 variants) + `dim_category`,
-      `fact_order`/`fact_order_line` (first-party + marketplace unioned), `fact_event`/`fact_search`
-      (identity-resolved), `gold_session_summary`, `fact_customer_engagement`, and `gold_customer_360`
-- [x] **Layer 5** — ML modules (`task verano:ml:all`), each writing an inspectable `ml.*` table:
+Numbered by the five conceptual layers above. Layers 2–3 (Storage + Transformation)
+share the dbt project, so their medallion tiers — silver, identity, gold — are listed
+together.
+
+- [x] **Layer 1 — Ingestion** — synthetic data → bronze (`task verano:gen:all` / `gen:profile`)
+- [x] **Layers 2–3 — Storage & Transformation (dbt)** — the medallion tiers built by
+      `task verano:dbt:build`:
+  - **silver** (`--select silver`): typed/conformed views per bronze table, 30-min-gap
+    sessionization (99.96% session purity vs ground truth), and the Mirakl → canonical
+    order reconciliation
+  - **identity** (`--select identity`, score with `task verano:identity:eval`):
+    `bridge_identity` (deterministic + probabilistic tiers) + `identity_graph` (strict
+    vs extended keys). Measured vs ground truth: deterministic **100% precision**;
+    `device_fingerprint` **62%**; `shared_ip` **0%** (pure household-IP noise — the case
+    for tiering). Strict key 100% precision / 82% recall; extended key 84% / 89% — the
+    precision↔recall dial.
+  - **gold** (`--select gold`): `dim_customer` (Type-2 SCD, one current row/customer),
+    `dim_product` (1,939 variants) + `dim_category`, `fact_order`/`fact_order_line`
+    (first-party + marketplace unioned), `fact_event`/`fact_search` (identity-resolved),
+    `gold_session_summary`, `fact_customer_engagement`, and `gold_customer_360`
+- [x] **Layer 4 — ML** — ML modules (`task verano:ml:all`), each writing an inspectable
+      `ml.*` table:
       1. **popularity/trending** (cold-start fallback) · 2. **co-purchase** (product-group grain,
       commercially sensible "also bought") · 3. **collaborative filtering** (item-based kNN on
       *browsing* signal — hit-rate@10 **0.17 > popularity 0.16**) · 4. **propensity** (temporal
@@ -143,9 +150,9 @@ Every event also carries hidden `_true_customer_id` / `_true_session_id`
       6. **ranking** (transparent weighted blend of all signals + availability + size expansion).
       Note: the generator carries per-customer latent taste + purchase propensity so CF and
       propensity have real signal to learn (see data-generation/config.py).
-- [x] **Layer 6** — FastAPI serving (`task verano:serve` → http://localhost:8000/docs), reads
+- [x] **Layer 5 — Serving** — FastAPI (`task verano:serve` → http://localhost:8000/docs), reads
       `ml.*` READ-ONLY: `POST /search/rerank` (query-time personalisation, size-deduped),
       `GET /website/recommendations/{customer_id}` (homepage ranking / PDP co-purchase, with
       popularity cold-start fallback), `GET /email/batch-export` (**consent-gated** — 36.8% of
       scored customers excluded for no marketing consent).
-- [ ] Stretch — Dagster asset graph
+- [ ] **Stretch** — Dagster asset graph
