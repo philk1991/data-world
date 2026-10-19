@@ -1,9 +1,9 @@
 import DuckDB from 'duckdb';
 import { resolve } from 'path';
 
-const DB_PATH = resolve(
-  process.env.DUCKDB_PATH ?? '/Users/philkillarney/dev-env/data-world/data/spotify.duckdb'
-);
+const DB_PATH = process.env.DUCKDB_PATH
+  ? resolve(process.env.DUCKDB_PATH)
+  : resolve(process.cwd(), '../../data/spotify.duckdb');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = new DuckDB.Database(DB_PATH, { access_mode: 'READ_ONLY' } as any);

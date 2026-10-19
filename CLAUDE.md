@@ -64,29 +64,6 @@ Each source typically has its own asset job spanning its `<source>_ingest` and `
 
 Each dashboard in `dashboards/` is a SvelteKit SSR app. Data is loaded in `+page.server.ts` — batch dashboards query DuckDB directly (read-only), streaming dashboards read the JSON sidecar via an API route.
 
-### Verano subproject (recommendation & personalisation)
-
-`verano/` is a **self-contained learning build** — an end-to-end recommendation/personalisation platform for a fictional UK fashion retailer, on synthetic data. It is deliberately separate from the multi-source platform above: its **own dbt project** (profile `verano`), its **own DuckDB file** (`verano/data/verano.duckdb`), and its **own Taskfile** (`verano/Taskfile.yml`, included into the root Taskfile under the `verano:` namespace — run everything as `task verano:*` from the repo root). It never touches `spotify.duckdb`, so it never contends with the main pipeline. It reuses the repo's SQL/dbt/yml conventions. See `verano/README.md` for the full design and build status.
-
-It is organised as a **medallion architecture** mapped onto repo conventions:
-
-| Verano layer | Repo-convention analogue | Written by | Materialisation |
-|---|---|---|---|
-| `bronze_*` schemas (raw landed) | `raw_*` sources | `data-generation/` Python generators | tables (deterministic full-replace per seeded run) |
-| `silver_*` schemas (cleaned/typed) | `staging` | dbt | views |
-| `identity` schema (bridge + graph) | `intermediate` | dbt | tables |
-| `gold` schema (dims, facts, 360s) | `marts` | dbt | tables |
-| `ml.*` tables | — | `ml/` Python modules | tables |
-
-Key points when working in `verano/`:
-
-- **Bronze is a dbt source, not a model.** The generators (`data-generation/`, driven by `config.py` — the "dial panel") own the `bronze_*` schemas; dbt begins at silver and reads bronze via `{{ source() }}`. So `task verano:gen:all` must run before `task verano:dbt:build`. `task verano:refresh` chains both.
-- **Layers.** `data-generation/` (Layer 1 → bronze) → `dbt/` (silver → identity → gold) → `ml/` (six inspectable modules: popularity, co-purchase, collaborative filtering, propensity, embeddings, ranking — each writes an `ml.*` table; run via `task verano:ml:*` or `ml:all`) → `serving/` (FastAPI, `task verano:serve` → http://localhost:8000/docs).
-- **The serving API reads `verano.duckdb` READ-ONLY.** Same DuckDB single-writer rule as the main file — don't run `task verano:serve` alongside a generator or dbt build.
-- **Identity resolution is the centrepiece.** `bronze_events` carries hidden `_true_customer_id` / `_true_session_id` (underscore-prefixed) as ground truth for scoring — resolution logic must **not** read them. Score with `task verano:identity:eval` (`eval/identity_eval.py`).
-- **verano's dbt has its own `generate_schema_name.sql`** overriding schema naming the same way the main project does (`+schema` used verbatim). `+schema` values are set per-layer in `verano/dbt/dbt_project.yml`.
-- **Not wired into Dagster** — the Dagster asset graph is a listed stretch goal. Everything runs via `task verano:*`.
-
 ## Environment
 
 Required in a `.env` file at the project root — check `.env.example` or `orchestration/dagster_data_world/constants.py` for the expected variable names. DuckDB path variables must be absolute paths.

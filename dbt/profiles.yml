@@ -18,6 +18,6 @@ elementary:
   outputs:
     dev:
       type: duckdb
-      path: /Users/philkillarney/dev-env/data-world/data/spotify.duckdb
+      path: ../data/spotify.duckdb
       schema: elementary
       threads: 4
