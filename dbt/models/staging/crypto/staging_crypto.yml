@@ -5,12 +5,6 @@ models:
     description: >
       Staged crypto trade ticks from Binance. One row per trade. Adds
       notional_value (price × quantity) and casts timestamps to TIMESTAMPTZ.
-    meta:
-      grain: one row per (symbol, trade_id)
-      purpose: Clean and type raw Binance trade ticks, adding notional_value
-        (price × quantity) and casting timestamps to TIMESTAMPTZ.
-      seasonality: Volume spikes during US market open (~9am EST) and EU market
-        open (~9am GMT). Weekend volume is significantly lower than weekdays.
     columns:
       - name: trade_id
         description: Binance trade identifier. Unique per symbol.
@@ -51,3 +45,8 @@ models:
         description: UTC timestamp of when the consumer wrote this row to DuckDB.
         tests:
           - not_null
+    config:
+      meta:
+        grain: one row per (symbol, trade_id)
+        purpose: Clean and type raw Binance trade ticks, adding notional_value (price × quantity) and casting timestamps to TIMESTAMPTZ.
+        seasonality: Volume spikes during US market open (~9am EST) and EU market open (~9am GMT). Weekend volume is significantly lower than weekdays.

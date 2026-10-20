@@ -5,10 +5,6 @@ models:
     description: >
       Staged Formula 1 meetings (grand prix weekends and testing events) from
       the OpenF1 API. One row per meeting.
-    meta:
-      grain: one row per meeting_key
-      purpose: Rename raw OpenF1 meeting columns and cast string timestamps to
-        TIMESTAMP, making meetings analysis-ready.
     columns:
       - name: meeting_key
         description: OpenF1 unique identifier for a meeting.
@@ -72,14 +68,14 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per meeting_key
+        purpose: Rename raw OpenF1 meeting columns and cast string timestamps to TIMESTAMP, making meetings analysis-ready.
   - name: stg_openf1__sessions
     description: >
       Staged Formula 1 sessions (Practice / Qualifying / Race / Sprint, etc.)
       from the OpenF1 API. One row per session.
-    meta:
-      grain: one row per session_key
-      purpose: Rename raw OpenF1 session columns and cast string timestamps
-        to TIMESTAMP, making sessions analysis-ready.
     columns:
       - name: session_key
         description: OpenF1 unique identifier for a session.
@@ -146,14 +142,14 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per session_key
+        purpose: Rename raw OpenF1 session columns and cast string timestamps to TIMESTAMP, making sessions analysis-ready.
   - name: stg_openf1__drivers
     description: >
       Staged driver roster per session from the OpenF1 API. One row per
       driver per session.
-    meta:
-      grain: one row per (session_key, driver_number)
-      purpose: Rename raw OpenF1 driver columns and cast ingested_at to
-        TIMESTAMP, making driver rosters analysis-ready.
     columns:
       - name: meeting_key
         description: Foreign key to the parent meeting.
@@ -202,14 +198,14 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per (session_key, driver_number)
+        purpose: Rename raw OpenF1 driver columns and cast ingested_at to TIMESTAMP, making driver rosters analysis-ready.
   - name: stg_openf1__laps
     description: >
       Staged per-lap timing data per driver per session from the OpenF1 API.
       One row per lap.
-    meta:
-      grain: one row per (session_key, driver_number, lap_number)
-      purpose: Rename raw OpenF1 lap columns, cast lap_start_at to TIMESTAMP,
-        and surface sector / speed telemetry.
     columns:
       - name: meeting_key
         description: Foreign key to the parent meeting.
@@ -252,14 +248,14 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per (session_key, driver_number, lap_number)
+        purpose: Rename raw OpenF1 lap columns, cast lap_start_at to TIMESTAMP, and surface sector / speed telemetry.
   - name: stg_openf1__pit
     description: >
       Staged pit stop events per driver per session from the OpenF1 API.
       One row per pit stop.
-    meta:
-      grain: one row per (session_key, driver_number, lap_number)
-      purpose: Rename raw OpenF1 pit columns and cast the event timestamp
-        to TIMESTAMP, splitting total pit time into stop and lane components.
     columns:
       - name: session_key
         description: Foreign key to the parent session.
@@ -292,14 +288,14 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per (session_key, driver_number, lap_number)
+        purpose: Rename raw OpenF1 pit columns and cast the event timestamp to TIMESTAMP, splitting total pit time into stop and lane components.
   - name: stg_openf1__stints
     description: >
       Staged tyre stints per driver per session from the OpenF1 API. One row
       per stint (a stint is a continuous run on one set of tyres).
-    meta:
-      grain: one row per (session_key, driver_number, stint_number)
-      purpose: Rename raw OpenF1 stint columns, normalising compound to a
-        clean VARCHAR and carrying stint bounds.
     columns:
       - name: meeting_key
         description: Foreign key to the parent meeting.
@@ -337,16 +333,14 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per (session_key, driver_number, stint_number)
+        purpose: Rename raw OpenF1 stint columns, normalising compound to a clean VARCHAR and carrying stint bounds.
   - name: stg_openf1__weather
     description: >
       Staged track and weather observations sampled through each session from
       the OpenF1 API. One row per observation.
-    meta:
-      grain: one row per observation (session_key, observed_at)
-      purpose: Rename raw OpenF1 weather columns and cast the observation
-        timestamp to TIMESTAMP.
-      seasonality: Sampled at variable cadence (roughly every minute) while
-        a session is live.
     columns:
       - name: session_key
         description: Foreign key to the parent session.
@@ -392,3 +386,8 @@ models:
         description: Timestamp when this record was ingested from the OpenF1 API.
         tests:
           - not_null
+    config:
+      meta:
+        grain: one row per observation (session_key, observed_at)
+        purpose: Rename raw OpenF1 weather columns and cast the observation timestamp to TIMESTAMP.
+        seasonality: Sampled at variable cadence (roughly every minute) while a session is live.

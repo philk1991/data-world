@@ -5,9 +5,6 @@ models:
     description: >
       One row per NBA game, 1946–present. Renames raw columns and derives
       home_team_won from the winning team id.
-    meta:
-      grain: one row per game_id
-      purpose: Clean and rename raw game records into a tidy game-level table.
     columns:
       - name: game_id
         description: Unique NBA game identifier.
@@ -64,13 +61,14 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per game_id
+        purpose: Clean and rename raw game records into a tidy game-level table.
   - name: stg_nba_player_statistics
     description: >
       Traditional player box scores, one row per player per game. Stat columns
       are null for players who did not play (see comment / starting_position).
-    meta:
-      grain: one row per (game_id, person_id)
-      purpose: Clean and rename raw traditional player box scores.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -103,11 +101,12 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per (game_id, person_id)
+        purpose: Clean and rename raw traditional player box scores.
   - name: stg_nba_team_statistics
     description: Traditional team box scores, one row per team per game.
-    meta:
-      grain: one row per (game_id, team_id)
-      purpose: Clean and rename raw traditional team box scores.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -140,11 +139,12 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per (game_id, team_id)
+        purpose: Clean and rename raw traditional team box scores.
   - name: stg_nba_players
     description: Player biographies, one row per player.
-    meta:
-      grain: one row per person_id
-      purpose: Clean and rename raw player bios; cast position/league flags to booleans.
     columns:
       - name: person_id
         description: Unique player identifier.
@@ -182,11 +182,12 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per person_id
+        purpose: Clean and rename raw player bios; cast position/league flags to booleans.
   - name: stg_nba_team_histories
     description: Franchise histories tracking relocations and name changes, one row per franchise era.
-    meta:
-      grain: one row per (team_id, season_founded)
-      purpose: Clean and rename raw franchise history records.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -219,15 +220,16 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per (team_id, season_founded)
+        purpose: Clean and rename raw franchise history records.
   - name: stg_nba_player_statistics_extended
     description: >
       Advanced player box scores (available for most games since ~1996), one row
       per player per game. All raw advanced metrics (ratings, shooting efficiency,
       usage, pace, team-share percentages) are renamed to snake_case and passed
       through; only key, dimension and headline columns are documented here.
-    meta:
-      grain: one row per (game_id, person_id)
-      purpose: Clean and rename raw advanced player box scores.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -262,15 +264,16 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per (game_id, person_id)
+        purpose: Clean and rename raw advanced player box scores.
   - name: stg_nba_team_statistics_extended
     description: >
       Advanced team box scores (available for most games since ~1996), one row per
       team per game. All raw advanced metrics (ratings, four-factor, pace) are
       renamed to snake_case and passed through; only key, dimension and headline
       columns are documented here.
-    meta:
-      grain: one row per (game_id, team_id)
-      purpose: Clean and rename raw advanced team box scores.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -306,3 +309,7 @@ models:
         description: Timestamp when the source row was ingested.
         tests:
           - not_null
+    config:
+      meta:
+        grain: one row per (game_id, team_id)
+        purpose: Clean and rename raw advanced team box scores.

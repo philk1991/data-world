@@ -8,16 +8,6 @@ models:
       rejection arrives or the 10-minute grace window elapses (then accepted).
       Incrementally rebuilt with a 20-minute look-back so the still-pending tail is
       re-evaluated and merged on payment_id each run.
-    meta:
-      grain: one row per payment_id
-      purpose: Resolve each payment's final outcome by joining requests to
-        late-arriving rejections under a 10-minute grace window, so downstream
-        aggregates can count accepted/rejected/pending payments.
-      business_question: Was this payment accepted, rejected, or still within its
-        rejection grace window?
-      seasonality: The most recent ~10 minutes always contain pending rows that have
-        not yet cleared their grace window — this is expected and a business known
-        caveat.
     columns:
       - name: payment_id
         description: Unique payment identifier.
@@ -41,7 +31,13 @@ models:
                 values: ["accepted", "rejected", "pending"]
       - name: status_evaluated_at
         description: UTC timestamp of when this row's status was last computed by dbt.
-        
+
+    config:
+      meta:
+        grain: one row per payment_id
+        purpose: Resolve each payment's final outcome by joining requests to late-arriving rejections under a 10-minute grace window, so downstream aggregates can count accepted/rejected/pending payments.
+        business_question: Was this payment accepted, rejected, or still within its rejection grace window?
+        seasonality: The most recent ~10 minutes always contain pending rows that have not yet cleared their grace window — this is expected and a business known caveat.
   - name: payments_by_minute
     description: >
       Per-bucket counts and USD amounts of accepted / rejected / pending payments.
@@ -49,15 +45,6 @@ models:
       time bucket (size set by the payments_bucket_minutes var — 1 or 5 minutes);
       incrementally rebuilt with a 20-minute look-back so recent buckets update as
       their payments settle.
-    meta:
-      grain: one row per request_bucket
-      purpose: Aggregate resolved payment statuses into per-bucket counts and dollar
-        sums per outcome, giving the dashboard a small time-series to chart without
-        scanning the per-payment table.
-      business_question: How many payments — and how many dollars — were accepted vs
-        rejected over time?
-      seasonality: The latest 1–2 buckets carry pending counts that resolve on
-        subsequent runs; treat the most recent buckets as provisional.
     columns:
       - name: request_bucket
         description: >
@@ -88,3 +75,9 @@ models:
         description: USD still pending in the bucket. Null if no pending payments.
       - name: refreshed_at
         description: UTC timestamp of when this bucket was last computed by dbt.
+    config:
+      meta:
+        grain: one row per request_bucket
+        purpose: Aggregate resolved payment statuses into per-bucket counts and dollar sums per outcome, giving the dashboard a small time-series to chart without scanning the per-payment table.
+        business_question: How many payments — and how many dollars — were accepted vs rejected over time?
+        seasonality: The latest 1–2 buckets carry pending counts that resolve on subsequent runs; treat the most recent buckets as provisional.

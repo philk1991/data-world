@@ -7,16 +7,6 @@ models:
       traditional box score lines, pivoted onto a home/away axis. Box score
       columns are null for older games where team statistics were not recorded.
       Ordered by game_date descending.
-    meta:
-      grain: one row per game_id
-      purpose: Join game metadata with home/away team box scores via conditional
-        aggregation to produce a single analysis-ready row per game.
-      business_question: How did each game play out — result, margin, and the
-        shooting, rebounding and ball-movement lines for each side?
-      relationships:
-        decomposes_into:
-          - "stg_nba_games: source of game metadata, scores and result"
-          - "stg_nba_team_statistics: source of per-team box scores, pivoted to home/away"
     columns:
       - name: game_id
         description: Unique NBA game identifier.
@@ -94,6 +84,15 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per game_id
+        purpose: Join game metadata with home/away team box scores via conditional aggregation to produce a single analysis-ready row per game.
+        business_question: How did each game play out — result, margin, and the shooting, rebounding and ball-movement lines for each side?
+        relationships:
+          decomposes_into:
+            - "stg_nba_games: source of game metadata, scores and result"
+            - "stg_nba_team_statistics: source of per-team box scores, pivoted to home/away"
   - name: nba_player_career_stats
     description: >
       One row per player aggregating their traditional box score totals,
@@ -101,16 +100,6 @@ models:
       in, enriched with player biography. Only games the player actually played
       (minutes_played is not null) are counted. Ordered by total_points
       descending. Career figures cover only games present in the dataset.
-    meta:
-      grain: one row per person_id
-      purpose: Aggregate per-game box scores up to a career-level row per player,
-        joined with bio for position, draft and height context.
-      business_question: Who are the most prolific scorers in the dataset, and
-        what do their career averages and shooting splits look like?
-      relationships:
-        decomposes_into:
-          - "stg_nba_player_statistics: source of all aggregated box score totals"
-          - "stg_nba_players: source of name, position flags, draft year and height"
     columns:
       - name: person_id
         description: Unique player identifier.
@@ -178,21 +167,21 @@ models:
       - name: career_free_throw_pct
         description: Career free throw percentage (made / attempted), 0-1.
 
+    config:
+      meta:
+        grain: one row per person_id
+        purpose: Aggregate per-game box scores up to a career-level row per player, joined with bio for position, draft and height context.
+        business_question: Who are the most prolific scorers in the dataset, and what do their career averages and shooting splits look like?
+        relationships:
+          decomposes_into:
+            - "stg_nba_player_statistics: source of all aggregated box score totals"
+            - "stg_nba_players: source of name, position flags, draft year and height"
   - name: nba_team_season_summary
     description: >
       One row per team per regular season with win/loss record, home/away wins
       and scoring averages. Season is derived from the game date (the NBA season
       spans Oct-Apr, so months before July belong to the prior start year).
       Restricted to Regular Season games. Ordered by season then win percentage.
-    meta:
-      grain: one row per (team_id, season_start_year)
-      purpose: Aggregate regular-season team box scores into a season-level
-        standings row per team, deriving the season from the game date.
-      business_question: How did each team perform in a given regular season —
-        record, home/away split and scoring margin?
-      relationships:
-        decomposes_into:
-          - "stg_nba_team_statistics: source of per-game team results and scores"
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -241,21 +230,20 @@ models:
       - name: point_margin_per_game
         description: Average scoring margin per game (points for minus against).
 
+    config:
+      meta:
+        grain: one row per (team_id, season_start_year)
+        purpose: Aggregate regular-season team box scores into a season-level standings row per team, deriving the season from the game date.
+        business_question: How did each team perform in a given regular season — record, home/away split and scoring margin?
+        relationships:
+          decomposes_into:
+            - "stg_nba_team_statistics: source of per-game team results and scores"
   - name: nba_team_dim
     description: >
       Conformed franchise dimension, one row per team_id carrying the team's
       current identity (city, name, abbreviation, league) with relocation and
       rename history rolled up from the franchise eras in stg_nba_team_histories.
       Intended as the join target that gives every team_id a readable label.
-    meta:
-      grain: one row per team_id
-      purpose: Resolve each team_id to its latest franchise identity and expose
-        relocation/rename history as a single dimension row.
-      business_question: What is this team called today, and has the franchise
-        relocated or been renamed over its history?
-      relationships:
-        decomposes_into:
-          - "stg_nba_team_histories: source of every franchise era; latest era kept via QUALIFY"
     columns:
       - name: team_id
         description: Franchise/team identifier. Unique per row.
@@ -299,6 +287,14 @@ models:
         tests:
           - not_null
 
+    config:
+      meta:
+        grain: one row per team_id
+        purpose: Resolve each team_id to its latest franchise identity and expose relocation/rename history as a single dimension row.
+        business_question: What is this team called today, and has the franchise relocated or been renamed over its history?
+        relationships:
+          decomposes_into:
+            - "stg_nba_team_histories: source of every franchise era; latest era kept via QUALIFY"
   - name: nba_team_advanced_profile
     description: >
       One row per team per regular season of advanced efficiency metrics
@@ -306,19 +302,6 @@ models:
       scores. Only seasons from ~1996 onward are present, since advanced metrics
       were not recorded earlier. Per-game metrics are summarised with a simple
       mean. Ordered by season then net rating descending.
-    meta:
-      grain: one row per (team_id, season_start_year)
-      purpose: Summarise per-game advanced team metrics into a season-level
-        efficiency profile that explains how a team achieved its record.
-      business_question: How efficient was each team in a given season — offence,
-        defence, pace and shot selection?
-      seasonality: Coverage starts ~1996; pace and three-point attempt rate trend
-        upward over time as the league's playing style has evolved.
-      relationships:
-        decomposes_into:
-          - "stg_nba_team_statistics_extended: source of all per-game advanced metrics"
-        correlates_with:
-          - "nba_team_season_summary: same grain; pairs win/loss record with the efficiency behind it"
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -367,26 +350,23 @@ models:
       - name: fast_break_points_share
         description: Average share of points scored on fast breaks, 0-1.
 
+    config:
+      meta:
+        grain: one row per (team_id, season_start_year)
+        purpose: Summarise per-game advanced team metrics into a season-level efficiency profile that explains how a team achieved its record.
+        business_question: How efficient was each team in a given season — offence, defence, pace and shot selection?
+        seasonality: Coverage starts ~1996; pace and three-point attempt rate trend upward over time as the league's playing style has evolved.
+        relationships:
+          decomposes_into:
+            - "stg_nba_team_statistics_extended: source of all per-game advanced metrics"
+          correlates_with:
+            - "nba_team_season_summary: same grain; pairs win/loss record with the efficiency behind it"
   - name: nba_player_advanced_career
     description: >
       One row per player summarising advanced career efficiency, enriched with
       bio. Sourced from the advanced player box scores (~1996 onward), so earlier
       careers are absent. Rate metrics are minutes-weighted so high-minute games
       count for more than cameos. Ordered by career triple-doubles then net rating.
-    meta:
-      grain: one row per person_id
-      purpose: Aggregate per-game advanced player metrics into a minutes-weighted
-        career efficiency line, with double/triple-double counts.
-      business_question: Which players have been the most efficient and impactful
-        of the advanced-stats era, and who racks up the most triple-doubles?
-      seasonality: Coverage starts ~1996; players whose careers ended before then
-        do not appear.
-      relationships:
-        decomposes_into:
-          - "stg_nba_player_statistics_extended: source of all per-game advanced metrics and dd/td flags"
-          - "stg_nba_players: source of name and position flags"
-        correlates_with:
-          - "nba_player_career_stats: same grain; pairs counting totals with efficiency"
     columns:
       - name: person_id
         description: Unique player identifier.
@@ -436,6 +416,18 @@ models:
       - name: player_impact_estimate
         description: Minutes-weighted PIE — share of game's statistical contribution, 0-1.
 
+    config:
+      meta:
+        grain: one row per person_id
+        purpose: Aggregate per-game advanced player metrics into a minutes-weighted career efficiency line, with double/triple-double counts.
+        business_question: Which players have been the most efficient and impactful of the advanced-stats era, and who racks up the most triple-doubles?
+        seasonality: Coverage starts ~1996; players whose careers ended before then do not appear.
+        relationships:
+          decomposes_into:
+            - "stg_nba_player_statistics_extended: source of all per-game advanced metrics and dd/td flags"
+            - "stg_nba_players: source of name and position flags"
+          correlates_with:
+            - "nba_player_career_stats: same grain; pairs counting totals with efficiency"
   - name: nba_player_season_stats
     description: >
       One row per player per season per game type (Regular Season, Playoffs,
@@ -446,19 +438,6 @@ models:
       actually played count. Splitting by game_type lets visualisations compare
       regular-season and playoff production. Ordered by season then total points
       descending.
-    meta:
-      grain: one row per (person_id, season_start_year, game_type)
-      purpose: Aggregate per-game box scores to a season-and-game-type line per
-        player, the season-grain counterpart to nba_player_career_stats.
-      business_question: How did each player perform in a given season, split by
-        regular season vs playoffs, and how do their numbers trend over time?
-      relationships:
-        decomposes_into:
-          - "stg_nba_player_statistics: source of all aggregated box score totals"
-          - "stg_nba_players: source of name and bio context"
-        correlates_with:
-          - "nba_player_career_stats: career rollup of these same season rows"
-          - "nba_team_dim: join on primary_team_id for the player's main team that season"
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -484,8 +463,7 @@ models:
         tests:
           - not_null
       - name: game_type
-        description: Type of game these totals cover (Regular Season, Playoffs,
-          etc.). Part of the natural key.
+        description: Type of game these totals cover (Regular Season, Playoffs, etc.). Part of the natural key.
         tests:
           - not_null
           - accepted_values:
@@ -501,8 +479,7 @@ models:
                   - "Emirates NBA Cup"
                   - "in-season-knockout"
       - name: primary_team_id
-        description: Team the player played the most games for that season. Null
-          for old seasons where team ids were not recorded.
+        description: Team the player played the most games for that season. Null for old seasons where team ids were not recorded.
       - name: games_played
         description: Distinct games of this type the player appeared in that season.
         tests:
@@ -534,6 +511,18 @@ models:
       - name: free_throw_pct
         description: Season free throw percentage (made / attempted), 0-1.
 
+    config:
+      meta:
+        grain: one row per (person_id, season_start_year, game_type)
+        purpose: Aggregate per-game box scores to a season-and-game-type line per player, the season-grain counterpart to nba_player_career_stats.
+        business_question: How did each player perform in a given season, split by regular season vs playoffs, and how do their numbers trend over time?
+        relationships:
+          decomposes_into:
+            - "stg_nba_player_statistics: source of all aggregated box score totals"
+            - "stg_nba_players: source of name and bio context"
+          correlates_with:
+            - "nba_player_career_stats: career rollup of these same season rows"
+            - "nba_team_dim: join on primary_team_id for the player's main team that season"
   - name: nba_team_head_to_head
     description: >
       All-time matchup record, one row per ordered (team_id, opponent_team_id)
@@ -541,17 +530,6 @@ models:
       perspective; the reverse matchup is a separate row. Restricted to
       competitive meetings (Regular Season and Playoffs). Ordered by games_played
       descending.
-    meta:
-      grain: one row per (team_id, opponent_team_id)
-      purpose: Aggregate every competitive meeting between two franchises into a
-        single all-time head-to-head record per team perspective.
-      business_question: What is a team's all-time record against a given
-        opponent, and how lopsided is the rivalry?
-      relationships:
-        decomposes_into:
-          - "stg_nba_team_statistics: source of every per-team, per-game result"
-        correlates_with:
-          - "nba_team_dim: join on team_id or opponent_team_id for readable names"
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -595,3 +573,13 @@ models:
         description: Date of the most recent meeting on record.
         tests:
           - not_null
+    config:
+      meta:
+        grain: one row per (team_id, opponent_team_id)
+        purpose: Aggregate every competitive meeting between two franchises into a single all-time head-to-head record per team perspective.
+        business_question: What is a team's all-time record against a given opponent, and how lopsided is the rivalry?
+        relationships:
+          decomposes_into:
+            - "stg_nba_team_statistics: source of every per-team, per-game result"
+          correlates_with:
+            - "nba_team_dim: join on team_id or opponent_team_id for readable names"
