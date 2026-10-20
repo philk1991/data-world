@@ -9,7 +9,10 @@ column types, which matters for columns that are sparse across the long history
 """
 import duckdb
 
+from lake import in_transaction
 
+
+@in_transaction
 def load_csv(conn: duckdb.DuckDBPyConnection, csv_path: str, table: str) -> None:
     """Replace raw_nba.<table> with the contents of csv_path, adding ingested_at."""
     conn.execute("CREATE SCHEMA IF NOT EXISTS raw_nba")

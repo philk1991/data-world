@@ -17,6 +17,8 @@ Note on album_release_date:
   full date in the dbt staging model (stg_top_tracks).
 """
 import duckdb
+
+from lake import in_transaction
 import spotipy
 from datetime import datetime, timezone
 
@@ -61,6 +63,7 @@ def fetch_top_tracks(client: spotipy.Spotify, time_range: str, limit: int = 50) 
     return tracks
 
 
+@in_transaction
 def load_top_tracks(conn: duckdb.DuckDBPyConnection, tracks: list[dict]) -> None:
     """Upsert top tracks into DuckDB.
 

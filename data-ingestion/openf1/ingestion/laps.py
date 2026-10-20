@@ -11,6 +11,8 @@ DuckDB table: raw_openf1_laps
   and finish-line speed-trap readings.
 """
 import duckdb
+
+from lake import in_transaction
 from datetime import datetime, timezone
 
 from ._client import fetch_json, _str_or_none, _int_or_none, _float_or_none, _bool_or_none
@@ -45,6 +47,7 @@ def fetch_laps(session_key: int) -> list[dict]:
     } for r in rows]
 
 
+@in_transaction
 def load_laps(conn: duckdb.DuckDBPyConnection, records: list[dict], session_key: int) -> None:
     conn.execute("CREATE SCHEMA IF NOT EXISTS raw_openf1")
     conn.execute("""

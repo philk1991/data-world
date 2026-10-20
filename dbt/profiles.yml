@@ -10,6 +10,13 @@ spotify:
       # The lake needs both extensions, which dbt v2's bundled DuckDB driver can't
       # load — install the driver once with `task dbt:driver`.
       extensions: [ducklake, postgres]
+      # Concurrent writers (ingest + dbt threads) make DuckLake commits race and retry.
+      # The default (10 retries, ~11s) gives up under load; this allows ~1 min.
+      # Keep in step with data-ingestion/lake.py.
+      settings:
+        ducklake_max_retry_count: 50
+        ducklake_retry_wait_ms: 50
+        ducklake_retry_backoff: 1.1
       attach:
         - path: ../data/crypto_raw.duckdb
           alias: crypto_raw

@@ -11,7 +11,8 @@ session already loaded is skipped, so the script can be re-run safely to resume
 after a partial run or to pick up newly completed sessions.
 
 Configuration (via .env at the project root or environment variables):
-  DUCKDB_PATH          — path to the DuckDB file (shared with other batch sources)
+  LAKE_CATALOG / LAKE_DATA_PATH — the DuckLake to write to (see lake.py; defaults
+                  work after `task lake:init`)
   OPENF1_START_YEAR    — first season to ingest (default 2024); the script ingests
                          every season from this year through the current calendar
                          year inclusive (2024 onwards)
@@ -25,8 +26,9 @@ Usage (run from data-ingestion/):
 import os
 from datetime import date
 from pathlib import Path
-import duckdb
 from dotenv import load_dotenv
+
+from lake import connect_lake, lake_settings
 
 from openf1.ingestion.meetings import fetch_meetings, load_meetings
 from openf1.ingestion.sessions import fetch_sessions, load_sessions
@@ -38,7 +40,6 @@ from openf1.ingestion.weather import fetch_weather, load_weather, get_loaded_ses
 
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 
-_DEFAULT_DB_PATH = str(Path(__file__).parent.parent / "data" / "spotify.duckdb")
 
 # Per-session entities, paired with their fetch/load/loaded-keys functions.
 PER_SESSION = [
@@ -51,17 +52,15 @@ PER_SESSION = [
 
 
 def main():
-    db_path = os.environ.get("DUCKDB_PATH", _DEFAULT_DB_PATH)
     start_year = int(os.environ.get("OPENF1_START_YEAR", "2024"))
     end_year = int(os.environ.get("OPENF1_END_YEAR", str(date.today().year)))
     limit = os.environ.get("OPENF1_SESSION_LIMIT")
     limit = int(limit) if limit else None
     years = list(range(start_year, end_year + 1))
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
-    print(f"Connecting to {db_path}")
+    print(f"Connecting to the lake ({lake_settings()[0]})")
     print(f"Seasons: {start_year}–{end_year}{f'  (session limit: {limit})' if limit else ''}\n")
-    conn = duckdb.connect(db_path)
+    conn = connect_lake()
 
     # 1. Meetings + sessions — full replace per season, looped across the range.
     for year in years:
@@ -93,7 +92,7 @@ def main():
             load(conn, fetch(sk), sk)
 
     conn.close()
-    print(f"\nDone. Data written to {db_path}")
+    print("\nDone. Data written to the lake")
 
 
 if __name__ == "__main__":

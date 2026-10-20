@@ -12,6 +12,8 @@ DuckDB table: raw_top_artists
   Rows are replaced per time_range on each run, so re-running is safe.
 """
 import duckdb
+
+from lake import in_transaction
 import spotipy
 from datetime import datetime, timezone
 
@@ -49,6 +51,7 @@ def fetch_top_artists(client: spotipy.Spotify, time_range: str, limit: int = 50)
     return artists
 
 
+@in_transaction
 def load_top_artists(conn: duckdb.DuckDBPyConnection, artists: list[dict]) -> None:
     """Upsert top artists into DuckDB.
 

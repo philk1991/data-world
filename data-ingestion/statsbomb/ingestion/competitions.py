@@ -9,6 +9,8 @@ DuckDB table: raw_sb_competitions
   Full replace on each run (small table, ~100 rows).
 """
 import duckdb
+
+from lake import in_transaction
 from datetime import datetime, timezone
 
 import statsbombpy.sb as sb
@@ -35,6 +37,7 @@ def fetch_competitions() -> list[dict]:
     return records
 
 
+@in_transaction
 def load_competitions(conn: duckdb.DuckDBPyConnection, competitions: list[dict]) -> None:
     """Replace all competition rows in DuckDB.
 

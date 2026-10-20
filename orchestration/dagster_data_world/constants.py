@@ -9,7 +9,6 @@ DATA_DIR = PROJECT_ROOT / "data"
 DATA_INGESTION_DIR = PROJECT_ROOT / "data-ingestion"
 SPOTIFY_CACHE_PATH = DATA_INGESTION_DIR / ".spotify_cache"
 
-DUCKDB_PATH = str(DATA_DIR / "spotify.duckdb")
 CRYPTO_DUCKDB_PATH = str(DATA_DIR / "crypto_raw.duckdb")
 
 # Make data-ingestion packages importable (spotify, statsbomb, crypto)

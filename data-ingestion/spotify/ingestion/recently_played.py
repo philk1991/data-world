@@ -1,4 +1,6 @@
 import duckdb
+
+from lake import in_transaction
 import spotipy
 from datetime import datetime, timezone
 
@@ -32,6 +34,7 @@ def fetch_recently_played(client: spotipy.Spotify, limit: int = 50) -> list[dict
     return plays
 
 
+@in_transaction
 def load_recently_played(conn: duckdb.DuckDBPyConnection, plays: list[dict]) -> None:
     conn.execute("CREATE SCHEMA IF NOT EXISTS raw_spotify")
     conn.execute("""

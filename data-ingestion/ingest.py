@@ -11,15 +11,16 @@ Configuration (via .env at the project root or environment variables):
   SPOTIFY_CLIENT_ID      — from your Spotify Developer app
   SPOTIFY_CLIENT_SECRET  — from your Spotify Developer app
   SPOTIFY_REDIRECT_URI   — defaults to http://127.0.0.1:8888/callback
-  DUCKDB_PATH            — path to the DuckDB file, defaults to ../data/spotify.duckdb
+  LAKE_CATALOG / LAKE_DATA_PATH — the DuckLake to write to (see lake.py; defaults
+                  work after `task lake:init`)
 
 Usage (run from data-ingestion/):
     python ingest.py
 """
-import os
 from pathlib import Path
-import duckdb
 from dotenv import load_dotenv
+
+from lake import connect_lake, lake_settings
 
 from spotify.auth import get_client
 from spotify.ingestion.top_artists import fetch_top_artists, load_top_artists
@@ -30,19 +31,14 @@ load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 
 TIME_RANGES = ["short_term", "medium_term", "long_term"]
 
-_DEFAULT_DB_PATH = str(Path(__file__).parent.parent / "data" / "spotify.duckdb")
-
 
 def main():
-    db_path = os.environ.get("DUCKDB_PATH", _DEFAULT_DB_PATH)
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-
     print("Authenticating with Spotify...")
     client = get_client()
     me = client.me()
     print(f"Logged in as: {me['display_name']} ({me['id']})\n")
 
-    conn = duckdb.connect(db_path)
+    conn = connect_lake()
 
     print("Fetching top artists...")
     for time_range in TIME_RANGES:
@@ -59,7 +55,7 @@ def main():
     load_recently_played(conn, plays)
 
     conn.close()
-    print(f"\nDone. Data written to {db_path}")
+    print("\nDone. Data written to the lake")
 
 
 if __name__ == "__main__":

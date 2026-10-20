@@ -3,10 +3,10 @@
 StatsBomb open data ingestion script.
 
 Fetches all available competitions, matches, events, and lineups from the
-StatsBomb open data set and loads them into DuckDB. No authentication is
+StatsBomb open data set and loads them into the lake. No authentication is
 required — StatsBomb open data is freely available.
 
-Data is written to the same DuckDB file as Spotify data. All StatsBomb tables
+Data is written to the shared DuckLake (see lake.py). All StatsBomb tables
 use the raw_sb_* prefix to avoid collisions.
 
 Ingestion is incremental for events and lineups: matches already loaded are
@@ -14,15 +14,16 @@ skipped so the script can be re-run safely after partial failures or to pick
 up newly published matches.
 
 Configuration (via .env at the project root):
-  DUCKDB_PATH — path to the DuckDB file (shared with Spotify ingest)
+  LAKE_CATALOG / LAKE_DATA_PATH — the DuckLake to write to (see lake.py; defaults
+                  work after `task lake:init`)
 
 Usage (run from data-ingestion/):
     python ingest_statsbomb.py
 """
-import os
 from pathlib import Path
-import duckdb
 from dotenv import load_dotenv
+
+from lake import connect_lake, lake_settings
 
 from statsbomb.ingestion.competitions import fetch_competitions, load_competitions
 from statsbomb.ingestion.matches import fetch_matches, load_matches
@@ -31,15 +32,10 @@ from statsbomb.ingestion.lineups import fetch_lineups, load_lineups, get_loaded_
 
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 
-_DEFAULT_DB_PATH = str(Path(__file__).parent.parent / "data" / "spotify.duckdb")
-
 
 def main():
-    db_path = os.environ.get("DUCKDB_PATH", _DEFAULT_DB_PATH)
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-
-    print(f"Connecting to {db_path}\n")
-    conn = duckdb.connect(db_path)
+    print(f"Connecting to the lake ({lake_settings()[0]})\n")
+    conn = connect_lake()
 
     # 1. Competitions — full replace each run
     print("Fetching competitions...")
@@ -85,7 +81,7 @@ def main():
 
     print(f"\n  {total - skipped} matches ingested, {skipped} skipped (already loaded)")
     conn.close()
-    print(f"\nDone. Data written to {db_path}")
+    print("\nDone. Data written to the lake")
 
 
 if __name__ == "__main__":

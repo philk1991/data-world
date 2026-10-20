@@ -17,6 +17,8 @@ Note: 'type' is a SQL reserved word — stored as 'event_type'.
 """
 import time
 import duckdb
+
+from lake import in_transaction
 import pandas as pd
 import requests
 from datetime import datetime, timezone
@@ -112,6 +114,7 @@ def fetch_events(match_id: int) -> list[dict]:
     return records
 
 
+@in_transaction
 def load_events(
     conn: duckdb.DuckDBPyConnection,
     events: list[dict],

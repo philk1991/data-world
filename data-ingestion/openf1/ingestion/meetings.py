@@ -10,6 +10,8 @@ DuckDB table: raw_openf1_meetings
   columns; links can be re-derived if ever needed.
 """
 import duckdb
+
+from lake import in_transaction
 from datetime import datetime, timezone
 
 from ._client import fetch_json, _str_or_none, _int_or_none, _bool_or_none
@@ -38,6 +40,7 @@ def fetch_meetings(year: int) -> list[dict]:
     } for r in rows]
 
 
+@in_transaction
 def load_meetings(conn: duckdb.DuckDBPyConnection, records: list[dict], year: int) -> None:
     """Replace the meeting rows for one season (delete that year, then insert).
 

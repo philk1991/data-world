@@ -20,7 +20,9 @@ Configuration (via .env at the project root or environment variables):
 
 Requires Postgres to be running: `brew services start postgresql@17`.
 """
+import functools
 import os
+from contextlib import contextmanager
 from pathlib import Path
 import duckdb
 
@@ -49,6 +51,13 @@ def connect_lake(read_only: bool = False) -> duckdb.DuckDBPyConnection:
     catalog, data_path = lake_settings()
     conn = duckdb.connect()
     conn.execute("INSTALL ducklake; LOAD ducklake; INSTALL postgres; LOAD postgres;")
+    # Concurrent writers make commits race; DuckLake retries a commit that loses. The
+    # default (10 retries, ~11s) gives up under load, so allow ~1 min. Kept in step
+    # with the settings in dbt/profiles.yml.
+    conn.execute(
+        "SET ducklake_max_retry_count = 50; SET ducklake_retry_wait_ms = 50; "
+        "SET ducklake_retry_backoff = 1.1;"
+    )
     options = f"DATA_PATH '{data_path}'" + (", READ_ONLY" if read_only else "")
     try:
         conn.execute(f"ATTACH 'ducklake:{catalog}' AS {LAKE_ALIAS} ({options})")
@@ -60,3 +69,31 @@ def connect_lake(read_only: bool = False) -> duckdb.DuckDBPyConnection:
         ) from e
     conn.execute(f"USE {LAKE_ALIAS}")
     return conn
+
+
+@contextmanager
+def transaction(conn: duckdb.DuckDBPyConnection):
+    """Run the block as a single commit, rolling back on error.
+
+    Every DuckLake commit is a Postgres transaction plus a new snapshot, so
+    autocommitted row-by-row writes (e.g. executemany) are slow, bloat the
+    catalog with snapshots, and starve concurrent writers such as dbt. Grouping
+    a load into one commit also makes its DELETE + INSERT atomic.
+    """
+    conn.begin()
+    try:
+        yield conn
+    except BaseException:
+        conn.rollback()
+        raise
+    else:
+        conn.commit()
+
+
+def in_transaction(load_fn):
+    """Decorator for loaders shaped `load_x(conn, ...)`: run the whole load as one commit."""
+    @functools.wraps(load_fn)
+    def wrapper(conn, *args, **kwargs):
+        with transaction(conn):
+            return load_fn(conn, *args, **kwargs)
+    return wrapper

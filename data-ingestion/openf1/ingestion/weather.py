@@ -8,6 +8,8 @@ DuckDB table: raw_openf1_weather
   Incremental per session_key.
 """
 import duckdb
+
+from lake import in_transaction
 from datetime import datetime, timezone
 
 from ._client import fetch_json, _str_or_none, _int_or_none, _float_or_none
@@ -39,6 +41,7 @@ def fetch_weather(session_key: int) -> list[dict]:
     } for r in rows]
 
 
+@in_transaction
 def load_weather(conn: duckdb.DuckDBPyConnection, records: list[dict], session_key: int) -> None:
     conn.execute("CREATE SCHEMA IF NOT EXISTS raw_openf1")
     conn.execute("""

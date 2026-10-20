@@ -9,6 +9,8 @@ DuckDB table: raw_openf1_sessions
   drive the per-session incremental entities (drivers, laps, pit, stints, weather).
 """
 import duckdb
+
+from lake import in_transaction
 from datetime import datetime, timezone
 
 from ._client import fetch_json, _str_or_none, _int_or_none, _bool_or_none
@@ -37,6 +39,7 @@ def fetch_sessions(year: int) -> list[dict]:
     } for r in rows]
 
 
+@in_transaction
 def load_sessions(conn: duckdb.DuckDBPyConnection, records: list[dict], year: int) -> None:
     """Replace the session rows for one season (delete that year, then insert).
 

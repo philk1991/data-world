@@ -13,6 +13,8 @@ strings. IDs for competition and season are taken from the function arguments
 since statsbombpy does not expose them as separate columns.
 """
 import duckdb
+
+from lake import in_transaction
 import pandas as pd
 from datetime import datetime, timezone
 
@@ -67,6 +69,7 @@ def fetch_matches(competition_id: int, season_id: int) -> list[dict]:
     return records
 
 
+@in_transaction
 def load_matches(
     conn: duckdb.DuckDBPyConnection,
     matches: list[dict],

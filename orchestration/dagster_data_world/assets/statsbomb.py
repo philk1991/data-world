@@ -1,7 +1,7 @@
 from dagster import AssetExecutionContext, MaterializeResult, asset
-from dagster_duckdb import DuckDBResource
 
 import dagster_data_world.constants  # noqa: F401 — adds data-ingestion/ to sys.path
+from dagster_data_world.resources.lake import LakeResource
 from statsbomb.ingestion.competitions import fetch_competitions, load_competitions
 from statsbomb.ingestion.matches import fetch_matches, load_matches
 from statsbomb.ingestion.events import (
@@ -19,10 +19,10 @@ from statsbomb.ingestion.lineups import (
 @asset(group_name="statsbomb_ingest", kinds={"python", "duckdb"})
 def raw_sb_competitions(
     context: AssetExecutionContext,
-    duckdb: DuckDBResource,
+    lake: LakeResource,
 ) -> MaterializeResult:
     competitions = fetch_competitions()
-    with duckdb.get_connection() as conn:
+    with lake.get_connection() as conn:
         load_competitions(conn, competitions)
     context.log.info(f"Loaded {len(competitions)} competitions")
     return MaterializeResult(metadata={"row_count": len(competitions)})
@@ -31,11 +31,11 @@ def raw_sb_competitions(
 @asset(group_name="statsbomb_ingest", kinds={"python", "duckdb"}, deps=[raw_sb_competitions])
 def raw_sb_matches(
     context: AssetExecutionContext,
-    duckdb: DuckDBResource,
+    lake: LakeResource,
 ) -> MaterializeResult:
     competitions = fetch_competitions()
     total = 0
-    with duckdb.get_connection() as conn:
+    with lake.get_connection() as conn:
         for comp in competitions:
             matches = fetch_matches(comp["competition_id"], comp["season_id"])
             load_matches(conn, matches, comp["competition_id"], comp["season_id"])
@@ -47,10 +47,10 @@ def raw_sb_matches(
 @asset(group_name="statsbomb_ingest", kinds={"python", "duckdb"}, deps=[raw_sb_matches])
 def raw_sb_events(
     context: AssetExecutionContext,
-    duckdb: DuckDBResource,
+    lake: LakeResource,
 ) -> MaterializeResult:
     new_rows = 0
-    with duckdb.get_connection() as conn:
+    with lake.get_connection() as conn:
         loaded_ids = get_loaded_event_ids(conn)
         all_match_ids = [
             row[0]
@@ -71,10 +71,10 @@ def raw_sb_events(
 @asset(group_name="statsbomb_ingest", kinds={"python", "duckdb"}, deps=[raw_sb_events])
 def raw_sb_lineups(
     context: AssetExecutionContext,
-    duckdb: DuckDBResource,
+    lake: LakeResource,
 ) -> MaterializeResult:
     new_rows = 0
-    with duckdb.get_connection() as conn:
+    with lake.get_connection() as conn:
         loaded_ids = get_loaded_lineup_ids(conn)
         all_match_ids = [
             row[0]

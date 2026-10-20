@@ -1,6 +1,5 @@
 from dagster import Definitions, EnvVar
 from dagster_dbt import DbtCliResource
-from dagster_duckdb import DuckDBResource
 
 from dagster_data_world.assets import (
     raw_spotify_top_artists,
@@ -14,7 +13,7 @@ from dagster_data_world.assets import (
     all_dbt_assets,
     dbt_project,
 )
-from dagster_data_world.resources import SpotifyClientResource
+from dagster_data_world.resources import LakeResource, SpotifyClientResource
 from dagster_data_world.jobs import (
     spotify_pipeline_job,
     statsbomb_pipeline_job,
@@ -27,7 +26,7 @@ from dagster_data_world.schedules import (
     nba_daily_schedule,
 )
 from dagster_data_world.sensors.crypto_sensor import crypto_new_data_sensor
-from dagster_data_world.constants import DUCKDB_PATH, DBT_PROJECT_DIR
+from dagster_data_world.constants import DBT_PROJECT_DIR
 
 defs = Definitions(
     assets=[
@@ -42,7 +41,7 @@ defs = Definitions(
         all_dbt_assets,
     ],
     resources={
-        "duckdb": DuckDBResource(database=DUCKDB_PATH),
+        "lake": LakeResource(),
         "spotify": SpotifyClientResource(
             client_id=EnvVar("SPOTIFY_CLIENT_ID"),
             client_secret=EnvVar("SPOTIFY_CLIENT_SECRET"),

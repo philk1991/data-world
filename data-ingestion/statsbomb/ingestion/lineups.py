@@ -11,6 +11,8 @@ DuckDB table: raw_sb_lineups
 """
 import time
 import duckdb
+
+from lake import in_transaction
 import pandas as pd
 import requests
 from datetime import datetime, timezone
@@ -70,6 +72,7 @@ def fetch_lineups(match_id: int) -> list[dict]:
     return records
 
 
+@in_transaction
 def load_lineups(
     conn: duckdb.DuckDBPyConnection,
     lineups: list[dict],
