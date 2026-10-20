@@ -165,6 +165,17 @@ tasks:
     cmds:
       - bash -c "source {{.VENV}} && cd data-ingestion && python -m payments.consumer"
 
+  # ── Setup ───────────────────────────────────────────────────────────────────
+
+  setup:streaming-dbs:
+    desc: "Create empty crypto_raw/payments_raw DuckDB files if missing (run once on a fresh clone). dbt's profile attaches both read-only on every run, and errors if they don't exist yet."
+    cmds:
+      - mkdir -p data
+      - bash -c "source {{.VENV}} && python -c \"import duckdb; [duckdb.connect(f).close() for f in ('data/crypto_raw.duckdb', 'data/payments_raw.duckdb')]\""
+    status:
+      - test -f data/crypto_raw.duckdb
+      - test -f data/payments_raw.duckdb
+
   # ── Schema Migration ────────────────────────────────────────────────────────
 
   migrate:schemas:

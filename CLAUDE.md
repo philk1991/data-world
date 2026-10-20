@@ -8,6 +8,8 @@ All commands run from the project root via [Task](https://taskfile.dev). Check `
 
 If invoking dbt directly rather than via Task, run from `dbt/` since `profiles.yml` lives there.
 
+On a fresh clone, run `task setup:streaming-dbs` before any dbt command: the dbt profile attaches `crypto_raw.duckdb` and `payments_raw.duckdb` read-only on every run, and dbt fails outright if they don't exist yet (normally they're created by the streaming consumers).
+
 ## Architecture
 
 ### Pattern

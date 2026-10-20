@@ -323,6 +323,7 @@ Copy `.env.example` to `.env` in the project root and fill in the values. It cov
 ### dbt packages and Elementary
 
 ```bash
+task setup:streaming-dbs   # create empty crypto/payments DuckDB files dbt attaches (fresh clone only)
 task dbt:deps              # install dbt packages (elementary + dbt_utils)
 task dbt:elementary:init   # create Elementary tracking tables (run once)
 ```
