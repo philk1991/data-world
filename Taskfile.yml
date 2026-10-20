@@ -3,6 +3,10 @@ version: '3'
 vars:
   VENV: .venv/bin/activate
   DBT_DIR: dbt
+  # Homebrew's postgresql@17 is keg-only (not on PATH). Override with PG_BIN=... for other installs.
+  PG_BIN:
+    sh: echo "${PG_BIN:-$(brew --prefix postgresql@17 2>/dev/null)/bin}"
+  LAKE_DB: data_world_lake
   CACHE: data-ingestion/.spotify_cache
 
 tasks:
@@ -175,6 +179,33 @@ tasks:
     status:
       - test -f data/crypto_raw.duckdb
       - test -f data/payments_raw.duckdb
+
+  # ── Lake (DuckLake: Postgres catalog + Parquet in data/lake/) ────────────────
+
+  lake:init:
+    desc: "Create the DuckLake catalog database (data_world_lake) and data/lake/, then attach once to initialise it. Idempotent. Requires Postgres running: brew services start postgresql@17"
+    cmds:
+      - mkdir -p data/lake
+      - bash -c '"{{.PG_BIN}}/pg_isready" -q || { echo "Postgres is not running — brew services start postgresql@17"; exit 1; }'
+      - bash -c '"{{.PG_BIN}}/psql" -d postgres -Atc "select 1 from pg_database where datname = '"'"'{{.LAKE_DB}}'"'"'" | grep -q 1 || "{{.PG_BIN}}/createdb" {{.LAKE_DB}}'
+      - bash -c "source {{.VENV}} && cd data-ingestion && python -c 'from lake import connect_lake; connect_lake().close(); print(\"Lake ready.\")'"
+
+  lake:status:
+    desc: Show Postgres status and the lake's schemas, table counts, snapshot count and on-disk size
+    silent: true
+    cmds:
+      - bash -c '"{{.PG_BIN}}/pg_isready"'
+      - |
+        bash -c "source {{.VENV}} && cd data-ingestion && python -c '
+        from lake import connect_lake, lake_settings
+        c = connect_lake(read_only=True)
+        print(\"catalog:  \", lake_settings()[0])
+        print(\"data path:\", lake_settings()[1])
+        for schema, n in c.execute(\"select table_schema, count(*) from information_schema.tables where table_catalog = current_database() group by 1 order by 1\").fetchall():
+            print(f\"  {schema:20s} {n} tables/views\")
+        print(\"snapshots:\", c.execute(\"select count(*) from lake.snapshots()\").fetchone()[0])
+        '"
+      - bash -c 'du -sh data/lake 2>/dev/null || echo "data/lake does not exist — run task lake:init"'
 
   # ── Schema Migration ────────────────────────────────────────────────────────
 
