@@ -214,6 +214,11 @@ tasks:
     cmds:
       - bash -c "source {{.VENV}} && python scripts/migrate_schemas.py"
 
+  lake:migrate:
+    desc: Copy every raw_* table from spotify.duckdb (opened read-only) into the lake and verify row counts. Safe to re-run.
+    cmds:
+      - bash -c "source {{.VENV}} && python scripts/migrate_to_lake.py"
+
   # ── Crypto Dashboard ─────────────────────────────────────────────────────────
 
   dashboard:crypto:install:
