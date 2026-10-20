@@ -4,7 +4,7 @@
 
 Every batch source, dbt, Cube, nao and the Spotify dashboard share one DuckDB file, `data/spotify.duckdb`. DuckDB allows one read-write process per file and it locks out *everyone else* — readers included — for as long as that process stays connected. In practice that has meant:
 
-- A long ingest blocks everything. The OpenF1 backfill held the lock for hours, so dbt, StatsBomb, Elementary and every reader had to wait.
+- A long ingest blocks everything. The OpenF1 backfill held the lock for hours, so dbt, StatsBomb and every reader had to wait.
 - Readers and writers can't overlap. Cube's driver always opens the file read-write, so `task cube:dev` can't run alongside `task dbt:run` or a Dagster ingest, and nao/the dashboard can't open the file while either is running.
 - Dagster ingest assets have to be chained with `deps` just to avoid contending for the lock.
 
@@ -25,7 +25,7 @@ Cost: **zero**. Postgres 17 runs locally via Homebrew (already installed, `brew 
 
 ```
                  ┌───────────────────────────── writers (concurrent) ─────────────────────────────┐
-  ingest scripts ─┤ Spotify · StatsBomb · NBA · OpenF1     dbt build (staging → marts, Elementary) ├─┐
+  ingest scripts ─┤ Spotify · StatsBomb · NBA · OpenF1     dbt-oss build (staging → marts)         ├─┐
   (+ Dagster)     └────────────────────────────────────────────────────────────────────────────────┘ │
                                                                                                      ▼
                   DuckLake "lake"  =  Postgres catalog (db: data_world_lake)  +  Parquet in data/lake/
@@ -40,13 +40,14 @@ Cost: **zero**. Postgres 17 runs locally via Homebrew (already installed, `brew 
 ## Key decisions
 
 1. **Postgres catalog, not SQLite.** SQLite fails with concurrent writers (see table above), which is the main problem we're solving.
-2. **Keep every schema name as it is** (`raw_*`, `staging_*`, `marts`, `elementary`) inside one lake called `lake`. Every connection runs `USE lake` after attaching, so dbt model SQL, ingest `load_*` functions and Cube `sql_table: marts.*` references don't change.
+2. **Keep every schema name as it is** (`raw_*`, `staging_*`, `marts`) inside one lake called `lake`. Every connection runs `USE lake` after attaching, so dbt model SQL, ingest `load_*` functions and Cube `sql_table: marts.*` references don't change.
 3. **One shared connection helper** (`data-ingestion/lake.py`: `connect_lake(read_only=False)`), used by ingest scripts, Dagster and one-off scripts, so the ATTACH string is defined in one place. It's driven by two env vars:
    - `LAKE_CATALOG=postgres:dbname=data_world_lake host=localhost` (Homebrew Postgres uses local trust auth, so there's no password)
    - `LAKE_DATA_PATH=/abs/path/to/data-world/data/lake/` (absolute, per the repo's path convention)
-4. **Pin DuckDB to 1.5.5 everywhere** — Python `duckdb==1.5.5`, and `@duckdb/node-api@1.5.5-r.5`, which is what Cube 1.8.8 bundles. This keeps the existing "Python and Node DuckDB versions must match" rule. (DuckLake 1.0 needs ≥ 1.5.2.)
+4. **Pin DuckDB to 1.5.5 everywhere** — Python `duckdb==1.5.5`, `@duckdb/node-api@1.5.5-r.5` (what Cube 1.8.8 bundles), and the `dbc`-installed DuckDB driver that dbt-oss uses (`dbc install "duckdb=1.5.5"`). This keeps the existing "Python and Node DuckDB versions must match" rule. (DuckLake 1.0 needs ≥ 1.5.2.)
 5. **Streaming stays out of scope for now.** The crypto and payments consumers keep their own DuckDB files, and the JSON sidecar and `setup:streaming-dbs` stay. Moving them into the lake is an optional Phase 7. Frequent tiny appends create many small Parquet files, so it's worth tackling separately once the maintenance job has proven itself.
 6. **Do the work on a branch** (`ducklake-migration`). Leave `spotify.duckdb` untouched until sign-off, because it's the rollback.
+7. **Upgrade to dbt v2 using `dbt-oss`** (2.0.8, the Apache-2.0 distribution, which matches what work runs), not the proprietary Fusion `dbt` package. **Remove Elementary**: it fails on dbt v2 + DuckDB. The payments sources' Elementary freshness checks become built-in source `freshness`, and the volume-anomaly checks are dropped. dbt v2 builds safely on 4 threads, so the dbt 1.x `threads: 1` workaround isn't needed.
 
 ## Phases
 
@@ -76,7 +77,7 @@ The core concurrency question is answered. These smaller compatibility questions
 - **All v2 items pass → Phase 3 targets dbt v2 directly** (`catalogs.yml`). The upgrade lands as part of the migration, and Phase 3 only happens once.
 - **Any v2 item fails → Phase 3 stays on dbt 1.x** (`profiles.yml` attach, already proven). The dbt v2 upgrade becomes a separate follow-up project, and the failing item is written down as what has to change first.
 
-#### Phase 0 results (20 Oct 2026) — **passed; Phase 3 targets dbt 1.x**
+#### Phase 0 results (20 Oct 2026) — **passed; Phase 3 targets dbt-oss v2 with Elementary removed** (decision revised after the dbt 1.x results below; see the dbt-oss row)
 
 Tested in scratch against a Postgres-catalog lake holding a full copy of the real raw data (17 tables, row counts verified), with the DuckDB file copy as the baseline. The baseline is 339 pass / 5 warn / 7 errors, and all the errors are StatsBomb having no data.
 
@@ -90,11 +91,13 @@ Tested in scratch against a Postgres-catalog lake holding a full copy of the rea
 | nao 0.3.25 | ✅ `type: ducklake` + `catalog: {type: postgres, …, password: ""}` connects; `nao sync` wrote all 8 NBA marts. Two config changes are needed: **`include` must be lake-qualified (`lake.marts.nba_*`)**, and `accessors` is renamed `templates` (the `description` template is gone). nao's venv resolved DuckDB **1.5.6**, so pin `duckdb==1.5.5` there too. `nao test` now exists. |
 | Maintenance | ✅ `ducklake_merge_adjacent_files`, `ducklake_rewrite_data_files`, `ducklake_flush_inlined_data`, `ducklake_expire_snapshots(older_than => …)`, `ducklake_cleanup_old_files(cleanup_all => true)` — expiring 1,036 snapshots + cleanup took the lake 146→134 MB, data intact |
 | DuckDB 1.5.5 ↔ 1.4.4 file compatibility | ✅ a file written by 1.5.5 (storage `v1.0.0+`) is still readable by Python and Node 1.4.4, so `.venv` can be upgraded in Phase 1 before the readers move in Phase 5 |
-| **dbt v2** (2.0.9 + `dbc` DuckDB driver 1.5.5) | ❌ **for now.** `dbt-autofix` changes are mechanical (meta → `config.meta`, test `arguments`, drop `target-path`); parse passes; `catalogs.yml` with a Postgres `metadata_path` + folder-level `+catalog_name` works; the lake becomes the session default; **4-thread builds don't corrupt the catalog**. **Blocker: Elementary's artifact models fail on dbt v2 + DuckDB** (0.23.1 and 0.26.1), and they fail **on a plain DuckDB file too**, so it's not DuckLake-specific. The dbt v2 upgrade becomes a follow-up, gated on Elementary support (or dropping Elementary). |
+| **dbt v2** (2.0.9 + `dbc` DuckDB driver 1.5.5) | ❌ **for now.** `dbt-autofix` changes are mechanical (meta → `config.meta`, test `arguments`, drop `target-path`); parse passes; `catalogs.yml` with a Postgres `metadata_path` + folder-level `+catalog_name` works; the lake becomes the session default; **4-thread builds don't corrupt the catalog**. **Blocker: Elementary's artifact models fail on dbt v2 + DuckDB** (0.23.1 and 0.26.1), and they fail **on a plain DuckDB file too**, so it's not DuckLake-specific. Superseded: we're dropping Elementary and using dbt-oss (next rows). |
+| **dbt-oss 2.0.8** (Apache-2.0) + `dbc` DuckDB 1.5.5, Elementary removed | ✅ deps/parse; `catalogs.yml` DuckLake with a Postgres `metadata_path` works; it uses the `dbc` driver (DuckDB 1.5.5, `ducklake` + `postgres` loaded). **Full build on 4 threads, 3 runs: 303 pass / 5 warn / 7 err (all StatsBomb) / 81 skip — exactly the dbt 1.x baseline minus the 36 Elementary nodes (339 → 303), with no catalog corruption.** 4-thread builds with a concurrent ingest (139 commits): 0 failures. Incremental, `source freshness` and `docs generate` work. **One difference from Fusion:** unit tests reject `TIMESTAMPTZ` fixture columns (dbt-oss has no static analysis, so it takes types from the driver, which reports TIMESTAMPTZ as a struct). Fix: `format: sql` fixtures with explicit `::timestamptz` casts — the `payment_status` unit test then passes, and the model is unchanged. |
+| **Dagster with the dbt-oss binary** | ✅ `dagster-dbt` 0.29.26 installs **without** dbt-core, so dbt-oss provides the only `dbt` command. dbt-oss writes a standard v12 manifest (395 nodes). Definitions validate unchanged; the asset graph matches today's (same `<source>_dbt` groups, sources mapped to their ingest assets, 0 Elementary nodes). Through `DbtCliResource`: `crypto_dbt` job → RUN_SUCCESS (3 assets incl. incremental `ohlcv_1h`); `group:nba_dbt` → RUN_SUCCESS, 15 materializations + 100 asset checks. The `select="package:spotify"` filter in `dbt_assets.py` can stay (harmless) or be simplified once Elementary is gone. |
 
 ### Phase 1 — Foundation
 
-- `requirements.txt`: `duckdb==1.5.5`, dbt-duckdb version from Phase 0.
+- `requirements.txt`: `duckdb==1.5.5`, dbt-duckdb 1.11.0 (interim — Phase 3 replaces dbt-core/dbt-duckdb with dbt-oss).
 - `data-ingestion/lake.py`: `connect_lake(read_only=False)` → `duckdb.connect()` → `INSTALL/LOAD ducklake, postgres` → `ATTACH 'ducklake:{LAKE_CATALOG}' AS lake (DATA_PATH '{LAKE_DATA_PATH}'[, READ_ONLY])` → `USE lake`.
 - Taskfile `lake:init`: idempotent — `createdb data_world_lake` if missing, `mkdir -p data/lake`, attach once to initialise the lake. Add a `lake:status` task that runs `pg_isready`, lists the lake's schemas and shows snapshot count.
 - `.env.example`: `LAKE_CATALOG`, `LAKE_DATA_PATH`. Add `data/lake/` to `.gitignore` (it's already covered by `/data/`, but make it explicit).
@@ -110,19 +113,23 @@ Tested in scratch against a Postgres-catalog lake holding a full copy of the rea
 
 ### Phase 3 — Point dbt at the lake
 
-Follow whichever dbt target Phase 0 chose:
+Target: **dbt-oss 2.0.8 with Elementary removed** (decision 7). Each item was proven in Phase 0:
 
-- **dbt 1.x:** `dbt/profiles.yml` (`spotify` + `elementary` profiles) attaches the lake (`ducklake:` + `is_ducklake: true`), and keeps the read-only `crypto_raw`/`payments_raw` attaches.
-- **dbt v2:** apply the `dbt-autofix` changes from Phase 0. Add `dbt/catalogs.yml` with the Postgres-catalog lake, `use_catalogs_v2` and folder-level `+catalog_name` in `dbt_project.yml`. Swap `dbt-core`/`dbt-duckdb` in `requirements.txt` for the v2 install, and document the `dbc` driver install in the README and Taskfile. The streaming attaches move to whatever v2 supports for read-only secondary databases.
+- **Install:** in `requirements.txt`, replace `dbt-core`/`dbt-duckdb`/`elementary-data` with `dbt-oss==2.0.8` and `dbc` (both install a `dbt` command, so they can't coexist). Add a `task dbt:driver` (`dbc install "duckdb=1.5.5"`) and add it to the README setup steps.
+- **`dbt-autofix deprecations`:** commit its mechanical changes (`meta` → `config.meta`, test `arguments`, drop `target-path`, `require_generic_test_arguments_property` flag).
+- **Lake:** add `dbt/catalogs.yml` (`type: ducklake`, `metadata_path: postgres:dbname=data_world_lake host=localhost`, `data_path` from `LAKE_DATA_PATH`), the `use_catalogs_v2` flag and a folder-level `+catalog_name: lake` in `dbt_project.yml`. `profiles.yml` becomes `path: ":memory:"`, `extensions: [ducklake, postgres]`, `threads: 4`, and keeps the read-only `crypto_raw`/`payments_raw` attaches.
+- **Remove Elementary:** `packages.yml`, the `elementary` profile, both `elementary` blocks in `dbt_project.yml`, the `dbt:elementary:init`/`edr:report` tasks, and `package-lock.yml` (regenerated by `dbt deps`). The payments sources' anomaly tests become `config: {loaded_at_field: consumed_at, freshness: {warn_after: {count: 1, period: hour}}}`.
+- **Unit test:** convert the `payment_status` fixtures to `format: sql` with `::timestamptz` casts.
+- **Check Taskfile dbt tasks against dbt-oss:** e.g. `dbt docs serve` → `dbt docs generate` + its v2 equivalent; `--profiles-dir` usage.
 
-Then, either way: `task dbt:build` (full project) → `task dbt:elementary:init`.
+Then `task dbt:deps` → `task dbt:build` (full project).
 
-**Gate:** `dbt build` gives the same pass/warn/fail counts as on `spotify.duckdb` (today: Spotify 64 pass; NBA 112 pass + 5 expected warns; OpenF1 3 known stint failures). Mart row counts match the old file.
+**Gate:** `dbt build` matches the dbt 1.x baseline minus the Elementary nodes (Phase 0: 303 pass / 5 warn / 7 err (StatsBomb, no data) / 81 skip with sample streaming data). Mart row counts match the old file, and `dbt source freshness` runs.
 
 ### Phase 4 — Point the writers at the lake
 
 - The four batch scripts (`ingest.py`, `ingest_statsbomb.py`, `ingest_nba.py`, `ingest_openf1.py`): replace `duckdb.connect(db_path)` with `connect_lake()`. The `load_*`/`fetch_*` modules don't change, thanks to `USE lake`.
-- Dagster: add a small `LakeResource` (`ConfigurableResource` wrapping `connect_lake`) to replace `DuckDBResource(database=DUCKDB_PATH)` in `__init__.py` and the `spotify`/`statsbomb`/`nba` assets. Update `constants.py`. Keep the NBA `deps` chain for now (it's harmless) and revisit once concurrency is proven.
+- Dagster: add a small `LakeResource` (`ConfigurableResource` wrapping `connect_lake`) to replace `DuckDBResource(database=DUCKDB_PATH)` in `__init__.py` and the `spotify`/`statsbomb`/`nba` assets. Update `constants.py`. `DbtCliResource` runs the dbt-oss binary (per the Phase 0 Dagster check). Keep the NBA `deps` chain for now (it's harmless) and revisit once concurrency is proven.
 
 **Gate:** each `task ingest:*` runs. Most importantly, **run the concurrency check for real:** `task ingest:openf1` and `task dbt:build` at the same time, while `task cube:dev` and the dashboard are running. All must succeed.
 
@@ -138,7 +145,7 @@ Then, either way: `task dbt:build` (full project) → `task dbt:elementary:init`
 ### Phase 6 — Operations and docs
 
 - **Maintenance:** a `task lake:maintain` task that runs the Phase 0 compaction/snapshot-expiry/cleanup calls, plus a weekly Dagster schedule for it.
-- **CLAUDE.md:** rewrite the "DuckDB constraints" and "Lock contention" sections (the single-writer rule now only applies to the streaming files), update the Cube and nao sections, and add a short "Lake" section (catalog, data path, `USE lake`, Postgres must be running). Also update the README setup steps (`brew services start postgresql@17`, `task lake:init`) and the root and `cube/` `.env.example` files.
+- **CLAUDE.md:** remove the Elementary paragraph and update the dbt section for dbt-oss (`catalogs.yml`, `dbc` driver); rewrite the "DuckDB constraints" and "Lock contention" sections (the single-writer rule now only applies to the streaming files), update the Cube and nao sections, and add a short "Lake" section (catalog, data path, `USE lake`, Postgres must be running). Also update the README setup steps (`brew services start postgresql@17`, `task lake:init`, `task dbt:driver`) and remove its Elementary sections, and the root and `cube/` `.env.example` files.
 - **Retire the old file:** after a week of normal use, delete `spotify.duckdb`, `DUCKDB_PATH`, and `scripts/migrate_schemas.py`, which only ever migrated the old file.
 
 **Gate:** a fresh clone can follow the README to a working setup. Do this as an end-to-end check in a scratch clone.
@@ -156,10 +163,10 @@ Everything happens on the `ducklake-migration` branch, and `spotify.duckdb` is o
 - **Postgres becomes a required service.** If it isn't running, every component fails. Mitigations: a clear error in `connect_lake()` ("is Postgres running? `brew services start postgresql@17`") and `pg_isready` in `lake:status`.
 - **Upgrading the DuckDB 1.4 → 1.5 libraries** could change behaviour. The Phase 3 gate (same dbt results, same row counts) is the check.
 - **Upgrading Cube 1.6 → 1.8** may change config defaults or Playground behaviour. It's isolated to `cube/`, so it can be rolled back on its own.
-- **Elementary or incremental models may misbehave on DuckLake.** Phase 0 checks this before anything is committed.
-- **dbt v2 is new (GA Sept 2026).** The DuckLake/Postgres-catalog combination isn't documented with an example, and v2 needs a separately installed (`dbc`) DuckDB driver for extensions, which adds a fourth DuckDB copy to keep in step with the Python, Node and Cube versions. Phase 0's decision gate means we only commit to v2 once it has been seen working end to end. Otherwise we fall back to the proven 1.x path.
+- **dbt v2 is new (GA Sept 2026), and dbt-oss lacks Fusion's static analysis.** Proven end to end in Phase 0, but expect rough edges like the `TIMESTAMPTZ` unit-test fixtures. It also needs a separately installed (`dbc`) DuckDB driver, a fourth DuckDB copy to keep in step with Python, Node and Cube.
+- **Losing Elementary** means no stored test-result history, anomaly detection or HTML report. Run history remains in the Dagster UI, and source freshness covers the payments feed.
 - **Small-file growth** from OpenF1's per-session writes. The Phase 6 maintenance job handles it, and data inlining absorbs tiny writes in the meantime.
 
 ## Not in scope
 
-Moving streaming into the lake (Phase 7), adding an LLM provider to nao, cloud or object storage, and Verano (already removed). The dbt v2 upgrade is in scope only if Phase 0's v2 track passes; otherwise it becomes a follow-up project.
+Moving streaming into the lake (Phase 7), adding an LLM provider to nao, cloud or object storage, and Verano (already removed). The dbt v2 upgrade (dbt-oss) and Elementary removal are in scope as part of Phase 3.
