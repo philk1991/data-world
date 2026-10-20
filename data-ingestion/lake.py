@@ -34,9 +34,9 @@ _DEFAULT_DATA_PATH = str(_PROJECT_ROOT / "data" / "lake") + "/"
 def lake_settings() -> tuple[str, str]:
     """Return (catalog, data_path) from the environment, falling back to defaults."""
     catalog = os.environ.get("LAKE_CATALOG", _DEFAULT_CATALOG)
-    data_path = os.environ.get("LAKE_DATA_PATH", _DEFAULT_DATA_PATH)
-    if not data_path.endswith("/"):
-        data_path += "/"
+    # DuckLake records the data path when the catalog is created and rejects any
+    # other spelling of it (e.g. a relative or `..` path), so always normalise.
+    data_path = os.path.normpath(os.path.abspath(os.environ.get("LAKE_DATA_PATH", _DEFAULT_DATA_PATH))) + "/"
     return catalog, data_path
 
 

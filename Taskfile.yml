@@ -1,5 +1,14 @@
 version: '3'
 
+# Load the root .env so LAKE_* (and other) overrides reach every task, including dbt.
+dotenv: ['.env']
+
+env:
+  # Absolute lake data path for dbt's catalogs.yml. DuckLake records the absolute path when
+  # the catalog is created and rejects any other spelling. Same default as data-ingestion/lake.py.
+  LAKE_DATA_PATH:
+    sh: echo "${LAKE_DATA_PATH:-{{.ROOT_DIR}}/data/lake/}"
+
 vars:
   VENV: .venv/bin/activate
   DBT_DIR: dbt
@@ -42,19 +51,19 @@ tasks:
       - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt build"
 
   dbt:deps:
-    desc: Install dbt packages (including elementary)
+    desc: Install dbt packages (dbt_utils)
     cmds:
       - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt deps"
 
-  dbt:elementary:init:
-    desc: Materialise Elementary tracking tables in DuckDB (run once after dbt deps)
+  dbt:driver:
+    desc: "Install the DuckDB ADBC driver dbt-oss uses (run once per machine). dbt v2's bundled driver can't load extensions, and the lake needs ducklake + postgres. Keep the version in step with duckdb in requirements.txt."
     cmds:
-      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt run --select elementary"
+      - bash -c "source {{.VENV}} && dbc install 'duckdb=1.5.5'"
 
-  edr:report:
-    desc: Generate and open the Elementary observability report
+  dbt:freshness:
+    desc: Check source freshness (payments feed — replaces the old Elementary freshness anomaly tests)
     cmds:
-      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && edr report --profiles-dir . --project-dir . --open-browser true"
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt source freshness"
 
   dbt:docs:
     desc: Generate and serve dbt docs in the browser

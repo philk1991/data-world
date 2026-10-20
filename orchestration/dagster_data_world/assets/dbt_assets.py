@@ -53,7 +53,7 @@ class _DataWorldDbtTranslator(DagsterDbtTranslator):
 @dbt_assets(
     manifest=dbt_project.manifest_path,
     project=dbt_project,
-    select="package:spotify",  # all user models; excludes the elementary package
+    select="package:spotify",  # all user models; excludes installed packages (dbt_utils)
     dagster_dbt_translator=_DataWorldDbtTranslator(),
 )
 def all_dbt_assets(context, dbt: DbtCliResource):

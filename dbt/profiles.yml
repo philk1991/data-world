@@ -3,8 +3,13 @@ spotify:
   outputs:
     dev:
       type: duckdb
-      path: ../data/spotify.duckdb
+      # In-memory session; models and sources live in the DuckLake declared in
+      # catalogs.yml (attached as `lake` and used as the default database).
+      path: ":memory:"
       threads: 4
+      # The lake needs both extensions, which dbt v2's bundled DuckDB driver can't
+      # load — install the driver once with `task dbt:driver`.
+      extensions: [ducklake, postgres]
       attach:
         - path: ../data/crypto_raw.duckdb
           alias: crypto_raw
@@ -12,12 +17,3 @@ spotify:
         - path: ../data/payments_raw.duckdb
           alias: payments_raw
           read_only: true
-
-elementary:
-  target: dev
-  outputs:
-    dev:
-      type: duckdb
-      path: ../data/spotify.duckdb
-      schema: elementary
-      threads: 4

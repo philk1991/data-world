@@ -10,14 +10,14 @@ test-paths: ["tests"]
 seed-paths: ["seeds"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
-
-target-path: "target"
 clean-targets:
   - "target"
   - "dbt_packages"
 
 models:
   spotify:
+    # Every model is built in the DuckLake (see catalogs.yml).
+    +catalog_name: lake
     staging:
       spotify:
         +materialized: view
@@ -53,13 +53,11 @@ models:
       nba:
         +materialized: table
         +schema: marts
-  elementary:
-    +schema: elementary
-    +materialized: table
 
 vars:
   # Bucket size (minutes) for payments_by_minute. 1 = finest/realtime, 5 = coarser
   # + faster dashboard. Run payments_by_minute with --full-refresh after changing.
   payments_bucket_minutes: 1
-  elementary:
-    database_name: "spotify"
+flags:
+  require_generic_test_arguments_property: true
+  use_catalogs_v2: true

@@ -1,10 +1,10 @@
 spotipy==2.24.0
 duckdb==1.5.5
 python-dotenv==1.0.1
-dbt-duckdb==1.11.0
+dbt-oss==2.0.8
+dbc==0.3.1
 statsbombpy
 kagglehub
-elementary-data[duckdb]==0.23.*
 dagster
 dagster-webserver
 dagster-dbt

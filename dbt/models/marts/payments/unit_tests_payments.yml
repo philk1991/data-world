@@ -8,6 +8,9 @@ unit_tests:
       evaluation time (12:00:00 UTC) with a 10-minute grace window. Covers: a
       rejection wins regardless of timing, the grace window elapsing to accepted,
       the exact >= boundary, and a still-pending payment inside its window.
+    # Fixtures use `format: sql` with explicit ::timestamptz casts. dbt-oss has no
+    # static analysis, so dict fixtures take column types from the DuckDB driver,
+    # which reports TIMESTAMPTZ as a struct, and unit tests reject struct columns.
     overrides:
       macros:
         # test the full (non-incremental) path so there is no {{ this }} self-reference
@@ -15,28 +18,32 @@ unit_tests:
         payments_now: "'2026-01-01 12:00:00+00'::timestamptz"
     given:
       - input: ref('stg_payments__requests')
-        rows:
-          # rejected long ago
-          - { payment_id: "p_rejected_old",      amount: 10.00, requested_at: "2026-01-01 11:00:00+00" }
-          # no rejection, well past the 10-min grace -> accepted
-          - { payment_id: "p_accepted_old",      amount: 20.00, requested_at: "2026-01-01 11:00:00+00" }
-          # no rejection, requested exactly 10 min ago -> accepted (tests the >= boundary)
-          - { payment_id: "p_accepted_boundary", amount: 30.00, requested_at: "2026-01-01 11:50:00+00" }
-          # no rejection, requested just under 10 min ago -> still pending
-          - { payment_id: "p_pending_boundary",  amount: 40.00, requested_at: "2026-01-01 11:50:01+00" }
-          # no rejection, recent -> pending
-          - { payment_id: "p_pending_recent",    amount: 50.00, requested_at: "2026-01-01 11:55:00+00" }
-          # rejection arrived while still inside the grace window -> rejected wins
-          - { payment_id: "p_rejected_in_grace", amount: 60.00, requested_at: "2026-01-01 11:55:00+00" }
+        format: sql
+        rows: |
+          -- rejected long ago
+          select 'p_rejected_old' as payment_id, 10.00::double as amount, '2026-01-01 11:00:00+00'::timestamptz as requested_at
+          -- no rejection, well past the 10-min grace -> accepted
+          union all select 'p_accepted_old',      20.00, '2026-01-01 11:00:00+00'::timestamptz
+          -- no rejection, requested exactly 10 min ago -> accepted (tests the >= boundary)
+          union all select 'p_accepted_boundary', 30.00, '2026-01-01 11:50:00+00'::timestamptz
+          -- no rejection, requested just under 10 min ago -> still pending
+          union all select 'p_pending_boundary',  40.00, '2026-01-01 11:50:01+00'::timestamptz
+          -- no rejection, recent -> pending
+          union all select 'p_pending_recent',    50.00, '2026-01-01 11:55:00+00'::timestamptz
+          -- rejection arrived while still inside the grace window -> rejected wins
+          union all select 'p_rejected_in_grace', 60.00, '2026-01-01 11:55:00+00'::timestamptz
       - input: ref('stg_payments__rejections')
-        rows:
-          - { payment_id: "p_rejected_old",      rejected_at: "2026-01-01 11:05:00+00" }
-          - { payment_id: "p_rejected_in_grace", rejected_at: "2026-01-01 11:56:00+00" }
+        format: sql
+        rows: |
+          select 'p_rejected_old' as payment_id, '2026-01-01 11:05:00+00'::timestamptz as rejected_at
+          union all select 'p_rejected_in_grace', '2026-01-01 11:56:00+00'::timestamptz
     expect:
-      rows:
-        - { payment_id: "p_rejected_old",      amount: 10.00, requested_at: "2026-01-01 11:00:00+00", rejected_at: "2026-01-01 11:05:00+00", status: "rejected", status_evaluated_at: "2026-01-01 12:00:00+00" }
-        - { payment_id: "p_accepted_old",      amount: 20.00, requested_at: "2026-01-01 11:00:00+00", rejected_at: null, status: "accepted", status_evaluated_at: "2026-01-01 12:00:00+00" }
-        - { payment_id: "p_accepted_boundary", amount: 30.00, requested_at: "2026-01-01 11:50:00+00", rejected_at: null, status: "accepted", status_evaluated_at: "2026-01-01 12:00:00+00" }
-        - { payment_id: "p_pending_boundary",  amount: 40.00, requested_at: "2026-01-01 11:50:01+00", rejected_at: null, status: "pending",  status_evaluated_at: "2026-01-01 12:00:00+00" }
-        - { payment_id: "p_pending_recent",    amount: 50.00, requested_at: "2026-01-01 11:55:00+00", rejected_at: null, status: "pending",  status_evaluated_at: "2026-01-01 12:00:00+00" }
-        - { payment_id: "p_rejected_in_grace", amount: 60.00, requested_at: "2026-01-01 11:55:00+00", rejected_at: "2026-01-01 11:56:00+00", status: "rejected", status_evaluated_at: "2026-01-01 12:00:00+00" }
+      format: sql
+      rows: |
+        select 'p_rejected_old' as payment_id, 10.00::double as amount, '2026-01-01 11:00:00+00'::timestamptz as requested_at,
+               '2026-01-01 11:05:00+00'::timestamptz as rejected_at, 'rejected' as status, '2026-01-01 12:00:00+00'::timestamptz as status_evaluated_at
+        union all select 'p_accepted_old',      20.00, '2026-01-01 11:00:00+00'::timestamptz, null::timestamptz,                         'accepted', '2026-01-01 12:00:00+00'::timestamptz
+        union all select 'p_accepted_boundary', 30.00, '2026-01-01 11:50:00+00'::timestamptz, null::timestamptz,                         'accepted', '2026-01-01 12:00:00+00'::timestamptz
+        union all select 'p_pending_boundary',  40.00, '2026-01-01 11:50:01+00'::timestamptz, null::timestamptz,                         'pending',  '2026-01-01 12:00:00+00'::timestamptz
+        union all select 'p_pending_recent',    50.00, '2026-01-01 11:55:00+00'::timestamptz, null::timestamptz,                         'pending',  '2026-01-01 12:00:00+00'::timestamptz
+        union all select 'p_rejected_in_grace', 60.00, '2026-01-01 11:55:00+00'::timestamptz, '2026-01-01 11:56:00+00'::timestamptz, 'rejected', '2026-01-01 12:00:00+00'::timestamptz

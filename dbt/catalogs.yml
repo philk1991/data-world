@@ -1,0 +1,14 @@
+# DuckLake catalog for all batch models (dbt v2, use_catalogs_v2).
+# Same settings and defaults as data-ingestion/lake.py — override both via
+# LAKE_CATALOG / LAKE_DATA_PATH in the root .env. Postgres must be running and the
+# catalog initialised (`task lake:init`).
+catalogs:
+  - name: lake
+    type: ducklake
+    table_format: default
+    config:
+      duckdb:
+        metadata_path: "{{ env_var('LAKE_CATALOG', 'postgres:dbname=data_world_lake host=localhost') }}"
+        # Must be the absolute path the catalog was created with. Task exports it
+        # (see Taskfile.yml env); when running dbt directly, export LAKE_DATA_PATH.
+        data_path: "{{ env_var('LAKE_DATA_PATH') }}"
