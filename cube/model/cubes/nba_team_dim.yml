@@ -4,9 +4,10 @@ cubes:
     description: >
       Conformed franchise dimension, one row per team_id carrying the team's
       current identity (city, name, abbreviation, league) with relocation and
-      rename history rolled up from the franchise eras. Standalone cube — not
-      joined to nba_game_results, which already carries denormalized home/away
-      team names.
+      rename history rolled up from the franchise eras. Join target for
+      nba_player_season_stats (primary_team_id) and nba_team_season_summary
+      (team_id). Not joined to nba_game_results, which already carries
+      denormalized home/away team names.
 
     dimensions:
       - name: team_id

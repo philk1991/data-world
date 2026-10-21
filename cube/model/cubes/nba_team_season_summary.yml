@@ -1,0 +1,107 @@
+cubes:
+  - name: nba_team_season_summary
+    sql_table: marts.nba_team_season_summary
+    description: >
+      One row per team per regular season with win/loss record, home/away wins
+      and scoring averages. Season is derived from the game date (the NBA season
+      spans Oct-Apr, so months before July belong to the prior start year).
+      Restricted to Regular Season games. Joined to nba_team_dim on team_id for
+      team names.
+
+    joins:
+      - name: nba_team_dim
+        sql: "{CUBE}.team_id = {nba_team_dim}.team_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: team_id
+        sql: team_id
+        type: number
+        primary_key: true
+        description: Franchise/team identifier. Combined with season, forms the natural key.
+
+      - name: season_start_year
+        sql: season_start_year
+        type: number
+        primary_key: true
+        description: Calendar year the season started (e.g. 2023 for the 2023-24 season).
+
+      - name: season_label
+        sql: season_label
+        type: string
+        description: Human-readable season label (e.g. "2023-24").
+
+    measures:
+      - name: count
+        type: count
+        description: Number of team-seasons.
+
+      - name: sum_games_played
+        sql: games_played
+        type: sum
+        description: Total regular season games played across matching team-seasons.
+
+      - name: sum_wins
+        sql: wins
+        type: sum
+        description: Total regular season wins across matching team-seasons.
+
+      - name: sum_losses
+        sql: losses
+        type: sum
+        description: Total regular season losses across matching team-seasons.
+
+      - name: sum_home_wins
+        sql: home_wins
+        type: sum
+        description: Total home wins across matching team-seasons.
+
+      - name: sum_away_wins
+        sql: away_wins
+        type: sum
+        description: Total away wins across matching team-seasons.
+
+      - name: max_wins
+        sql: wins
+        type: max
+        description: Most wins in a single season among matching team-seasons.
+
+      - name: win_pct
+        sql: "{sum_wins} * 1.0 / NULLIF({sum_wins} + {sum_losses}, 0)"
+        type: number
+        description: Wins divided by decided games across matching team-seasons, 0-1.
+
+      - name: max_win_pct
+        sql: win_pct
+        type: max
+        description: Best single-season win percentage among matching team-seasons.
+
+      - name: min_win_pct
+        sql: win_pct
+        type: min
+        description: Worst single-season win percentage among matching team-seasons.
+
+      - name: away_win_share
+        sql: "{sum_away_wins} * 1.0 / NULLIF({sum_wins}, 0)"
+        type: number
+        description: Share of wins that came on the road across matching team-seasons, 0-1.
+
+      - name: points_for_per_game
+        sql: "SUM({CUBE}.total_points_for) * 1.0 / NULLIF({sum_games_played}, 0)"
+        type: number
+        description: Points scored per game across matching team-seasons — total points over total games.
+
+      - name: points_against_per_game
+        sql: "SUM({CUBE}.total_points_against) * 1.0 / NULLIF({sum_games_played}, 0)"
+        type: number
+        description: Points conceded per game across matching team-seasons — total points over total games.
+
+      - name: point_margin_per_game
+        sql: "SUM({CUBE}.total_points_for - {CUBE}.total_points_against) * 1.0 / NULLIF({sum_games_played}, 0)"
+        type: number
+        description: Scoring margin per game (points for minus against) across matching team-seasons.
+
+      - name: max_point_margin_per_game
+        sql: point_margin_per_game
+        type: max
+        description: Best single-season scoring margin per game among matching team-seasons.

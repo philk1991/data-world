@@ -8,7 +8,16 @@ cubes:
       player traded mid-season is combined into one row per game type, with
       primary_team_id set to the team they played the most games for. Only
       games actually played count. Splitting by game_type lets visualisations
-      compare regular-season and playoff production.
+      compare regular-season and playoff production. Stats the league did not
+      record yet (steals and blocks before 1973-74, turnovers before ~1977-78,
+      attempts in some early seasons) are null, and the per-game and
+      percentage measures only count seasons where their inputs were recorded.
+      Joined to nba_team_dim on primary_team_id for team names.
+
+    joins:
+      - name: nba_team_dim
+        sql: "{CUBE}.primary_team_id = {nba_team_dim}.team_id"
+        relationship: many_to_one
 
     dimensions:
       - name: person_id
@@ -26,6 +35,11 @@ cubes:
         sql: last_name
         type: string
         description: Player last name, from the bio table.
+
+      - name: player_name
+        sql: "{CUBE}.first_name || ' ' || {CUBE}.last_name"
+        type: string
+        description: Player full name (first and last name).
 
       - name: season_start_year
         sql: season_start_year
@@ -53,6 +67,11 @@ cubes:
       - name: count
         type: count
         description: Number of player-season-game_type rows.
+
+      - name: count_players
+        sql: person_id
+        type: count_distinct
+        description: Number of distinct players across matching rows (a player with Regular Season and Playoffs rows counts once).
 
       - name: sum_games_played
         sql: games_played
@@ -94,37 +113,112 @@ cubes:
         type: sum
         description: Total turnovers across matching rows.
 
-      - name: avg_points_per_game
-        sql: points_per_game
-        type: avg
-        description: Average points per game across matching rows.
+      - name: sum_field_goals_made
+        sql: total_field_goals_made
+        type: sum
+        description: Total field goals made (in games with recorded attempts) across matching rows.
+
+      - name: sum_field_goals_attempted
+        sql: total_field_goals_attempted
+        type: sum
+        description: Total field goals attempted across matching rows.
+
+      - name: sum_three_pointers_made
+        sql: total_three_pointers_made
+        type: sum
+        description: Total three pointers made (in games with recorded attempts) across matching rows.
+
+      - name: sum_three_pointers_attempted
+        sql: total_three_pointers_attempted
+        type: sum
+        description: Total three pointers attempted across matching rows.
+
+      - name: sum_free_throws_made
+        sql: total_free_throws_made
+        type: sum
+        description: Total free throws made (in games with recorded attempts) across matching rows.
+
+      - name: sum_free_throws_attempted
+        sql: total_free_throws_attempted
+        type: sum
+        description: Total free throws attempted across matching rows.
+
+      - name: points_per_game
+        sql: "{sum_total_points} * 1.0 / NULLIF({sum_games_played}, 0)"
+        type: number
+        description: Points per game across matching rows — total points over total games, so high-volume seasons weigh more.
+
+      - name: rebounds_per_game
+        sql: "SUM({CUBE}.total_rebounds) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.total_rebounds IS NOT NULL THEN {CUBE}.games_played END), 0)"
+        type: number
+        description: Rebounds per game across matching rows, counting only seasons where rebounds were recorded.
+
+      - name: assists_per_game
+        sql: "SUM({CUBE}.total_assists) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.total_assists IS NOT NULL THEN {CUBE}.games_played END), 0)"
+        type: number
+        description: Assists per game across matching rows, counting only seasons where assists were recorded.
+
+      - name: steals_per_game
+        sql: "SUM({CUBE}.total_steals) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.total_steals IS NOT NULL THEN {CUBE}.games_played END), 0)"
+        type: number
+        description: Steals per game across matching rows, counting only seasons where steals were recorded.
+
+      - name: blocks_per_game
+        sql: "SUM({CUBE}.total_blocks) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.total_blocks IS NOT NULL THEN {CUBE}.games_played END), 0)"
+        type: number
+        description: Blocks per game across matching rows, counting only seasons where blocks were recorded.
+
+      - name: turnovers_per_game
+        sql: "SUM({CUBE}.total_turnovers) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.total_turnovers IS NOT NULL THEN {CUBE}.games_played END), 0)"
+        type: number
+        description: Turnovers per game across matching rows, counting only seasons where turnovers were recorded.
 
       - name: max_points_per_game
         sql: points_per_game
         type: max
         description: Highest single-season points-per-game average among matching rows.
 
-      - name: avg_rebounds_per_game
+      - name: max_rebounds_per_game
         sql: rebounds_per_game
-        type: avg
-        description: Average rebounds per game across matching rows.
+        type: max
+        description: Highest single-season rebounds-per-game average among matching rows.
 
-      - name: avg_assists_per_game
+      - name: max_assists_per_game
         sql: assists_per_game
-        type: avg
-        description: Average assists per game across matching rows.
+        type: max
+        description: Highest single-season assists-per-game average among matching rows.
 
-      - name: avg_field_goal_pct
-        sql: field_goal_pct
-        type: avg
-        description: Average field goal percentage across matching rows.
+      - name: field_goal_pct
+        sql: "{sum_field_goals_made} * 1.0 / NULLIF({sum_field_goals_attempted}, 0)"
+        type: number
+        description: Field goal percentage across matching rows — total made over total attempted, 0-1.
 
-      - name: avg_three_point_pct
-        sql: three_point_pct
-        type: avg
-        description: Average three point percentage across matching rows.
+      - name: three_point_pct
+        sql: "{sum_three_pointers_made} * 1.0 / NULLIF({sum_three_pointers_attempted}, 0)"
+        type: number
+        description: Three point percentage across matching rows — total made over total attempted, 0-1.
 
-      - name: avg_free_throw_pct
-        sql: free_throw_pct
-        type: avg
-        description: Average free throw percentage across matching rows.
+      - name: free_throw_pct
+        sql: "{sum_free_throws_made} * 1.0 / NULLIF({sum_free_throws_attempted}, 0)"
+        type: number
+        description: Free throw percentage across matching rows — total made over total attempted, 0-1.
+
+      - name: three_point_attempt_rate
+        sql: "SUM({CUBE}.total_three_pointers_attempted) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.total_three_pointers_attempted IS NOT NULL THEN {CUBE}.total_field_goals_attempted END), 0)"
+        type: number
+        description: Share of field goal attempts taken from three across matching rows, 0-1.
+
+      - name: effective_field_goal_pct
+        sql: "(SUM({CUBE}.total_field_goals_made) + 0.5 * COALESCE(SUM({CUBE}.total_three_pointers_made), 0)) / NULLIF(SUM({CUBE}.total_field_goals_attempted), 0)"
+        type: number
+        description: Field goal percentage adjusted for the extra value of a three, (FGM + 0.5 × 3PM) / FGA, 0-1.
+
+      - name: true_shooting_pct
+        sql: "SUM(CASE WHEN {CUBE}.total_field_goals_attempted IS NOT NULL AND {CUBE}.total_free_throws_attempted IS NOT NULL THEN {CUBE}.total_points END) / NULLIF(2 * (SUM(CASE WHEN {CUBE}.total_free_throws_attempted IS NOT NULL THEN {CUBE}.total_field_goals_attempted END) + 0.44 * SUM(CASE WHEN {CUBE}.total_field_goals_attempted IS NOT NULL THEN {CUBE}.total_free_throws_attempted END)), 0)"
+        type: number
+        description: Shooting efficiency accounting for twos, threes and free throws, PTS / (2 × (FGA + 0.44 × FTA)), 0-1.
+
+      - name: assist_to_turnover_ratio
+        sql: "SUM(CASE WHEN {CUBE}.total_turnovers IS NOT NULL THEN {CUBE}.total_assists END) * 1.0 / NULLIF(SUM({CUBE}.total_turnovers), 0)"
+        type: number
+        description: Assists per turnover across matching rows, counting only seasons where turnovers were recorded.
