@@ -21,14 +21,17 @@ import statsbombpy.sb as sb
 
 
 def _fetch_with_retry(fn, *args, retries: int = 5, **kwargs):
-    """Call fn(*args, **kwargs), retrying on HTTP 429 with exponential backoff."""
+    """Call fn(*args, **kwargs), retrying HTTP 429/5xx, timeouts and dropped
+    connections with exponential backoff."""
     delay = 10
     for attempt in range(retries):
         try:
             return fn(*args, **kwargs)
-        except requests.exceptions.HTTPError as e:
-            if e.response is not None and e.response.status_code == 429 and attempt < retries - 1:
-                print(f"    Rate limited — waiting {delay}s before retry {attempt + 1}/{retries - 1}...")
+        except (requests.exceptions.HTTPError, requests.ConnectionError, requests.Timeout) as e:
+            status = getattr(e.response, "status_code", None)
+            transient = not isinstance(e, requests.exceptions.HTTPError) or status in (429, 500, 502, 503, 504)
+            if transient and attempt < retries - 1:
+                print(f"    {type(e).__name__} ({status or 'no response'}) — waiting {delay}s before retry {attempt + 1}/{retries - 1}...")
                 time.sleep(delay)
                 delay *= 2
             else:

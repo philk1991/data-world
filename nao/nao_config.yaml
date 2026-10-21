@@ -1,40 +1,44 @@
 # nao project configuration — https://docs.getnao.io
 #
-# Scoped to the NBA mart layer only (marts.nba_*) so nao's context stays small
-# and focused. nao reads the same spotify.duckdb file as Cube, but opens it
-# READ-ONLY (see ibis.duckdb.connect(..., read_only=True) for file-backed DBs),
-# so it will not migrate or write the file. It is still a DuckDB reader, so it
-# cannot open the file while another process holds a read-write lock on it
-# (e.g. Cube's dev server, `task dbt:run`, or the Dagster NBA ingest job).
+# Scoped to the NBA mart layer only (lake.marts.nba_*) so nao's context stays
+# small and focused. nao reads the DuckLake (Postgres catalog + Parquet files),
+# attached READ_ONLY, so it never writes and — unlike the old single .duckdb
+# file — can run alongside dbt builds, ingest jobs and Cube.
 project_name: nba
 
 databases:
-  - name: nba-duckdb
-    type: duckdb
-    # Absolute path, injected from nao/.env (same convention as DUCKDB_PATH /
-    # CUBEJS_DB_DUCKDB_DATABASE_PATH elsewhere in this repo). nao resolves
-    # ${{ env('...') }} at config-load time and reads .env from the project dir.
-    path: "${{ env('NAO_DUCKDB_PATH') }}"
-    # Accessors run during `nao sync` to build the context markdown per table.
-    accessors:
+  - name: lake
+    type: ducklake
+    # Same catalog as data-ingestion/lake.py's default (created by `task lake:init`).
+    # Local Homebrew Postgres trusts the logged-in user, hence no password.
+    catalog:
+      type: postgres
+      host: localhost
+      database: data_world_lake
+      user: "${{ env('USER') }}"
+      password: ""
+    # Absolute path with a trailing slash, exported by the Taskfile for every task.
+    # DuckLake rejects any other spelling of the path the lake was created with.
+    data_path: "${{ env('LAKE_DATA_PATH') }}"
+    # Templates run during `nao sync` to build the context markdown per table.
+    templates:
       - columns      # column names + types
       - preview      # a small sample of rows
-      - description  # table/column descriptions
-    # Glob patterns matched against "<schema>.<table>". Empty = everything;
-    # this keeps nao scoped to the eight NBA marts only.
+    # Glob patterns matched against "<catalog>.<schema>.<table>". Empty =
+    # everything; this keeps nao scoped to the eight NBA marts only.
     include:
-      - "marts.nba_*"
+      - "lake.marts.nba_*"
     exclude: []
 
 repos: []
 
-# LLM is intentionally left unset. The current nao release (nao-core 0.0.34)
-# only supports provider: openai | anthropic — there is no Ollama provider and
-# no per-model config field, so the plan's zero-cost local-Ollama path is not
-# available yet. Choose a provider before running `nao chat`:
+# LLM is intentionally left unset (choosing one is a separate decision).
+# nao-core 0.3.25 supports openai, anthropic, mistral, gemini, openrouter,
+# requesty, ollama, bedrock, vertex and qwen — ollama makes a zero-cost local
+# model possible. `nao sync`/`nao debug` work without it; `nao chat` needs one:
 #
 #   llm:
-#     provider: anthropic          # or: openai
+#     provider: anthropic          # or: ollama, openai, ...
 #     api_key: "${{ env('ANTHROPIC_API_KEY') }}"
 #
 # See nao/.env.example and the "Analytics agent (nao)" section of CLAUDE.md.

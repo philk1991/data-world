@@ -142,6 +142,15 @@ Then `task dbt:deps` → `task dbt:build` (full project).
 
 **Gate:** Cube Playground returns the existing `nba_*` and Spotify cubes; the dashboard renders; `nao sync` regenerates `nao/databases/**` — all **while a dbt build is running**.
 
+#### Phase 5 results (21 Oct 2026) — **passed**
+
+- **Cube 1.8.8** (exact pins; bundles `@duckdb/node-api` 1.5.5-r.5): `cube.js` builds the `initSql` from `LAKE_CATALOG`/`LAKE_DATA_PATH` with the same defaults as `lake.py`. It uses `ATTACH IF NOT EXISTS`, because `initSql` runs on every connection and a failing ATTACH would skip the `USE lake`. All 5 cubes listed and queried; model YAML unchanged.
+- **Spotify dashboard:** `@duckdb/node-api` 1.5.5-r.5 (exact). `db.ts` keeps the `query()` signature and converts `bigint` to `number` in one place; timestamps still arrive as `Date`, so the pages are unchanged. All 4 routes render lake data; `svelte-check` clean.
+- **Crypto dashboard:** `duckdb` dependency removed (no references in `src/`).
+- **nao 0.3.25:** installed as `nao-core[duckdb]==0.3.25` + `duckdb==1.5.5`. The `duckdb` extra is needed for `pyarrow`, without which `nao sync` skips every schema. The config uses `user: ${{ env('USER') }}` and `data_path: ${{ env('LAKE_DATA_PATH') }}` (exported by the Taskfile). It attaches READ_ONLY. 0.3.25 also adds an `ollama` LLM provider, so a zero-cost local model is now possible (still a separate decision).
+- **Gate:** while a full `dbt build` ran alongside the StatsBomb ingest, 30/30 Cube and dashboard reads succeeded and `nao sync` wrote all 8 NBA marts. The build matched Phase 4: 336 pass / 5 warn / 6 err (3 empty streaming sources, 3 OpenF1 `stints` data-quality tests).
+- Also fixed: StatsBomb's events/lineups `_fetch_with_retry` only retried 429s, so a dropped connection killed the overnight backfill at 370/3,961 matches. It now retries connection errors, timeouts and 5xx.
+
 ### Phase 6 — Operations and docs
 
 - **Maintenance:** a `task lake:maintain` task that runs the Phase 0 compaction/snapshot-expiry/cleanup calls, plus a weekly Dagster schedule for it.

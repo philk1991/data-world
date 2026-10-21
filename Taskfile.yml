@@ -330,7 +330,7 @@ tasks:
       - npm install
 
   cube:dev:
-    desc: "Start the Cube dev server + Playground (http://localhost:4000). Don't run alongside task dbt:run or the Dagster spotify/nba ingest jobs — the DuckDB driver always opens spotify.duckdb read-write."
+    desc: "Start the Cube dev server + Playground (http://localhost:4000). Reads the lake READ_ONLY (see cube/cube.js), so it can run alongside dbt and ingest jobs. Postgres must be running."
     dir: cube
     cmds:
       - npm run dev
@@ -342,22 +342,23 @@ tasks:
     cmds:
       - python3.12 -m venv nao/.venv
       - nao/.venv/bin/pip install --upgrade pip --quiet
-      - nao/.venv/bin/pip install nao-core
+      # duckdb pinned to the same version as .venv, the dbc driver and Cube (nao-core would resolve a newer one).
+      - nao/.venv/bin/pip install "nao-core[duckdb]==0.3.25" duckdb==1.5.5
 
   nao:sync:
-    desc: "Refresh nao's context from the DuckDB marts (writes nao/databases/**). Reads marts.nba_* — don't run alongside task cube:dev, task dbt:run, or the Dagster NBA ingest, which hold a read-write lock on spotify.duckdb."
+    desc: "Refresh nao's context from the lake's NBA marts (writes nao/databases/**). Reads lake.marts.nba_* READ_ONLY, so it can run alongside dbt and ingest jobs."
     dir: nao
     cmds:
       - .venv/bin/nao sync
 
   nao:debug:
-    desc: "Validate nao config and test the DuckDB connection (LLM check runs only if a provider is set). Same DuckDB lock caveat as nao:sync."
+    desc: "Validate nao config and test the lake connection (LLM check runs only if a provider is set)."
     dir: nao
     cmds:
       - .venv/bin/nao debug
 
   nao:dev:
-    desc: "Start the nao chat UI (http://localhost:5005). Requires an LLM provider in nao_config.yaml — none set by default (see CLAUDE.md). Opens spotify.duckdb READ-ONLY; still don't run alongside a read-write holder (task cube:dev / task dbt:run / Dagster NBA ingest)."
+    desc: "Start the nao chat UI (http://localhost:5005). Requires an LLM provider in nao_config.yaml — none set by default (see CLAUDE.md). Reads the lake READ_ONLY."
     dir: nao
     cmds:
       - .venv/bin/nao chat
