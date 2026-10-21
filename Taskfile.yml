@@ -80,7 +80,7 @@ tasks:
       - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt parse --profiles-dir ."
 
   dbt:run:select:
-    desc: "Run a specific dbt model -- usage: task dbt:run:select MODEL=top_tracks_enriched"
+    desc: "Run a specific dbt model -- usage: task dbt:run:select MODEL=top_tracks_by_period"
     cmds:
       - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt run --select {{.MODEL}}"
     requires:
@@ -90,6 +90,13 @@ tasks:
     desc: "Test a specific dbt model -- usage: task dbt:test:select MODEL=stg_top_tracks"
     cmds:
       - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt test --select {{.MODEL}}"
+    requires:
+      vars: [MODEL]
+
+  dbt:build:select:
+    desc: "Run and test a specific dbt model -- usage: task dbt:build:select MODEL=top_tracks_by_period"
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt build --select {{.MODEL}}"
     requires:
       vars: [MODEL]
 
@@ -245,18 +252,6 @@ tasks:
         for k in r[\"before\"]:
             print(f\"{k:11s} {r[\"before\"][k]:>10} -> {r[\"after\"][k]}\")
         '"
-
-  # ── Schema Migration ────────────────────────────────────────────────────────
-
-  migrate:schemas:
-    desc: Migrate existing DuckDB tables from main schema to raw_spotify / raw_statsbomb
-    cmds:
-      - bash -c "source {{.VENV}} && python scripts/migrate_schemas.py"
-
-  lake:migrate:
-    desc: Copy every raw_* table from spotify.duckdb (opened read-only) into the lake and verify row counts. Safe to re-run.
-    cmds:
-      - bash -c "source {{.VENV}} && python scripts/migrate_to_lake.py"
 
   # ── Crypto Dashboard ─────────────────────────────────────────────────────────
 

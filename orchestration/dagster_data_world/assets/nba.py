@@ -11,8 +11,7 @@ def _make_nba_asset(filename: str, table: str, upstream: str | None):
     """Build one ingest asset that full-replaces raw_nba.<table> from a Kaggle file.
 
     Each asset is chained to the previous one via `upstream` so the seven
-    full-replace loads run serially in a single run. That ordering was needed
-    for the old single-writer spotify.duckdb file; the DuckLake allows
+    full-replace loads run serially in a single run. The lake allows
     concurrent writers, so the chain is kept only for predictable run order.
     """
 

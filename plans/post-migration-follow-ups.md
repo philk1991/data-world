@@ -17,19 +17,19 @@ task lake:sql SQL="select count(distinct match_id) from raw_statsbomb.raw_sb_lin
 
 Then run `task dbt:build` and check the `sb_*` marts.
 
-## 2. Retire the old DuckDB file (due ~28 Oct 2026)
+## 2. Retire the old DuckDB file (done 21 Oct 2026)
 
-Wait for a week of normal use on the lake first. `spotify.duckdb` is the rollback point until then.
+Done early, on 21 Oct. Before deleting, every `raw_*` table in `spotify.duckdb` was checked against the lake: row counts matched, except `raw_spotify.raw_top_artists` (129 old, 128 lake), which is a full-replace table that has a newer snapshot in the lake. `scripts/` was left empty, so it was removed from the README tree too.
 
-- [ ] Delete `data/spotify.duckdb`.
-- [ ] Delete `scripts/migrate_schemas.py` and `scripts/migrate_to_lake.py`.
-- [ ] Remove the `migrate:schemas` and `lake:migrate` tasks from `Taskfile.yml`.
-- [ ] Remove the `spotify.duckdb` line from the README project tree, the "Pre-lake database" paragraph in CLAUDE.md, and the reference in the nba asset docstring (`orchestration/dagster_data_world/assets/nba.py`).
-- [ ] `git grep -n "spotify.duckdb\|DUCKDB_PATH"` should then only match `plans/` and `CRYPTO_DUCKDB_PATH`.
+- [x] Delete `data/spotify.duckdb`.
+- [x] Delete `scripts/migrate_schemas.py` and `scripts/migrate_to_lake.py`.
+- [x] Remove the `migrate:schemas` and `lake:migrate` tasks from `Taskfile.yml`.
+- [x] Remove the `spotify.duckdb` line from the README project tree, the "Pre-lake database" paragraph in CLAUDE.md, and the reference in the nba asset docstring (`orchestration/dagster_data_world/assets/nba.py`).
+- [x] `git grep -n "spotify.duckdb\|DUCKDB_PATH"` should then only match `plans/` and `CRYPTO_DUCKDB_PATH`.
 
 ## 3. Tidy up the migration branch
 
-- [ ] Delete `ducklake-migration` locally and on GitHub (`git branch -d ducklake-migration && git push origin --delete ducklake-migration`). `main` contains all of it.
+- [x] Delete `ducklake-migration` locally and on GitHub (`git branch -d ducklake-migration && git push origin --delete ducklake-migration`). `main` contains all of it.
 - [ ] Optional: remove the leftover ADBC driver from Phase 0 in `~/Library/Application Support/ADBC/Drivers` (dbt uses the one in `.venv/etc/adbc/drivers`).
 
 ## 4. Check the weekly maintenance is working

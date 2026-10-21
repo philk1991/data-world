@@ -36,8 +36,6 @@ All batch and bulk data — raw, staging and marts — lives in one DuckLake nam
 
 The lake locks per commit, not per connection, so ingest jobs, dbt builds and every reader can run at the same time; conflicting commits are retried (`ducklake_max_retry_count` etc., kept in step between `lake.py` and `dbt/profiles.yml`). Readers attach with `READ_ONLY`. Non-Python readers repeat the attach themselves: `cube/cube.js`, `dashboards/spotify/src/lib/server/db.ts`, `nao/nao_config.yaml` — all with the same defaults as `lake.py`.
 
-`data/spotify.duckdb` is the pre-lake database, kept read-only (only `task lake:migrate` opens it) until it's retired. Nothing else reads or writes it.
-
 ### Semantic layer (Cube)
 
 `cube/` runs a standalone Cube dev server (`task cube:dev`, Cube 1.8.8) that reads dbt marts directly via `@cubejs-backend/duckdb-driver` — no ingestion or dbt step of its own. It is not a Dagster asset since there's nothing for it to materialize. `cube/cube.js` defines a `driverFactory` whose `initSql` attaches the lake READ_ONLY and runs `USE lake`, so the cube models' `marts.*` names resolve; `CUBEJS_DB_DUCKDB_EXTENSIONS=ducklake,postgres` in `cube/.env` loads the extensions first. The attach uses `IF NOT EXISTS` because `initSql` runs on every connection. Use `/cube-develop` to scaffold a new cube on top of a mart.

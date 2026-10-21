@@ -54,11 +54,9 @@ data-world/
 ├── nao/                       # nao analytics agent (NL → SQL over the NBA marts)
 ├── data/                      # Lake files, streaming DuckDB files, JSON sidecar (gitignored)
 │   ├── lake/                  # DuckLake Parquet files (catalog lives in Postgres)
-│   ├── spotify.duckdb         # Pre-lake database, kept read-only until retired
 │   ├── crypto_raw.duckdb      # Raw crypto trades (consumer-owned)
 │   ├── payments_raw.duckdb    # Raw payment requests + rejections (consumer-owned)
 │   └── live_data.json         # Atomic JSON sidecar written by the crypto consumer
-├── scripts/                   # One-off utility scripts
 ├── Taskfile.yml               # Task runner
 └── requirements.txt           # Python dependencies
 ```
