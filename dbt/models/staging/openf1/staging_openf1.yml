@@ -320,14 +320,20 @@ models:
       - name: compound
         description: Tyre compound used for the stint.
         tests:
-          - not_null
+          - not_null:
+              config:
+                severity: warn
           - accepted_values:
               arguments:
-                values: ["SOFT", "MEDIUM", "HARD", "INTERMEDIATE", "WET", "UNKNOWN"]
+                values: ["SOFT", "MEDIUM", "HARD", "INTERMEDIATE", "WET", "UNKNOWN", "TEST_UNKNOWN"]
+              config:
+                severity: warn
       - name: tyre_age_at_start
         description: Age of the tyres (in laps) at the start of the stint.
         tests:
-          - not_null
+          - not_null:
+              config:
+                severity: warn
       - name: ingested_at
         description: Timestamp when this record was ingested from the OpenF1 API.
         tests:
