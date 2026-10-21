@@ -10,28 +10,40 @@
 
 {% set lookback_minutes = 20 %}
 
-with status as (
-    select * from {{ ref('payment_status') }}
+WITH status AS (
+    SELECT *
+    FROM
+        {{ ref('payment_status') }}
     {% if is_incremental() %}
-    where requested_at > (select max(request_bucket) - interval '{{ lookback_minutes }} minutes' from {{ this }})
+    WHERE
+        requested_at > (
+            SELECT MAX(request_bucket) - INTERVAL '{{ lookback_minutes }} minutes'
+            FROM
+                {{ this }}
+        )
     {% endif %}
 ),
 
-by_bucket as (
-    select
-        {{ bucket_timestamp('requested_at') }}              as request_bucket,
-        count(*)                                            as payments_total,
-        count(*) filter (where status = 'accepted')         as payments_accepted,
-        count(*) filter (where status = 'rejected')         as payments_rejected,
-        count(*) filter (where status = 'pending')          as payments_pending,
-        sum(amount)                                         as amount_total,
-        sum(amount) filter (where status = 'accepted')      as amount_accepted,
-        sum(amount) filter (where status = 'rejected')      as amount_rejected,
-        sum(amount) filter (where status = 'pending')       as amount_pending,
-        now()                                               as refreshed_at
-    from status
-    group by 1
+by_bucket AS (
+    SELECT
+        {{ bucket_timestamp('requested_at') }} AS request_bucket,
+        COUNT(*) AS payments_total,
+        COUNT(*) FILTER (WHERE status = 'accepted') AS payments_accepted,
+        COUNT(*) FILTER (WHERE status = 'rejected') AS payments_rejected,
+        COUNT(*) FILTER (WHERE status = 'pending') AS payments_pending,
+        SUM(amount) AS amount_total,
+        SUM(amount) FILTER (WHERE status = 'accepted') AS amount_accepted,
+        SUM(amount) FILTER (WHERE status = 'rejected') AS amount_rejected,
+        SUM(amount) FILTER (WHERE status = 'pending') AS amount_pending,
+        NOW() AS refreshed_at
+    FROM
+        status
+    GROUP BY
+        request_bucket
 )
 
-select * from by_bucket
-order by request_bucket
+SELECT *
+FROM
+    by_bucket
+ORDER BY
+    request_bucket

@@ -1,10 +1,12 @@
-with source as (
-    select * from {{ source('raw_spotify', 'raw_top_artists') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_spotify', 'raw_top_artists') }}
 )
 
-select
-    id                                          as artist_id,
-    name                                        as artist_name,
+SELECT
+    id AS artist_id,
+    name AS artist_name,
     rank,
     time_range,
     popularity,
@@ -12,5 +14,6 @@ select
     genres,
     spotify_url,
     image_url,
-    ingested_at::timestamp                      as ingested_at
-from source
+    ingested_at::TIMESTAMP AS ingested_at
+FROM
+    source

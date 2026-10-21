@@ -1,8 +1,10 @@
-with source as (
-    select * from {{ source('raw_openf1', 'raw_openf1_drivers') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_openf1', 'raw_openf1_drivers') }}
 )
 
-select
+SELECT
     meeting_key,
     session_key,
     driver_number,
@@ -14,5 +16,6 @@ select
     first_name,
     last_name,
     country_code,
-    ingested_at::timestamp                    as ingested_at
-from source
+    ingested_at::TIMESTAMP AS ingested_at
+FROM
+    source

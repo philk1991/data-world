@@ -1,40 +1,47 @@
 -- One row per player aggregating their traditional box score totals and
 -- averages across every game they appeared in, enriched with player bio.
 -- Only games the player actually played (minutes_played is not null) count.
-with box_scores as (
-    select * from {{ ref('stg_nba_player_statistics') }}
+WITH box_scores AS (
+    SELECT *
+    FROM
+        {{ ref('stg_nba_player_statistics') }}
 ),
 
-players as (
-    select * from {{ ref('stg_nba_players') }}
+players AS (
+    SELECT *
+    FROM
+        {{ ref('stg_nba_players') }}
 ),
 
-career as (
-    select
+career AS (
+    SELECT
         person_id,
-        count(distinct game_id)                                     as games_played,
-        min(game_date)                                              as first_game_date,
-        max(game_date)                                              as last_game_date,
-        sum(points)                                                 as total_points,
-        sum(rebounds_total)                                         as total_rebounds,
-        sum(assists)                                                as total_assists,
-        sum(steals)                                                 as total_steals,
-        sum(blocks)                                                 as total_blocks,
-        sum(turnovers)                                              as total_turnovers,
-        sum(field_goals_made)                                       as total_field_goals_made,
-        sum(field_goals_attempted)                                  as total_field_goals_attempted,
-        sum(three_pointers_made)                                    as total_three_pointers_made,
-        sum(three_pointers_attempted)                               as total_three_pointers_attempted,
-        sum(free_throws_made)                                       as total_free_throws_made,
-        sum(free_throws_attempted)                                  as total_free_throws_attempted
-    from box_scores
-    where person_id is not null
-        and minutes_played is not null
-    group by person_id
+        COUNT(DISTINCT game_id) AS games_played,
+        MIN(game_date) AS first_game_date,
+        MAX(game_date) AS last_game_date,
+        SUM(points) AS total_points,
+        SUM(rebounds_total) AS total_rebounds,
+        SUM(assists) AS total_assists,
+        SUM(steals) AS total_steals,
+        SUM(blocks) AS total_blocks,
+        SUM(turnovers) AS total_turnovers,
+        SUM(field_goals_made) AS total_field_goals_made,
+        SUM(field_goals_attempted) AS total_field_goals_attempted,
+        SUM(three_pointers_made) AS total_three_pointers_made,
+        SUM(three_pointers_attempted) AS total_three_pointers_attempted,
+        SUM(free_throws_made) AS total_free_throws_made,
+        SUM(free_throws_attempted) AS total_free_throws_attempted
+    FROM
+        box_scores
+    WHERE
+        person_id IS NOT NULL
+        AND minutes_played IS NOT NULL
+    GROUP BY
+        person_id
 ),
 
-career_rates as (
-    select
+career_rates AS (
+    SELECT
         person_id,
         games_played,
         first_game_date,
@@ -45,19 +52,26 @@ career_rates as (
         total_steals,
         total_blocks,
         total_turnovers,
-        round(total_points::double  / nullif(games_played, 0), 1)   as points_per_game,
-        round(total_rebounds::double / nullif(games_played, 0), 1)  as rebounds_per_game,
-        round(total_assists::double / nullif(games_played, 0), 1)   as assists_per_game,
-        round(total_field_goals_made::double
-              / nullif(total_field_goals_attempted, 0), 3)          as career_field_goal_pct,
-        round(total_three_pointers_made::double
-              / nullif(total_three_pointers_attempted, 0), 3)       as career_three_point_pct,
-        round(total_free_throws_made::double
-              / nullif(total_free_throws_attempted, 0), 3)          as career_free_throw_pct
-    from career
+        ROUND(total_points::DOUBLE / NULLIF(games_played, 0), 1) AS points_per_game,
+        ROUND(total_rebounds::DOUBLE / NULLIF(games_played, 0), 1) AS rebounds_per_game,
+        ROUND(total_assists::DOUBLE / NULLIF(games_played, 0), 1) AS assists_per_game,
+        ROUND(
+            total_field_goals_made::DOUBLE
+            / NULLIF(total_field_goals_attempted, 0), 3
+        ) AS career_field_goal_pct,
+        ROUND(
+            total_three_pointers_made::DOUBLE
+            / NULLIF(total_three_pointers_attempted, 0), 3
+        ) AS career_three_point_pct,
+        ROUND(
+            total_free_throws_made::DOUBLE
+            / NULLIF(total_free_throws_attempted, 0), 3
+        ) AS career_free_throw_pct
+    FROM
+        career
 )
 
-select
+SELECT
     c.person_id,
     p.first_name,
     p.last_name,
@@ -81,6 +95,10 @@ select
     c.career_field_goal_pct,
     c.career_three_point_pct,
     c.career_free_throw_pct
-from career_rates c
-left join players p using (person_id)
-order by c.total_points desc
+FROM
+    career_rates c
+LEFT JOIN
+    players p
+    USING (person_id)
+ORDER BY
+    c.total_points DESC

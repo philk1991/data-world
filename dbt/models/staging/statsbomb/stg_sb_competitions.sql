@@ -1,10 +1,12 @@
 -- Staged StatsBomb competition/season pairs.
 -- Minimal transformation: cast ingested_at and pass all columns through cleanly.
-with source as (
-    select * from {{ source('raw_statsbomb', 'raw_sb_competitions') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_statsbomb', 'raw_sb_competitions') }}
 )
 
-select
+SELECT
     competition_id,
     competition_name,
     country_name,
@@ -14,5 +16,6 @@ select
     season_id,
     season_name,
     match_available_360,
-    ingested_at::timestamp              as ingested_at
-from source
+    ingested_at::TIMESTAMP AS ingested_at
+FROM
+    source

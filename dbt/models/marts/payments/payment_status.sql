@@ -10,36 +10,55 @@
 {% set grace_minutes = 10 %}
 {% set lookback_minutes = 20 %}    -- fail safe mechanism
 
-with requests as (
-    select * from {{ ref('stg_payments__requests') }}
+WITH requests AS (
+    SELECT *
+    FROM
+        {{ ref('stg_payments__requests') }}
     {% if is_incremental() %}
-    where requested_at > (select max(requested_at) - interval '{{ lookback_minutes }} minutes' from {{ this }})
+    WHERE
+        requested_at > (
+            SELECT MAX(requested_at) - INTERVAL '{{ lookback_minutes }} minutes'
+            FROM
+                {{ this }}
+        )
     {% endif %}
 ),
 
-rejections as (
-    select * from {{ ref('stg_payments__rejections') }}
+rejections AS (
+    SELECT *
+    FROM
+        {{ ref('stg_payments__rejections') }}
     {% if is_incremental() %}
     -- a rejection relevant to the look-back window has its request within it too
-    where rejected_at > (select max(requested_at) - interval '{{ lookback_minutes }} minutes' from {{ this }})
+    WHERE
+        rejected_at > (
+            SELECT MAX(requested_at) - INTERVAL '{{ lookback_minutes }} minutes'
+            FROM
+                {{ this }}
+        )
     {% endif %}
 ),
 
 -- Transform: attach the rejection (if any), derive status
-resolved as (
-    select
+resolved AS (
+    SELECT
         r.payment_id,
         r.amount,
         r.requested_at,
         rej.rejected_at,
-        case
-            when rej.payment_id is not null then 'rejected'
-            when {{ payments_now() }} >= r.requested_at + interval '{{ grace_minutes }} minutes' then 'accepted'
-            else 'pending'
-        end as status,
-        {{ payments_now() }} as status_evaluated_at
-    from requests r
-    left join rejections rej using (payment_id)
+        CASE
+            WHEN rej.payment_id IS NOT NULL THEN 'rejected'
+            WHEN {{ payments_now() }} >= r.requested_at + INTERVAL '{{ grace_minutes }} minutes' THEN 'accepted'
+            ELSE 'pending'
+        END AS status,
+        {{ payments_now() }} AS status_evaluated_at
+    FROM
+        requests r
+    LEFT JOIN
+        rejections rej
+        USING (payment_id)
 )
 
-select * from resolved
+SELECT *
+FROM
+    resolved

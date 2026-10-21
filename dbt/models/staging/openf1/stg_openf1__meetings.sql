@@ -1,8 +1,10 @@
-with source as (
-    select * from {{ source('raw_openf1', 'raw_openf1_meetings') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_openf1', 'raw_openf1_meetings') }}
 )
 
-select
+SELECT
     meeting_key,
     meeting_name,
     meeting_official_name,
@@ -13,9 +15,10 @@ select
     circuit_key,
     circuit_short_name,
     gmt_offset,
-    date_start::timestamp                     as meeting_start_at,
-    date_end::timestamp                       as meeting_end_at,
+    date_start::TIMESTAMP AS meeting_start_at,
+    date_end::TIMESTAMP AS meeting_end_at,
     year,
     is_cancelled,
-    ingested_at::timestamp                    as ingested_at
-from source
+    ingested_at::TIMESTAMP AS ingested_at
+FROM
+    source

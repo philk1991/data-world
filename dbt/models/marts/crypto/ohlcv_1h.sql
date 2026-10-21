@@ -8,23 +8,33 @@
     )
 }}
 
-with candles_1m as (
-    select * from {{ ref('ohlcv_1m') }}
+WITH candles_1m AS (
+    SELECT *
+    FROM
+        {{ ref('ohlcv_1m') }}
     {% if is_incremental() %}
-    where candle_open_time > (select max(candle_open_time) from {{ this }})
+    WHERE
+        candle_open_time > (
+            SELECT MAX(candle_open_time)
+            FROM
+                {{ this }}
+        )
     {% endif %}
 )
 
-select
+SELECT
     symbol,
-    date_trunc('hour', candle_open_time)    as candle_open_time,
-    min_by(open, candle_open_time)          as open,
-    max(high)                               as high,
-    min(low)                                as low,
-    max_by(close, candle_open_time)         as close,
-    sum(volume)                             as volume,
-    sum(notional_volume)                    as notional_volume,
-    sum(trade_count)                        as trade_count
-from candles_1m
-group by symbol, date_trunc('hour', candle_open_time)
-order by symbol, candle_open_time
+    DATE_TRUNC('hour', candle_open_time) AS candle_open_time,
+    MIN_BY(open, candle_open_time) AS open,
+    MAX(high) AS high,
+    MIN(low) AS low,
+    MAX_BY(close, candle_open_time) AS close,
+    SUM(volume) AS volume,
+    SUM(notional_volume) AS notional_volume,
+    SUM(trade_count) AS trade_count
+FROM
+    candles_1m
+GROUP BY
+    symbol, DATE_TRUNC('hour', candle_open_time)
+ORDER BY
+    symbol, candle_open_time

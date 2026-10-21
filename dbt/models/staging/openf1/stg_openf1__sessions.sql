@@ -1,13 +1,15 @@
-with source as (
-    select * from {{ source('raw_openf1', 'raw_openf1_sessions') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_openf1', 'raw_openf1_sessions') }}
 )
 
-select
+SELECT
     session_key,
     session_type,
     session_name,
-    date_start::timestamp                     as session_start_at,
-    date_end::timestamp                       as session_end_at,
+    date_start::TIMESTAMP AS session_start_at,
+    date_end::TIMESTAMP AS session_end_at,
     meeting_key,
     circuit_key,
     circuit_short_name,
@@ -17,5 +19,6 @@ select
     gmt_offset,
     year,
     is_cancelled,
-    ingested_at::timestamp                    as ingested_at
-from source
+    ingested_at::TIMESTAMP AS ingested_at
+FROM
+    source

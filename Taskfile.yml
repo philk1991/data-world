@@ -74,6 +74,16 @@ tasks:
     cmds:
       - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt compile"
 
+  dbt:lint:
+    desc: "Lint dbt models with SQLFluff (config in dbt/.sqlfluff) -- optionally MODELS=models/marts/nba"
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && sqlfluff lint {{.MODELS | default "models"}}"
+
+  dbt:fix:
+    desc: "Auto-fix SQLFluff violations in dbt models -- optionally MODELS=models/marts/nba"
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && sqlfluff fix {{.MODELS | default "models"}}"
+
   dbt:parse:
     desc: Parse dbt project and regenerate manifest.json (required after adding/renaming models)
     cmds:

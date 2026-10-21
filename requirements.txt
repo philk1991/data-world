@@ -3,6 +3,7 @@ duckdb==1.5.5
 python-dotenv==1.0.1
 dbt-oss==2.0.8
 dbc==0.3.1
+sqlfluff==4.4.0
 statsbombpy
 kagglehub
 dagster

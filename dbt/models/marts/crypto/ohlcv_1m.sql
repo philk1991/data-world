@@ -9,23 +9,33 @@
     )
 }}
 
-with trades as (
-    select * from {{ ref('stg_crypto_trades') }}
+WITH trades AS (
+    SELECT *
+    FROM
+        {{ ref('stg_crypto_trades') }}
     {% if is_incremental() %}
-    where trade_time > (select max(candle_open_time) from {{ this }})
+    WHERE
+        trade_time > (
+            SELECT MAX(candle_open_time)
+            FROM
+                {{ this }}
+        )
     {% endif %}
 )
 
-select
+SELECT
     symbol,
-    date_trunc('minute', trade_time)        as candle_open_time,
-    min_by(price, trade_time)               as open,
-    max(price)                              as high,
-    min(price)                              as low,
-    max_by(price, trade_time)               as close,
-    sum(quantity)                           as volume,
-    sum(notional_value)                     as notional_volume,
-    count(*)                                as trade_count
-from trades
-group by symbol, date_trunc('minute', trade_time)
-order by symbol, candle_open_time
+    DATE_TRUNC('minute', trade_time) AS candle_open_time,
+    MIN_BY(price, trade_time) AS open,
+    MAX(price) AS high,
+    MIN(price) AS low,
+    MAX_BY(price, trade_time) AS close,
+    SUM(quantity) AS volume,
+    SUM(notional_value) AS notional_volume,
+    COUNT(*) AS trade_count
+FROM
+    trades
+GROUP BY
+    symbol, DATE_TRUNC('minute', trade_time)
+ORDER BY
+    symbol, candle_open_time

@@ -1,10 +1,12 @@
 -- Top tracks ranked across all three time periods side by side
-with tracks as (
-    select * from {{ ref('stg_top_tracks') }}
+WITH tracks AS (
+    SELECT *
+    FROM
+        {{ ref('stg_top_tracks') }}
 ),
 
-pivoted as (
-    select
+pivoted AS (
+    SELECT
         track_id,
         track_name,
         artist_names,
@@ -12,16 +14,21 @@ pivoted as (
         album_release_date,
         duration_minutes,
         explicit,
-        max(popularity)                                                         as popularity,
-        max(case when time_range = 'short_term'  then rank end)                as rank_short_term,
-        max(case when time_range = 'medium_term' then rank end)                as rank_medium_term,
-        max(case when time_range = 'long_term'   then rank end)                as rank_long_term,
+        MAX(popularity) AS popularity,
+        MAX(CASE WHEN time_range = 'short_term' THEN rank END) AS rank_short_term,
+        MAX(CASE WHEN time_range = 'medium_term' THEN rank END) AS rank_medium_term,
+        MAX(CASE WHEN time_range = 'long_term' THEN rank END) AS rank_long_term,
         spotify_url,
-        max(ingested_at)                                                        as ingested_at
-    from tracks
-    group by track_id, track_name, artist_names, album_name,
-             album_release_date, duration_minutes, explicit, spotify_url
+        MAX(ingested_at) AS ingested_at
+    FROM
+        tracks
+    GROUP BY
+        track_id, track_name, artist_names, album_name,
+        album_release_date, duration_minutes, explicit, spotify_url
 )
 
-select * from pivoted
-order by coalesce(rank_short_term, 999)
+SELECT *
+FROM
+    pivoted
+ORDER BY
+    COALESCE(rank_short_term, 999)

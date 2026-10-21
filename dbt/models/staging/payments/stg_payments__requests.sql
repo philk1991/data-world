@@ -1,11 +1,14 @@
-with source as (
-    select * from {{ source('raw_payments', 'raw_requests') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_payments', 'raw_requests') }}
 )
 
-select
+SELECT
     payment_id,
     amount,
-    requested_at::timestamptz as requested_at,
-    consumed_at::timestamptz  as consumed_at
-from source
-qualify row_number() over (partition by payment_id order by consumed_at) = 1
+    requested_at::TIMESTAMPTZ AS requested_at,
+    consumed_at::TIMESTAMPTZ AS consumed_at
+FROM
+    source
+QUALIFY ROW_NUMBER() OVER (PARTITION BY payment_id ORDER BY consumed_at) = 1

@@ -1,0 +1,4 @@
+# The Kaggle source columns are camelCase (hometeamName, ...). Keep them as the
+# source spells them; the staging models rename them to snake_case.
+[sqlfluff]
+exclude_rules = ST06, ST07, RF02, RF04, CP02

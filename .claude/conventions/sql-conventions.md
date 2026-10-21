@@ -6,25 +6,32 @@ Every model follows the same three-zone structure:
 
 1. **Import CTEs** — one per source or ref, named after the entity being imported
 2. **Transform CTEs** — descriptive names that say what's happening (`pivoted`, `event_counts`, `enriched`, `aggregated`)
-3. **Final output** — either `select * from <last_transform_cte>` or an explicit select if columns need reordering/renaming
+3. **Final output** — either `SELECT * FROM <last_transform_cte>` or an explicit select if columns need reordering/renaming
 
 ```sql
 -- Import
-with artists as (
-    select * from {{ ref('stg_spotify__top_artists') }}
+WITH artists AS (
+    SELECT *
+    FROM
+        {{ ref('stg_spotify__top_artists') }}
 ),
 
 -- Transform
-pivoted as (
-    select
+pivoted AS (
+    SELECT
         ...
-    from artists
-    group by ...
+    FROM
+        artists
+    GROUP BY
+        ...
 )
 
 -- Final
-select * from pivoted
-order by ...
+SELECT *
+FROM
+    pivoted
+ORDER BY
+    ...
 ```
 
 Separate the import and transform zones with a blank line and a `-- Transform` comment when the model has more than two CTEs.
@@ -34,10 +41,20 @@ Separate the import and transform zones with a blank line and a `-- Transform` c
 ## Formatting
 
 - **Indentation**: 4 spaces, no tabs
-- **Keywords**: UPPERCASE — `SELECT`, `FROM`, `WHERE`, `LEFT JOIN`, `INNER JOIN`, `GROUP BY`, `ORDER BY`, `HAVING`, `CASE`, `WHEN`, `THEN`, `ELSE`, `END`, `AND`, `OR`, `NOT`, `NULL`, `AS`, `ON`, `USING`, `WITH`, `COALESCE`, `COUNT`, `SUM`, `MAX`, `MIN`, `AVG`
-- **Identifiers**: lowercase snake_case — table names, column names, CTE names, aliases
+- **Keywords, functions, types and literals**: UPPERCASE — `SELECT`, `FROM`, `WHERE`, `LEFT JOIN`, `GROUP BY`, `CASE`, `WHEN`, `AND`, `AS`, `USING`, `WITH`, `COALESCE`, `COUNT`, `SUM`, `DATE_TRUNC`, `::TIMESTAMP`, `NULL`, `TRUE`
+- **Identifiers**: lowercase snake_case — table names, column names, CTE names, aliases. Exception: NBA staging models reference the Kaggle source's camelCase columns as spelled (`hometeamName`) before renaming them
 - **Commas**: trailing (end of line), not leading
 - **Column lists**: one column per line
+- **Aliases**: column aliases use `AS`, one space after the expression (no alignment); table aliases have no `AS` (`FROM matches m`)
+- **Clause layout**: `FROM`, `JOIN`, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY` and `LIMIT` sit alone on their line, with their contents on the next line indented one level (in line with the `SELECT` columns). A join's `USING`/`ON` goes on its own line under the joined table. `FILTER (WHERE ...)` inside an aggregate stays inline
+- **Jinja blocks**: SQL inside `{% if %}` is not indented further
+- **Line length**: 120 characters
+
+---
+
+## Linting
+
+SQLFluff enforces the formatting rules above (config in `dbt/.sqlfluff`). Run `task dbt:lint` to check and `task dbt:fix` to auto-fix; `dbt lint` itself needs the proprietary dbt distribution.
 
 ---
 
@@ -47,11 +64,11 @@ Use DuckDB/PostgreSQL `::type` syntax — not `CAST(col AS type)`:
 
 ```sql
 -- correct
-ingested_at::timestamp as ingested_at
-price::double as price
+ingested_at::TIMESTAMP AS ingested_at
+price::DOUBLE AS price
 
 -- avoid
-CAST(ingested_at AS timestamp)
+CAST(ingested_at AS TIMESTAMP)
 ```
 
 ---
@@ -64,7 +81,7 @@ CAST(ingested_at AS timestamp)
 
 ```sql
 -- One row per match with aggregate event counts from conditional aggregation.
-with matches as (
+WITH matches AS (
     ...
 ```
 
@@ -72,12 +89,12 @@ with matches as (
 
 ## Null handling
 
-- Use `coalesce(col, default)` in marts when an outer join can produce nulls in a metric column
+- Use `COALESCE(col, default)` in marts when an outer join can produce nulls in a metric column
 - Document nullable columns explicitly in YAML: `"Null if not in top 50"`
 
 ```sql
-coalesce(e.total_events, 0) as total_events,
-coalesce(e.total_shots, 0) as total_shots
+COALESCE(e.total_events, 0) AS total_events,
+COALESCE(e.total_shots, 0) AS total_shots
 ```
 
 ---
@@ -89,15 +106,21 @@ coalesce(e.total_shots, 0) as total_shots
 - Alias assignment goes on the `FROM` / `JOIN` line, not inline
 
 ```sql
-from matches m
-left join event_counts e using (match_id)
+FROM
+    matches m
+LEFT JOIN
+    event_counts e
+    USING (match_id)
 ```
 
 When keys differ between tables, use `ON`:
 
 ```sql
-from matches m
-left join competitions c on m.competition_id = c.competition_id
+FROM
+    matches m
+LEFT JOIN
+    competitions c
+    ON m.competition_id = c.competition_id
 ```
 
 ---
@@ -108,15 +131,18 @@ Staging models use a single `source` CTE with a pass-through select. Keep them m
 
 ```sql
 -- Light cleaning: rename columns, cast types, pass ingested_at through.
-with source as (
-    select * from {{ source('raw_spotify', 'raw_top_artists') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_spotify', 'raw_top_artists') }}
 )
 
-select
-    id as artist_id,
-    name as artist_name,
-    ingested_at::timestamp as ingested_at
-from source
+SELECT
+    id AS artist_id,
+    name AS artist_name,
+    ingested_at::TIMESTAMP AS ingested_at
+FROM
+    source
 ```
 
 No aggregations, no filters (unless removing structural duplicates from the raw layer), no joins.
@@ -127,13 +153,18 @@ No aggregations, no filters (unless removing structural duplicates from the raw 
 
 **Pivot with conditional aggregation:**
 ```sql
-max(case when time_range = 'short_term' then rank end) as rank_short_term,
-max(case when time_range = 'medium_term' then rank end) as rank_medium_term,
+MAX(CASE WHEN time_range = 'short_term' THEN rank END) AS rank_short_term,
+MAX(CASE WHEN time_range = 'medium_term' THEN rank END) AS rank_medium_term,
 ```
 
 **Incremental models** — always filter on the incremental column:
 ```sql
 {% if is_incremental() %}
-where trade_time > (select max(trade_time) from {{ this }})
+WHERE
+    trade_time > (
+        SELECT MAX(trade_time)
+        FROM
+            {{ this }}
+    )
 {% endif %}
 ```

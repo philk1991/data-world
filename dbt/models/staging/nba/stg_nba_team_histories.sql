@@ -1,15 +1,18 @@
 -- Staged NBA franchise histories. One row per franchise era.
-with source as (
-    select * from {{ source('raw_nba', 'raw_nba_team_histories') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_nba', 'raw_nba_team_histories') }}
 )
 
-select
-    teamId                              as team_id,
-    teamCity                            as team_city,
-    teamName                            as team_name,
-    teamAbbrev                          as team_abbrev,
-    seasonFounded                       as season_founded,
-    seasonActiveTill                    as season_active_till,
+SELECT
+    teamId AS team_id,
+    teamCity AS team_city,
+    teamName AS team_name,
+    teamAbbrev AS team_abbrev,
+    seasonFounded AS season_founded,
+    seasonActiveTill AS season_active_till,
     league,
-    ingested_at::timestamp              as ingested_at
-from source
+    ingested_at::TIMESTAMP AS ingested_at
+FROM
+    source

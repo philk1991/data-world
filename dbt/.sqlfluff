@@ -1,0 +1,80 @@
+# SQLFluff config for the dbt project. Style rules live in
+# .claude/conventions/sql-conventions.md -- keep the two in step.
+#
+# Uses the jinja templater, not the dbt one: sqlfluff-templater-dbt is built on
+# dbt-core 1.x's Python API and can't drive the dbt-oss 2.x binary.
+# apply_dbt_builtins stubs ref/source/config/var/is_incremental/this, and the
+# project's own macros are loaded from macros/.
+
+[sqlfluff]
+dialect = duckdb
+templater = jinja
+max_line_length = 120
+# ST06 would reorder select columns, changing mart schemas; ST07 bans USING, which we
+# prefer; RF02 wants every column qualified, which we don't require; RF04 flags
+# existing column names like open/close that readers depend on.
+exclude_rules = ST06, ST07, RF02, RF04
+
+[sqlfluff:templater:jinja]
+apply_dbt_builtins = True
+load_macros_from_path = macros
+
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = 4
+# Don't indent SQL inside {% if %} blocks.
+template_blocks_indent = False
+
+[sqlfluff:layout:type:comma]
+line_position = trailing
+
+# SQL words UPPERCASE, names lowercase.
+# Clause keywords sit alone on their line, with their contents indented beneath:
+#   FROM
+#       matches m
+[sqlfluff:layout:type:from_clause]
+keyword_line_position = alone
+
+[sqlfluff:layout:type:join_clause]
+keyword_line_position = alone
+
+[sqlfluff:layout:type:where_clause]
+keyword_line_position = alone
+
+[sqlfluff:layout:type:groupby_clause]
+keyword_line_position = alone
+
+[sqlfluff:layout:type:having_clause]
+keyword_line_position = alone
+
+[sqlfluff:layout:type:orderby_clause]
+keyword_line_position = alone
+
+[sqlfluff:layout:type:limit_clause]
+keyword_line_position = alone
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.types]
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower
+
+# Table aliases go straight after the name (`from matches m`); column aliases use AS.
+[sqlfluff:rules:aliasing.table]
+aliasing = implicit
+
+[sqlfluff:rules:aliasing.column]
+aliasing = explicit
+
+# `::type`, not CAST(... AS type).
+[sqlfluff:rules:convention.casting_style]
+preferred_type_casting_style = shorthand

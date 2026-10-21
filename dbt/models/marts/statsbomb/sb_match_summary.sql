@@ -1,23 +1,27 @@
 -- One row per match with competition context and aggregate event counts.
 -- Event counts use conditional aggregation over the event type column.
-with matches as (
-    select * from {{ ref('stg_sb_matches') }}
+WITH matches AS (
+    SELECT *
+    FROM
+        {{ ref('stg_sb_matches') }}
 ),
 
-event_counts as (
-    select
+event_counts AS (
+    SELECT
         match_id,
-        count(*)                                                    as total_events,
-        count(case when event_type = 'Shot'     then 1 end)        as total_shots,
-        count(case when event_type = 'Pass'     then 1 end)        as total_passes,
-        count(case when event_type = 'Dribble'  then 1 end)        as total_dribbles,
-        count(case when event_type = 'Pressure' then 1 end)        as total_pressures,
-        count(case when event_type = 'Carry'    then 1 end)        as total_carries
-    from {{ ref('stg_sb_events') }}
-    group by match_id
+        COUNT(*) AS total_events,
+        COUNT(CASE WHEN event_type = 'Shot' THEN 1 END) AS total_shots,
+        COUNT(CASE WHEN event_type = 'Pass' THEN 1 END) AS total_passes,
+        COUNT(CASE WHEN event_type = 'Dribble' THEN 1 END) AS total_dribbles,
+        COUNT(CASE WHEN event_type = 'Pressure' THEN 1 END) AS total_pressures,
+        COUNT(CASE WHEN event_type = 'Carry' THEN 1 END) AS total_carries
+    FROM
+        {{ ref('stg_sb_events') }}
+    GROUP BY
+        match_id
 )
 
-select
+SELECT
     m.match_id,
     m.match_date,
     m.competition_id,
@@ -33,13 +37,17 @@ select
     m.match_week,
     m.competition_stage,
     m.stadium_name,
-    coalesce(e.total_events,    0)      as total_events,
-    coalesce(e.total_shots,     0)      as total_shots,
-    coalesce(e.total_passes,    0)      as total_passes,
-    coalesce(e.total_dribbles,  0)      as total_dribbles,
-    coalesce(e.total_pressures, 0)      as total_pressures,
-    coalesce(e.total_carries,   0)      as total_carries,
+    COALESCE(e.total_events, 0) AS total_events,
+    COALESCE(e.total_shots, 0) AS total_shots,
+    COALESCE(e.total_passes, 0) AS total_passes,
+    COALESCE(e.total_dribbles, 0) AS total_dribbles,
+    COALESCE(e.total_pressures, 0) AS total_pressures,
+    COALESCE(e.total_carries, 0) AS total_carries,
     m.ingested_at
-from matches m
-left join event_counts e using (match_id)
-order by m.match_date desc
+FROM
+    matches m
+LEFT JOIN
+    event_counts e
+    USING (match_id)
+ORDER BY
+    m.match_date DESC

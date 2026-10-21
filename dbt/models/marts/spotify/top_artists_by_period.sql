@@ -1,24 +1,31 @@
 -- Top artists ranked across all three time periods side by side
-with artists as (
-    select * from {{ ref('stg_top_artists') }}
+WITH artists AS (
+    SELECT *
+    FROM
+        {{ ref('stg_top_artists') }}
 ),
 
-pivoted as (
-    select
+pivoted AS (
+    SELECT
         artist_id,
         artist_name,
         genres,
-        max(popularity)                                                         as popularity,
-        max(followers)                                                          as followers,
-        max(image_url)                                                          as image_url,
-        max(case when time_range = 'short_term'  then rank end)                as rank_short_term,
-        max(case when time_range = 'medium_term' then rank end)                as rank_medium_term,
-        max(case when time_range = 'long_term'   then rank end)                as rank_long_term,
+        MAX(popularity) AS popularity,
+        MAX(followers) AS followers,
+        MAX(image_url) AS image_url,
+        MAX(CASE WHEN time_range = 'short_term' THEN rank END) AS rank_short_term,
+        MAX(CASE WHEN time_range = 'medium_term' THEN rank END) AS rank_medium_term,
+        MAX(CASE WHEN time_range = 'long_term' THEN rank END) AS rank_long_term,
         spotify_url,
-        max(ingested_at)                                                        as ingested_at
-    from artists
-    group by artist_id, artist_name, genres, spotify_url
+        MAX(ingested_at) AS ingested_at
+    FROM
+        artists
+    GROUP BY
+        artist_id, artist_name, genres, spotify_url
 )
 
-select * from pivoted
-order by coalesce(rank_short_term, 999)
+SELECT *
+FROM
+    pivoted
+ORDER BY
+    COALESCE(rank_short_term, 999)

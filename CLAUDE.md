@@ -58,6 +58,7 @@ dbt runs on **dbt-oss 2.0.8** (dbt v2, Apache-2.0 — not Fusion, and not dbt-co
 - The lake is configured in `dbt/catalogs.yml` (a `ducklake` catalog named `lake`, Postgres `metadata_path`, `data_path` from `LAKE_DATA_PATH`), enabled by the `use_catalogs_v2` flag, and `+catalog_name: lake` in `dbt_project.yml` puts every model in it. `profiles.yml` is an in-memory DuckDB with the `ducklake` and `postgres` extensions, 4 threads, and the read-only streaming attaches.
 - dbt-oss reaches DuckDB through an ADBC driver installed by `task dbt:driver` (`dbc install duckdb=1.5.5`). The driver bundled with dbt-oss can't load extensions, so the lake can't attach without it.
 - YAML uses the v2 shapes (`config.meta`, generic test `arguments:`) — `dbt-autofix deprecations` produced them.
+- `dbt lint` needs the proprietary distribution (`dbt system upgrade-distribution`), so SQL is linted with SQLFluff instead: `task dbt:lint` / `task dbt:fix`, config in `dbt/.sqlfluff`. It uses the `jinja` templater with `apply_dbt_builtins` — the `dbt` templater is built on dbt-core 1.x and can't drive dbt-oss.
 - There's no static analysis, so unit-test fixtures for `TIMESTAMPTZ` columns must be `format: sql` with explicit `::timestamptz` casts (see `models/marts/payments/unit_tests_payments.yml`).
 
 Models follow a two-layer structure: `staging/` (views, light cleaning) → `marts/` (tables, analysis-ready). Each data source gets its own subdirectory under both layers.

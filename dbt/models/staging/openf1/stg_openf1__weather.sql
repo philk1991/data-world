@@ -1,11 +1,13 @@
-with source as (
-    select * from {{ source('raw_openf1', 'raw_openf1_weather') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_openf1', 'raw_openf1_weather') }}
 )
 
-select
+SELECT
     session_key,
     meeting_key,
-    "date"::timestamp                         as observed_at,
+    date::TIMESTAMP AS observed_at,
     air_temperature,
     track_temperature,
     humidity,
@@ -13,5 +15,6 @@ select
     rainfall,
     wind_direction,
     wind_speed,
-    ingested_at::timestamp                    as ingested_at
-from source
+    ingested_at::TIMESTAMP AS ingested_at
+FROM
+    source

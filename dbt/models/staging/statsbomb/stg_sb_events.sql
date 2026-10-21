@@ -1,19 +1,21 @@
 -- Staged StatsBomb events.
 -- Casts types and derives seconds_elapsed from minute and second.
 -- location_x and location_y are already parsed to DOUBLE in raw.
-with source as (
-    select * from {{ source('raw_statsbomb', 'raw_sb_events') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_statsbomb', 'raw_sb_events') }}
 )
 
-select
+SELECT
     event_id,
     match_id,
     event_index,
     period,
-    timestamp::time                     as event_time,
+    timestamp::TIME AS event_time,
     minute,
     second,
-    (minute * 60) + second              as seconds_elapsed,
+    (minute * 60) + second AS seconds_elapsed,
     event_type,
     possession,
     possession_team,
@@ -24,5 +26,6 @@ select
     location_x,
     location_y,
     duration,
-    ingested_at::timestamp              as ingested_at
-from source
+    ingested_at::TIMESTAMP AS ingested_at
+FROM
+    source

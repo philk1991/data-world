@@ -75,57 +75,80 @@ Follow `sql-conventions.md` exactly for formatting. Use the correct template for
 **Staging:**
 ```sql
 -- <brief description if non-obvious>
-with source as (
-    select * from {{ source('raw_<domain>', 'raw_<entity>') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_<domain>', 'raw_<entity>') }}
 )
 
-select
+SELECT
     <renamed_columns_with_type_casts>
-from source
+FROM
+    source
 ```
 
 **Intermediate:**
 ```sql
 -- <description of what this joins or derives>
-with <entity_a> as (
-    select * from {{ ref('stg_<domain>__<entity_a>') }}
+WITH <entity_a> AS (
+    SELECT *
+    FROM
+        {{ ref('stg_<domain>__<entity_a>') }}
 ),
 
-<entity_b> as (
-    select * from {{ ref('stg_<domain>__<entity_b>') }}
+<entity_b> AS (
+    SELECT *
+    FROM
+        {{ ref('stg_<domain>__<entity_b>') }}
 ),
 
-<transform_cte_name> as (
-    select
+<transform_cte_name> AS (
+    SELECT
         ...
-    from <entity_a>
-    <join type> join <entity_b> using (<key>)
+    FROM
+        <entity_a>
+    <join type> JOIN
+        <entity_b>
+        USING (<key>)
 )
 
-select * from <transform_cte_name>
+SELECT *
+FROM
+    <transform_cte_name>
 ```
 
 **Mart:**
 ```sql
 -- <description if non-obvious>
-with <entity> as (
-    select * from {{ ref('stg_<domain>__<entity>') }}
+WITH <entity> AS (
+    SELECT *
+    FROM
+        {{ ref('stg_<domain>__<entity>') }}
 ),
 
-<transform_cte_name> as (
-    select
+<transform_cte_name> AS (
+    SELECT
         ...
-    from <entity>
+    FROM
+        <entity>
 )
 
-select * from <transform_cte_name>
-order by ...
+SELECT *
+FROM
+    <transform_cte_name>
+ORDER BY
+    ...
 ```
 
 For **incremental marts**, add the incremental filter block inside the transform CTE:
 ```sql
 {% if is_incremental() %}
-where <timestamp_col> > (select max(<timestamp_col>) from {{ this }})
+WHERE
+    <timestamp_col> > (
+        SELECT MAX(<timestamp_col>)
+        FROM
+            {{ this }}
+    )
 {% endif %}
 ```
 
@@ -164,7 +187,9 @@ If this is the first model for a new source domain, add materialisation config t
 
 Run:
 ```
+task dbt:fix
+task dbt:lint
 task dbt:compile
 ```
 
-Surface any errors to the user and fix them before finishing. A successful compile confirms the SQL is valid and all refs/sources resolve.
+`dbt:fix` applies the SQLFluff formatting; `dbt:lint` should then pass. Surface any errors to the user and fix them before finishing. A successful compile confirms the SQL is valid and all refs/sources resolve.

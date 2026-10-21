@@ -3,12 +3,14 @@
 -- against an opponent is its record directly; the reverse matchup is a separate
 -- row. Restricted to competitive meetings (Regular Season + Playoffs) to exclude
 -- preseason and exhibition games. Join nba_team_dim on either id for team names.
-with team_box as (
-    select * from {{ ref('stg_nba_team_statistics') }}
+WITH team_box AS (
+    SELECT *
+    FROM
+        {{ ref('stg_nba_team_statistics') }}
 ),
 
-matchups as (
-    select
+matchups AS (
+    SELECT
         team_id,
         opponent_team_id,
         game_id,
@@ -16,24 +18,31 @@ matchups as (
         is_win,
         team_score,
         opponent_score
-    from team_box
-    where game_type in ('Regular Season', 'Playoffs')
-        and opponent_team_id is not null
+    FROM
+        team_box
+    WHERE
+        game_type IN ('Regular Season', 'Playoffs')
+        AND opponent_team_id IS NOT NULL
 )
 
-select
+SELECT
     team_id,
     opponent_team_id,
-    count(distinct game_id)                                         as games_played,
-    count(case when is_win then 1 end)                             as wins,
-    count(case when is_win = false then 1 end)                     as losses,
-    round(count(case when is_win then 1 end)::double
-          / nullif(count(case when is_win is not null then 1 end), 0), 3) as win_pct,
-    round(avg(team_score), 1)                                      as avg_points_for,
-    round(avg(opponent_score), 1)                                  as avg_points_against,
-    round(avg(team_score - opponent_score), 1)                    as avg_point_margin,
-    min(game_date)                                                 as first_meeting_date,
-    max(game_date)                                                 as last_meeting_date
-from matchups
-group by team_id, opponent_team_id
-order by games_played desc
+    COUNT(DISTINCT game_id) AS games_played,
+    COUNT(CASE WHEN is_win THEN 1 END) AS wins,
+    COUNT(CASE WHEN is_win = FALSE THEN 1 END) AS losses,
+    ROUND(
+        COUNT(CASE WHEN is_win THEN 1 END)::DOUBLE
+        / NULLIF(COUNT(CASE WHEN is_win IS NOT NULL THEN 1 END), 0), 3
+    ) AS win_pct,
+    ROUND(AVG(team_score), 1) AS avg_points_for,
+    ROUND(AVG(opponent_score), 1) AS avg_points_against,
+    ROUND(AVG(team_score - opponent_score), 1) AS avg_point_margin,
+    MIN(game_date) AS first_meeting_date,
+    MAX(game_date) AS last_meeting_date
+FROM
+    matchups
+GROUP BY
+    team_id, opponent_team_id
+ORDER BY
+    games_played DESC

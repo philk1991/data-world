@@ -1,11 +1,13 @@
-with source as (
-    select * from {{ source('raw_spotify', 'raw_recently_played') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_spotify', 'raw_recently_played') }}
 )
 
-select
-    played_at::timestamp                        as played_at,
-    date_trunc('day', played_at::timestamp)     as played_date,
-    date_part('hour', played_at::timestamp)     as played_hour,
+SELECT
+    played_at::TIMESTAMP AS played_at,
+    DATE_TRUNC('day', played_at::TIMESTAMP) AS played_date,
+    DATE_PART('hour', played_at::TIMESTAMP) AS played_hour,
     track_id,
     track_name,
     artist_ids,
@@ -13,11 +15,12 @@ select
     album_id,
     album_name,
     duration_ms,
-    round(duration_ms / 60000.0, 2)            as duration_minutes,
+    ROUND(duration_ms / 60000.0, 2) AS duration_minutes,
     explicit,
     popularity,
     spotify_url,
     context_type,
     context_uri,
-    ingested_at::timestamp                      as ingested_at
-from source
+    ingested_at::TIMESTAMP AS ingested_at
+FROM
+    source

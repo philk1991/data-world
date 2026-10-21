@@ -1,35 +1,41 @@
 -- One row per game combining game metadata with both teams' box score lines.
 -- Team box scores are pivoted onto the home/away axis via conditional aggregation.
-with games as (
-    select * from {{ ref('stg_nba_games') }}
+WITH games AS (
+    SELECT *
+    FROM
+        {{ ref('stg_nba_games') }}
 ),
 
-team_box as (
-    select * from {{ ref('stg_nba_team_statistics') }}
+team_box AS (
+    SELECT *
+    FROM
+        {{ ref('stg_nba_team_statistics') }}
 ),
 
-game_team_stats as (
-    select
+game_team_stats AS (
+    SELECT
         game_id,
-        max(case when is_home then field_goals_made          end)    as home_field_goals_made,
-        max(case when is_home then field_goals_attempted     end)    as home_field_goals_attempted,
-        max(case when is_home then three_pointers_made        end)    as home_three_pointers_made,
-        max(case when is_home then rebounds_total             end)    as home_rebounds_total,
-        max(case when is_home then assists                    end)    as home_assists,
-        max(case when is_home then turnovers                  end)    as home_turnovers,
-        max(case when is_home then points_in_the_paint        end)    as home_points_in_the_paint,
-        max(case when not is_home then field_goals_made       end)    as away_field_goals_made,
-        max(case when not is_home then field_goals_attempted  end)    as away_field_goals_attempted,
-        max(case when not is_home then three_pointers_made    end)    as away_three_pointers_made,
-        max(case when not is_home then rebounds_total         end)    as away_rebounds_total,
-        max(case when not is_home then assists                end)    as away_assists,
-        max(case when not is_home then turnovers              end)    as away_turnovers,
-        max(case when not is_home then points_in_the_paint    end)    as away_points_in_the_paint
-    from team_box
-    group by game_id
+        MAX(CASE WHEN is_home THEN field_goals_made END) AS home_field_goals_made,
+        MAX(CASE WHEN is_home THEN field_goals_attempted END) AS home_field_goals_attempted,
+        MAX(CASE WHEN is_home THEN three_pointers_made END) AS home_three_pointers_made,
+        MAX(CASE WHEN is_home THEN rebounds_total END) AS home_rebounds_total,
+        MAX(CASE WHEN is_home THEN assists END) AS home_assists,
+        MAX(CASE WHEN is_home THEN turnovers END) AS home_turnovers,
+        MAX(CASE WHEN is_home THEN points_in_the_paint END) AS home_points_in_the_paint,
+        MAX(CASE WHEN NOT is_home THEN field_goals_made END) AS away_field_goals_made,
+        MAX(CASE WHEN NOT is_home THEN field_goals_attempted END) AS away_field_goals_attempted,
+        MAX(CASE WHEN NOT is_home THEN three_pointers_made END) AS away_three_pointers_made,
+        MAX(CASE WHEN NOT is_home THEN rebounds_total END) AS away_rebounds_total,
+        MAX(CASE WHEN NOT is_home THEN assists END) AS away_assists,
+        MAX(CASE WHEN NOT is_home THEN turnovers END) AS away_turnovers,
+        MAX(CASE WHEN NOT is_home THEN points_in_the_paint END) AS away_points_in_the_paint
+    FROM
+        team_box
+    GROUP BY
+        game_id
 )
 
-select
+SELECT
     g.game_id,
     g.game_date,
     g.game_datetime_est,
@@ -40,7 +46,7 @@ select
     g.away_team_name,
     g.home_score,
     g.away_score,
-    g.home_score - g.away_score         as point_margin,
+    g.home_score - g.away_score AS point_margin,
     g.home_team_won,
     g.attendance,
     g.arena_name,
@@ -59,6 +65,10 @@ select
     s.away_turnovers,
     s.away_points_in_the_paint,
     g.ingested_at
-from games g
-left join game_team_stats s using (game_id)
-order by g.game_date desc
+FROM
+    games g
+LEFT JOIN
+    game_team_stats s
+    USING (game_id)
+ORDER BY
+    g.game_date DESC

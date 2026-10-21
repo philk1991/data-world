@@ -4,21 +4,25 @@
 -- belong to the prior start year). A player traded mid-season is combined into a
 -- single row per game type; primary_team_id is the team they played the most
 -- games for. Only games actually played (minutes_played not null) count.
-with box_scores as (
-    select * from {{ ref('stg_nba_player_statistics') }}
+WITH box_scores AS (
+    SELECT *
+    FROM
+        {{ ref('stg_nba_player_statistics') }}
 ),
 
-players as (
-    select * from {{ ref('stg_nba_players') }}
+players AS (
+    SELECT *
+    FROM
+        {{ ref('stg_nba_players') }}
 ),
 
-seasoned as (
-    select
+seasoned AS (
+    SELECT
         person_id,
-        case
-            when month(game_date) >= 7 then year(game_date)
-            else year(game_date) - 1
-        end                                                         as season_start_year,
+        CASE
+            WHEN MONTH(game_date) >= 7 THEN YEAR(game_date)
+            ELSE YEAR(game_date) - 1
+        END AS season_start_year,
         game_type,
         player_team_id,
         game_id,
@@ -34,43 +38,47 @@ seasoned as (
         three_pointers_attempted,
         free_throws_made,
         free_throws_attempted
-    from box_scores
-    where person_id is not null
-        and minutes_played is not null
-        and game_date is not null
-        and game_type is not null
+    FROM
+        box_scores
+    WHERE
+        person_id IS NOT NULL
+        AND minutes_played IS NOT NULL
+        AND game_date IS NOT NULL
+        AND game_type IS NOT NULL
 ),
 
-season_totals as (
-    select
+season_totals AS (
+    SELECT
         person_id,
         season_start_year,
         game_type,
-        mode(player_team_id)                                        as primary_team_id,
-        count(distinct game_id)                                     as games_played,
-        sum(points)                                                 as total_points,
-        sum(rebounds_total)                                         as total_rebounds,
-        sum(assists)                                                as total_assists,
-        sum(steals)                                                 as total_steals,
-        sum(blocks)                                                 as total_blocks,
-        sum(turnovers)                                              as total_turnovers,
-        sum(field_goals_made)                                       as total_field_goals_made,
-        sum(field_goals_attempted)                                  as total_field_goals_attempted,
-        sum(three_pointers_made)                                    as total_three_pointers_made,
-        sum(three_pointers_attempted)                               as total_three_pointers_attempted,
-        sum(free_throws_made)                                       as total_free_throws_made,
-        sum(free_throws_attempted)                                  as total_free_throws_attempted
-    from seasoned
-    group by person_id, season_start_year, game_type
+        MODE(player_team_id) AS primary_team_id,
+        COUNT(DISTINCT game_id) AS games_played,
+        SUM(points) AS total_points,
+        SUM(rebounds_total) AS total_rebounds,
+        SUM(assists) AS total_assists,
+        SUM(steals) AS total_steals,
+        SUM(blocks) AS total_blocks,
+        SUM(turnovers) AS total_turnovers,
+        SUM(field_goals_made) AS total_field_goals_made,
+        SUM(field_goals_attempted) AS total_field_goals_attempted,
+        SUM(three_pointers_made) AS total_three_pointers_made,
+        SUM(three_pointers_attempted) AS total_three_pointers_attempted,
+        SUM(free_throws_made) AS total_free_throws_made,
+        SUM(free_throws_attempted) AS total_free_throws_attempted
+    FROM
+        seasoned
+    GROUP BY
+        person_id, season_start_year, game_type
 )
 
-select
+SELECT
     s.person_id,
     p.first_name,
     p.last_name,
     s.season_start_year,
-    s.season_start_year::varchar || '-'
-        || right((s.season_start_year + 1)::varchar, 2)            as season_label,
+    s.season_start_year::VARCHAR || '-'
+    || RIGHT((s.season_start_year + 1)::VARCHAR, 2) AS season_label,
     s.game_type,
     s.primary_team_id,
     s.games_played,
@@ -80,15 +88,25 @@ select
     s.total_steals,
     s.total_blocks,
     s.total_turnovers,
-    round(s.total_points::double  / nullif(s.games_played, 0), 1)  as points_per_game,
-    round(s.total_rebounds::double / nullif(s.games_played, 0), 1) as rebounds_per_game,
-    round(s.total_assists::double / nullif(s.games_played, 0), 1)  as assists_per_game,
-    round(s.total_field_goals_made::double
-          / nullif(s.total_field_goals_attempted, 0), 3)           as field_goal_pct,
-    round(s.total_three_pointers_made::double
-          / nullif(s.total_three_pointers_attempted, 0), 3)        as three_point_pct,
-    round(s.total_free_throws_made::double
-          / nullif(s.total_free_throws_attempted, 0), 3)           as free_throw_pct
-from season_totals s
-left join players p using (person_id)
-order by s.season_start_year desc, s.total_points desc
+    ROUND(s.total_points::DOUBLE / NULLIF(s.games_played, 0), 1) AS points_per_game,
+    ROUND(s.total_rebounds::DOUBLE / NULLIF(s.games_played, 0), 1) AS rebounds_per_game,
+    ROUND(s.total_assists::DOUBLE / NULLIF(s.games_played, 0), 1) AS assists_per_game,
+    ROUND(
+        s.total_field_goals_made::DOUBLE
+        / NULLIF(s.total_field_goals_attempted, 0), 3
+    ) AS field_goal_pct,
+    ROUND(
+        s.total_three_pointers_made::DOUBLE
+        / NULLIF(s.total_three_pointers_attempted, 0), 3
+    ) AS three_point_pct,
+    ROUND(
+        s.total_free_throws_made::DOUBLE
+        / NULLIF(s.total_free_throws_attempted, 0), 3
+    ) AS free_throw_pct
+FROM
+    season_totals s
+LEFT JOIN
+    players p
+    USING (person_id)
+ORDER BY
+    s.season_start_year DESC, s.total_points DESC

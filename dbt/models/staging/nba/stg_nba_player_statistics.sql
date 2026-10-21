@@ -1,49 +1,52 @@
 -- Staged traditional player box scores. One row per player per game.
 -- numMinutes is stored as text in the raw data and cast to a numeric value here.
-with source as (
-    select * from {{ source('raw_nba', 'raw_nba_player_statistics') }}
+WITH source AS (
+    SELECT *
+    FROM
+        {{ source('raw_nba', 'raw_nba_player_statistics') }}
 )
 
-select
-    gameId                              as game_id,
-    personId                            as person_id,
-    firstName                           as first_name,
-    lastName                            as last_name,
-    gameDate::date                      as game_date,
-    gameDateTimeEst::timestamp          as game_datetime_est,
-    gameType                            as game_type,
-    gameLabel                           as game_label,
-    gameSubLabel                        as game_sub_label,
-    seriesGameNumber                    as series_game_number,
-    playerteamId                        as player_team_id,
-    playerteamCity                      as player_team_city,
-    playerteamName                      as player_team_name,
-    opponentteamId                      as opponent_team_id,
-    opponentteamCity                    as opponent_team_city,
-    opponentteamName                    as opponent_team_name,
-    home = 1                            as is_home,
-    win = 1                             as is_win,
-    startingPosition                    as starting_position,
+SELECT
+    gameId AS game_id,
+    personId AS person_id,
+    firstName AS first_name,
+    lastName AS last_name,
+    gameDate::DATE AS game_date,
+    gameDateTimeEst::TIMESTAMP AS game_datetime_est,
+    gameType AS game_type,
+    gameLabel AS game_label,
+    gameSubLabel AS game_sub_label,
+    seriesGameNumber AS series_game_number,
+    playerteamId AS player_team_id,
+    playerteamCity AS player_team_city,
+    playerteamName AS player_team_name,
+    opponentteamId AS opponent_team_id,
+    opponentteamCity AS opponent_team_city,
+    opponentteamName AS opponent_team_name,
+    home = 1 AS is_home,
+    win = 1 AS is_win,
+    startingPosition AS starting_position,
     comment,
-    try_cast(numMinutes as double)      as minutes_played,
+    TRY_CAST(numMinutes AS DOUBLE) AS minutes_played,
     points,
     assists,
     blocks,
     steals,
-    fieldGoalsAttempted                 as field_goals_attempted,
-    fieldGoalsMade                      as field_goals_made,
-    fieldGoalsPercentage                as field_goals_percentage,
-    threePointersAttempted              as three_pointers_attempted,
-    threePointersMade                   as three_pointers_made,
-    threePointersPercentage             as three_pointers_percentage,
-    freeThrowsAttempted                 as free_throws_attempted,
-    freeThrowsMade                      as free_throws_made,
-    freeThrowsPercentage                as free_throws_percentage,
-    reboundsOffensive                   as rebounds_offensive,
-    reboundsDefensive                   as rebounds_defensive,
-    reboundsTotal                       as rebounds_total,
-    foulsPersonal                       as fouls_personal,
+    fieldGoalsAttempted AS field_goals_attempted,
+    fieldGoalsMade AS field_goals_made,
+    fieldGoalsPercentage AS field_goals_percentage,
+    threePointersAttempted AS three_pointers_attempted,
+    threePointersMade AS three_pointers_made,
+    threePointersPercentage AS three_pointers_percentage,
+    freeThrowsAttempted AS free_throws_attempted,
+    freeThrowsMade AS free_throws_made,
+    freeThrowsPercentage AS free_throws_percentage,
+    reboundsOffensive AS rebounds_offensive,
+    reboundsDefensive AS rebounds_defensive,
+    reboundsTotal AS rebounds_total,
+    foulsPersonal AS fouls_personal,
     turnovers,
-    plusMinusPoints                     as plus_minus_points,
-    ingested_at::timestamp              as ingested_at
-from source
+    plusMinusPoints AS plus_minus_points,
+    ingested_at::TIMESTAMP AS ingested_at
+FROM
+    source
