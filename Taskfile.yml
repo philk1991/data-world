@@ -15,9 +15,6 @@ vars:
   # Homebrew's postgresql@17 is keg-only (not on PATH). Override with PG_BIN=... for other installs.
   PG_BIN:
     sh: echo "${PG_BIN:-$(brew --prefix postgresql@17 2>/dev/null)/bin}"
-  # The Postgres database named in LAKE_CATALOG (default data_world_lake), created by lake:init.
-  LAKE_DB:
-    sh: echo "${LAKE_CATALOG:-dbname=data_world_lake}" | sed -E 's/.*dbname=([^ ]+).*/\1/'
   CACHE: data-ingestion/.spotify_cache
 
 tasks:
@@ -198,7 +195,11 @@ tasks:
     cmds:
       - mkdir -p "$LAKE_DATA_PATH"
       - bash -c '"{{.PG_BIN}}/pg_isready" -q || { echo "Postgres is not running — brew services start postgresql@17"; exit 1; }'
-      - bash -c '"{{.PG_BIN}}/psql" -d postgres -Atc "select 1 from pg_database where datname = '"'"'{{.LAKE_DB}}'"'"'" | grep -q 1 || "{{.PG_BIN}}/createdb" {{.LAKE_DB}}'
+      # Create the Postgres database named in LAKE_CATALOG (default data_world_lake) if missing.
+      # Worked out here rather than in a var: Task's sh: vars don't see values from .env.
+      - |
+        db=$(echo "${LAKE_CATALOG:-dbname=data_world_lake}" | sed -E 's/.*dbname=([^ ]+).*/\1/')
+        "{{.PG_BIN}}/psql" -d postgres -Atc "select 1 from pg_database where datname = '$db'" | grep -q 1 || "{{.PG_BIN}}/createdb" "$db"
       - bash -c "source {{.VENV}} && cd data-ingestion && python -c 'from lake import connect_lake; connect_lake().close(); print(\"Lake ready.\")'"
 
   lake:status:

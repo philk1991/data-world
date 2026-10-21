@@ -159,6 +159,16 @@ Then `task dbt:deps` → `task dbt:build` (full project).
 
 **Gate:** a fresh clone can follow the README to a working setup. Do this as an end-to-end check in a scratch clone.
 
+#### Phase 6 results (21 Oct 2026) — **passed, except retiring the old file (due ~28 Oct)**
+
+- **Maintenance:** `maintain_lake()` in `lake.py` (flush inlined → merge adjacent → rewrite deletes → expire snapshots → cleanup old files → delete orphaned files older than a day), exposed as `task lake:maintain` (`RETAIN`, default `7 days`) and a `lake_maintenance_job` on a weekly Dagster schedule (Sundays 05:00). First run with `RETAIN='1 hour'`, during a live StatsBomb ingest: **73,525 → 1,066 snapshots, 436 → 296 MB**, and every table's row count was identical before and after (29 tables, StatsBomb excluded as it was still loading).
+- **Docs:** CLAUDE.md and README rewritten (lake section, dbt-oss, readers, DuckDB 1.5.5 pins, Elementary removed, the single-writer rule now applies only to the streaming files). Sub-READMEs, `.env.example` files and nao's context doc updated. Added `task lake:sql` for read-only ad-hoc queries.
+- **Skills:** `/explore-dataset`, `/test-failures` and `/cube-develop` connect through `connect_lake(read_only=True)`. `/ingest-api-source` templates use `connect_lake` and `@in_transaction`; its smoke test and eval grader use a throwaway DuckDB-file catalog, so they never touch the real lake.
+- **Gate (fresh clone):** a new clone with its own venv and a scratch catalog database followed the README: `lake:init` (twice, idempotent), `setup:streaming-dbs`, `dbt:driver`, `dbt:deps`, `ingest:nba` → `dbt:build` (the NBA pipeline all green; the 17 errors are the staging models of sources not loaded in the test) → `lake:maintain` → Dagster definitions validate.
+- **Found and fixed by the gate:** `lake:init` always created `data_world_lake` and `data/lake/`, ignoring `LAKE_CATALOG`/`LAKE_DATA_PATH`. It now works out the database name from `LAKE_CATALOG` inside the command (Task's `sh:` vars can't see `.env` values).
+- **Also learned:** nao 0.3.25 no longer installs protobuf, so the reason for its separate venv may be gone (untested).
+- **Still to do:** after a week of normal use, delete `data/spotify.duckdb`, `scripts/migrate_schemas.py`, `scripts/migrate_to_lake.py` and the `migrate:schemas`/`lake:migrate` tasks.
+
 ### Phase 7 — Optional, later: move streaming into the lake
 
 The consumers write to the lake. The crypto sensor polls the lake's snapshots instead of a file. The JSON sidecar and `setup:streaming-dbs` could go. Only do this after Phase 6's maintenance job has proven it copes with many small files.
