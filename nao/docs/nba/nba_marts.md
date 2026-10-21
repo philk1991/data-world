@@ -5,7 +5,8 @@ and the `cube/model/cubes/nba_*.yml` cubes. This complements the column-level
 schema that `nao sync` pulls automatically; keep it in sync with the dbt docs if
 the marts change.
 
-All tables live in the `marts` schema of `spotify.duckdb`. Percentages/ratings
+All tables live in the `marts` schema of the DuckLake `lake` (query them as
+`marts.<table>` — the session runs `USE lake`). Percentages/ratings
 are 0–1 fractions unless noted.
 
 ## nba_game_results

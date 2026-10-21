@@ -97,3 +97,41 @@ def in_transaction(load_fn):
         with transaction(conn):
             return load_fn(conn, *args, **kwargs)
     return wrapper
+
+
+
+def _lake_stats(conn: duckdb.DuckDBPyConnection) -> dict:
+    """Snapshot count, live data/delete files, and bytes on disk (live + awaiting cleanup)."""
+    _, data_path = lake_settings()
+    snapshots = conn.execute(f"SELECT count(*) FROM {LAKE_ALIAS}.snapshots()").fetchone()[0]
+    live_files = conn.execute(
+        f"SELECT coalesce(sum(file_count + delete_file_count), 0) FROM ducklake_table_info('{LAKE_ALIAS}')"
+    ).fetchone()[0]
+    disk_bytes = sum(f.stat().st_size for f in Path(data_path).rglob("*") if f.is_file())
+    return {"snapshots": snapshots, "live_files": live_files, "disk_mb": round(disk_bytes / 1e6, 1)}
+
+
+def maintain_lake(conn: duckdb.DuckDBPyConnection, retain: str = "7 days") -> dict:
+    """Compact the lake and drop history older than `retain`; return before/after stats.
+
+    Every commit adds a snapshot and usually a small Parquet file, so without this
+    the catalog and data/lake/ only ever grow. Steps, in order:
+      1. flush inlined data   — small writes kept in the catalog become Parquet files
+      2. merge adjacent files — combine many small files into fewer larger ones
+      3. rewrite data files   — fold delete files back into their data files
+      4. expire snapshots     — forget history older than `retain` (no time travel past it)
+      5. cleanup old files    — delete files no remaining snapshot references
+      6. delete orphaned files — remove files no commit ever recorded (e.g. a crashed
+         writer's), only when over a day old so an in-flight commit's files are safe
+
+    Safe to run alongside writers: steps 1–3 are ordinary commits (retried on conflict).
+    """
+    before = _lake_stats(conn)
+    lake = f"'{LAKE_ALIAS}'"
+    conn.execute(f"CALL ducklake_flush_inlined_data({lake})")
+    conn.execute(f"CALL ducklake_merge_adjacent_files({lake})")
+    conn.execute(f"CALL ducklake_rewrite_data_files({lake})")
+    conn.execute(f"CALL ducklake_expire_snapshots({lake}, older_than => now() - INTERVAL '{retain}')")
+    conn.execute(f"CALL ducklake_cleanup_old_files({lake}, cleanup_all => true)")
+    conn.execute(f"CALL ducklake_delete_orphaned_files({lake}, older_than => now() - INTERVAL '1 day')")
+    return {"before": before, "after": _lake_stats(conn)}

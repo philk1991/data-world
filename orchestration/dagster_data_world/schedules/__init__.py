@@ -3,6 +3,7 @@ from dagster_data_world.jobs import (
     spotify_pipeline_job,
     statsbomb_pipeline_job,
     nba_pipeline_job,
+    lake_maintenance_job,
 )
 
 spotify_daily_schedule = ScheduleDefinition(
@@ -21,4 +22,10 @@ nba_daily_schedule = ScheduleDefinition(
     name="nba_daily",
     job=nba_pipeline_job,
     cron_schedule="0 4 * * *",  # 04:00 every day — upstream Kaggle snapshot updates daily
+)
+
+lake_maintenance_weekly_schedule = ScheduleDefinition(
+    name="lake_maintenance_weekly",
+    job=lake_maintenance_job,
+    cron_schedule="0 5 * * 0",  # 05:00 every Sunday, after the 02:00 StatsBomb run has started
 )

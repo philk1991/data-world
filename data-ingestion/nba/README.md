@@ -29,4 +29,4 @@ rebuilds every table from the latest daily snapshot, so the script is idempotent
 
 | Entry point | Destination | Task command |
 |---|---|---|
-| `data-ingestion/ingest_nba.py` | `data/spotify.duckdb` → `raw_nba.*` | `task ingest:nba` |
+| `data-ingestion/ingest_nba.py` | lake → `raw_nba.*` | `task ingest:nba` |

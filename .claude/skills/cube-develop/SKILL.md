@@ -116,9 +116,9 @@ There's no `cube:validate` task. At minimum:
    someone queries it.
 
 Offer to start `task cube:dev` so the user can see it load in Playground
-(http://localhost:4000), but warn them first: the DuckDB driver opens
-`data/spotify.duckdb` read-write with no read-only mode, so it must not run
-at the same time as `task dbt:run` or an ingest job. If they say yes, start it
+(http://localhost:4000). Cube attaches the lake READ_ONLY (`cube/cube.js`), so
+it's safe alongside dbt and ingest jobs, but Postgres must be running. If they
+say yes, start it
 in the background, watch for a clean startup vs. a schema-compile error, then
 leave it running (or stop it, per their preference) rather than guessing.
 

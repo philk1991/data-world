@@ -1,6 +1,6 @@
 # data-world
 
-A local data platform demonstrating multiple ingestion patterns — batch API pulls, open dataset loading, and real-time streaming — all flowing through DuckDB, transformed with dbt, and visualised in SvelteKit dashboards.
+A local data platform demonstrating multiple ingestion patterns — batch API pulls, open dataset loading, and real-time streaming — transformed with dbt and served through Cube, an analytics agent (nao) and SvelteKit dashboards. Batch and bulk data lands in a local [DuckLake](https://ducklake.select) (Parquet files plus a Postgres catalog, queried with DuckDB); streaming data lands in dedicated DuckDB files.
 
 ## Project structure
 
@@ -11,6 +11,7 @@ data-world/
 │   ├── ingest_statsbomb.py    # StatsBomb entry point
 │   ├── ingest_nba.py          # NBA entry point (Kaggle bulk dataset)
 │   ├── ingest_openf1.py       # OpenF1 entry point
+│   ├── lake.py                # connect_lake() / in_transaction / maintain_lake — the one place the lake is attached
 │   ├── spotify/               # OAuth + API fetch logic
 │   ├── statsbomb/             # GitHub fetch logic
 │   ├── nba/                   # kagglehub download + full-replace load
@@ -37,20 +38,23 @@ data-world/
 │   │       ├── crypto/        # Incremental OHLCV candle tables
 │   │       └── payments/      # Incremental accept/reject status + per-minute tables
 │   ├── macros/                # generate_schema_name override
-│   └── profiles.yml           # DuckDB connection + crypto_raw / payments_raw attach
+│   ├── catalogs.yml           # DuckLake catalog (models build into the lake)
+│   └── profiles.yml           # In-memory DuckDB + crypto_raw / payments_raw attach
 ├── dashboards/
 │   ├── spotify/               # SvelteKit app — Spotify listening data
 │   └── crypto/                # SvelteKit app — real-time trade feed
 ├── orchestration/             # Dagster package (dagster_data_world)
 │   ├── assets/                # Software-defined assets (Spotify, StatsBomb, NBA, dbt)
-│   ├── jobs/                  # Job definitions
+│   ├── jobs/                  # Job definitions (incl. weekly lake maintenance)
 │   ├── schedules/             # Cron-based schedules
 │   ├── sensors/               # crypto_sensor — triggers dbt on new trade data
-│   └── resources/             # Spotify API client resource
-├── cube/                      # Cube semantic layer (reads marts.* directly)
+│   └── resources/             # LakeResource + Spotify API client resource
+├── cube/                      # Cube semantic layer (reads lake marts READ_ONLY)
 │   └── model/cubes/           # Cube data model (YAML)
-├── data/                      # DuckDB files + live JSON sidecar (gitignored)
-│   ├── spotify.duckdb         # Spotify + StatsBomb + NBA + OpenF1 data
+├── nao/                       # nao analytics agent (NL → SQL over the NBA marts)
+├── data/                      # Lake files, streaming DuckDB files, JSON sidecar (gitignored)
+│   ├── lake/                  # DuckLake Parquet files (catalog lives in Postgres)
+│   ├── spotify.duckdb         # Pre-lake database, kept read-only until retired
 │   ├── crypto_raw.duckdb      # Raw crypto trades (consumer-owned)
 │   ├── payments_raw.duckdb    # Raw payment requests + rejections (consumer-owned)
 │   └── live_data.json         # Atomic JSON sidecar written by the crypto consumer
@@ -63,27 +67,35 @@ data-world/
 
 ## Architecture
 
-### Batch pipelines (Spotify + StatsBomb)
+### The lake
+
+All batch and bulk data lives in one [DuckLake](https://ducklake.select) named `lake`:
+
+- **Data** — Parquet files under `data/lake/` (`LAKE_DATA_PATH`).
+- **Catalog** — a local Postgres 17 database, `data_world_lake` (`LAKE_CATALOG`). It records every schema, table, file and snapshot.
+- **Engine** — DuckDB. Every client opens an in-memory DuckDB, attaches the lake as `lake` and runs `USE lake`, so names like `raw_nba.raw_nba_games` and `marts.nba_team_dim` work unqualified.
+
+The point of the lake is **concurrency**. A `.duckdb` file allows one writer and locks out everyone else while it's open. The lake instead locks per commit in Postgres, so ingest jobs, dbt builds, Cube, the dashboard and nao can all run at once. Conflicting commits are retried (`ducklake_max_retry_count` and friends, set in `lake.py` and `dbt/profiles.yml`).
+
+Each commit creates a snapshot and usually a small Parquet file, so the lake needs regular maintenance — `task lake:maintain` (also a weekly Dagster schedule) compacts files and expires old snapshots. Loaders write each load as **one** transaction (`@in_transaction`), otherwise row-by-row autocommits create thousands of snapshots a minute and starve other writers.
+
+### Batch pipelines (Spotify, StatsBomb, NBA, OpenF1)
 
 ```
-Spotify API                    StatsBomb open data (GitHub)
-    │                                   │
-    ▼                                   ▼
-ingest.py                      ingest_statsbomb.py
-    │  raw_spotify.*                    │  raw_statsbomb.*
-    └──────────────┬───────────────────┘
-                   ▼
-          data/spotify.duckdb
-                   │
-                   ▼
-            dbt build
-    (staging_spotify / staging_statsbomb → marts)
-                   │
-                   ▼
-        dashboards/spotify (SvelteKit SSR)
-          reads via duckdb npm (READ_ONLY)
-                   ▼
-          http://localhost:5173
+Spotify API · StatsBomb open data · Kaggle NBA · OpenF1 API
+    │
+    ▼
+ingest.py · ingest_statsbomb.py · ingest_nba.py · ingest_openf1.py
+    │  (or the Dagster ingest assets)  →  raw_spotify.* / raw_statsbomb.* / raw_nba.* / raw_openf1.*
+    ▼
+lake  (Parquet in data/lake/ + Postgres catalog)
+    │
+    ▼
+dbt build (dbt-oss)  →  staging_<source>.* views → marts.* tables, written back to the lake
+    │
+    ├──▶ cube/              (READ_ONLY attach)  http://localhost:4000
+    ├──▶ nao/               (READ_ONLY attach)  http://localhost:5005
+    └──▶ dashboards/spotify (READ_ONLY attach, @duckdb/node-api)  http://localhost:5173
 ```
 
 ### Streaming pipeline (Crypto)
@@ -142,7 +154,7 @@ dbt build (run separately, read-only attach to payments_raw.duckdb)
 ### Semantic layer (Cube)
 
 ```
-data/spotify.duckdb (marts schema)
+lake (marts schema), attached READ_ONLY in cube/cube.js
         │
         ▼
       cube/ (Cube dev server, @cubejs-backend/duckdb-driver)
@@ -167,9 +179,8 @@ It runs standalone via Task, the same way the dashboards do, rather than as a
 Dagster asset: there's nothing for it to materialize, it's a long-running
 query service. Use `/cube-develop` to scaffold a new cube on top of another mart.
 
-> Cube's DuckDB driver always opens `spotify.duckdb` read-write (no read-only
-> option). Don't run `task cube:dev` at the same time as `task dbt:run` or the
-> Dagster spotify/nba ingest jobs, which also need write access to the same file.
+> Cube opens an in-memory DuckDB and its `initSql` (in `cube/cube.js`) attaches
+> the lake READ_ONLY, so it can run alongside dbt and ingest jobs.
 
 ## Data sources
 
@@ -228,9 +239,9 @@ Formula 1 timing data from the [OpenF1 API](https://openf1.org). No authenticati
 
 ## dbt models
 
-All models live in `dbt/` and target `data/spotify.duckdb` as the primary database, with `data/crypto_raw.duckdb` and `data/payments_raw.duckdb` each attached read-only (`crypto_raw`, `payments_raw`).
+All models live in `dbt/` and run on **dbt-oss** (dbt v2, Apache-2.0). They build into the lake: `dbt/catalogs.yml` defines a DuckLake catalog named `lake`, and `+catalog_name: lake` in `dbt_project.yml` puts every model in it. The profile itself is an in-memory DuckDB with the `ducklake` and `postgres` extensions, plus `data/crypto_raw.duckdb` and `data/payments_raw.duckdb` attached read-only (`crypto_raw`, `payments_raw`).
 
-[Elementary](https://docs.elementary-data.com) is integrated as a dbt package. It captures test results, model run history, and row counts into an `elementary` schema on every `dbt build`, and the `edr` CLI generates an HTML observability report from that data.
+dbt-oss talks to DuckDB through an ADBC driver installed with `task dbt:driver`. The driver bundled with dbt-oss can't load extensions, so the lake can't attach without it. Source freshness (`task dbt:freshness`) watches the payments feed.
 
 ### Staging (views)
 
@@ -289,6 +300,7 @@ All models live in `dbt/` and target `data/spotify.duckdb` as the primary databa
 - Python 3.12
 - Node.js 22 LTS — `brew install node@22`
 - [Task](https://taskfile.dev) — `brew install go-task`
+- Postgres 17 (the lake's catalog) — `brew install postgresql@17 && brew services start postgresql@17`
 - Kafka — `brew install kafka`
 - A [Spotify Developer app](https://developer.spotify.com/dashboard) with `http://127.0.0.1:8888/callback` as a Redirect URI
 
@@ -316,17 +328,20 @@ kafka-topics --create --topic payments.rejected --bootstrap-server localhost:909
 
 ### Configure
 
-Copy `.env.example` to `.env` in the project root and fill in the values. It covers Spotify OAuth credentials, Kaggle API credentials (required for NBA ingestion), optional OpenF1 range/limit vars, and DuckDB path overrides (`DUCKDB_PATH`, `CRYPTO_DB_PATH`, `PAYMENTS_DB_PATH`, `LIVE_JSON_PATH`).
+Copy `.env.example` to `.env` in the project root and fill in the values. It covers Spotify OAuth credentials, Kaggle API credentials (required for NBA ingestion), optional OpenF1 range/limit vars, optional lake overrides (`LAKE_CATALOG`, `LAKE_DATA_PATH`), and streaming path overrides (`CRYPTO_DB_PATH`, `PAYMENTS_DB_PATH`, `LIVE_JSON_PATH`). The defaults work as-is.
 
-> Any DuckDB/JSON path variable you set must be an absolute path.
+> Any path variable you set must be an absolute path. The Taskfile exports an absolute `LAKE_DATA_PATH` for every task — if you run `dbt` directly instead, export it yourself (DuckLake rejects any other spelling of the path it was created with).
 
-### dbt packages and Elementary
+### Lake and dbt
 
 ```bash
+task lake:init             # create the Postgres catalog database and data/lake/ (idempotent)
 task setup:streaming-dbs   # create empty crypto/payments DuckDB files dbt attaches (fresh clone only)
-task dbt:deps              # install dbt packages (elementary + dbt_utils)
-task dbt:elementary:init   # create Elementary tracking tables (run once)
+task dbt:driver            # install the DuckDB ADBC driver dbt-oss uses (once per machine)
+task dbt:deps              # install dbt packages (dbt_utils)
 ```
+
+Then load data with the ingest tasks below and run `task dbt:build`. `task lake:status` shows what's in the lake.
 
 ### Dagster orchestration
 
@@ -347,8 +362,18 @@ task dashboard:crypto:install
 task cube:install
 ```
 
-Copy `cube/.env.example` to `cube/.env` and set `CUBEJS_DB_DUCKDB_DATABASE_PATH`
-to the absolute path of `data/spotify.duckdb`.
+Copy `cube/.env.example` to `cube/.env` and set `CUBEJS_API_SECRET`. The lake
+connection comes from `cube/cube.js` (same defaults as `lake.py`).
+
+### nao analytics agent
+
+```bash
+task nao:install           # isolated nao/.venv (nao-core[duckdb] 0.3.25, DuckDB 1.5.5)
+```
+
+Copy `nao/.env.example` to `nao/.env`. `task nao:sync` builds nao's context from
+the NBA marts; `task nao:dev` additionally needs an LLM provider set in
+`nao/nao_config.yaml`.
 
 ## Usage
 
@@ -361,7 +386,7 @@ All commands run from the root of `data-world/` using [Task](https://taskfile.de
 | `task ingest` | Clear Spotify cache and run the full Spotify ingest (triggers browser auth on first run) |
 | `task ingest:no-cache-clear` | Run Spotify ingest using the existing cached token |
 | `task ingest:statsbomb` | Run the StatsBomb ingest (incremental — skips already-loaded matches) |
-| `task ingest:nba` | Download the Kaggle NBA dataset (core + extended) and full-replace load into DuckDB |
+| `task ingest:nba` | Download the Kaggle NBA dataset (core + extended) and full-replace load into the lake |
 | `task ingest:openf1` | Run the OpenF1 ingest for 2024 → current season (incremental — skips already-loaded sessions). Set `OPENF1_START_YEAR` / `OPENF1_END_YEAR` to change the range and `OPENF1_SESSION_LIMIT` to cap sessions per run |
 
 ### Crypto streaming
@@ -405,7 +430,7 @@ task payments:consumer   # Kafka → DuckDB
 | `task dbt:test:select MODEL=<name>` | Test a specific model |
 | `task dbt:crypto:run` / `:test` / `:build` | Run/test/build crypto models only |
 | `task dbt:payments:run` / `:test` / `:build` | Run/test/build payments models only |
-| `task edr:report` | Generate and open the Elementary observability report |
+| `task dbt:freshness` | Check source freshness (payments feed) |
 
 ### Dashboards
 
@@ -420,7 +445,17 @@ task payments:consumer   # Kafka → DuckDB
 
 | Command | Description |
 |---|---|
-| `task cube:dev` | Start the Cube dev server + Playground at http://localhost:4000 (don't run alongside `task dbt:run` or the Dagster spotify/nba jobs) |
+| `task cube:dev` | Start the Cube dev server + Playground at http://localhost:4000 |
+| `task nao:sync` | Rebuild nao's context from the NBA marts |
+| `task nao:dev` | Start the nao chat UI at http://localhost:5005 (needs an LLM provider) |
+
+### Lake
+
+| Command | Description |
+|---|---|
+| `task lake:init` | Create the catalog database and `data/lake/` (idempotent) |
+| `task lake:status` | Postgres status, schemas, snapshot count and disk size |
+| `task lake:maintain` | Compact files and expire snapshots older than `RETAIN` (default `7 days`) |
 
 ### Full refresh
 
@@ -435,7 +470,7 @@ task payments:consumer   # Kafka → DuckDB
 
 ### Orchestration (Dagster)
 
-Dagster wraps Spotify, StatsBomb, and NBA ingestion, plus all dbt models, as software-defined assets (`spotify_pipeline`, `statsbomb_pipeline`, `nba_pipeline` jobs, each on its own schedule). Crypto has no ingest asset — a `crypto_sensor` instead polls `crypto_raw.duckdb` for new trade data and triggers the `crypto_dbt` job. Payments is not orchestrated at all: no asset, job, sensor, or schedule — it's run manually via the Task commands above, the same way it would be run outside Dagster.
+Dagster wraps Spotify, StatsBomb, and NBA ingestion, plus all dbt models, as software-defined assets (`spotify_pipeline`, `statsbomb_pipeline`, `nba_pipeline` jobs, each on its own schedule). A `lake_maintenance` job runs `maintain_lake` every Sunday at 05:00. Crypto has no ingest asset — a `crypto_sensor` instead polls `crypto_raw.duckdb` for new trade data and triggers the `crypto_dbt` job. Payments is not orchestrated at all: no asset, job, sensor, or schedule — it's run manually via the Task commands above, the same way it would be run outside Dagster.
 
 | Command | Description |
 |---|---|
@@ -444,9 +479,16 @@ Dagster wraps Spotify, StatsBomb, and NBA ingestion, plus all dbt models, as sof
 
 ## Viewing data directly
 
-- **DBeaver** — connect to `data/spotify.duckdb`, `data/crypto_raw.duckdb`, or `data/payments_raw.duckdb` in Read-Only mode
-- **DuckDB CLI** — `duckdb data/spotify.duckdb`, `duckdb data/crypto_raw.duckdb`, or `duckdb data/payments_raw.duckdb`
-- **Harlequin** (TUI) — `pip install harlequin && harlequin data/spotify.duckdb`
+- **DuckDB CLI (the lake)** — start `duckdb` (1.5.5) and run:
+  ```sql
+  INSTALL ducklake; INSTALL postgres;
+  ATTACH 'ducklake:postgres:dbname=data_world_lake host=localhost' AS lake
+    (DATA_PATH '/absolute/path/to/data-world/data/lake/', READ_ONLY);
+  USE lake;
+  ```
+  Safe to leave open while everything else runs.
+- **DuckDB CLI (streaming files)** — `duckdb -readonly data/crypto_raw.duckdb` or `duckdb -readonly data/payments_raw.duckdb`
+- **Postgres** — `psql data_world_lake` shows the catalog's own `ducklake_*` tables (metadata only, no data).
 
 > Open `crypto_raw.duckdb` / `payments_raw.duckdb` in read-only mode when their consumer is running to avoid lock conflicts.
 
@@ -464,4 +506,14 @@ Claude Code skills are registered in `.claude/skills/` for common development ta
 
 ## DuckDB version alignment
 
-The Python (`duckdb==1.4.4`) and Node.js (`duckdb@1.4.4`) packages must use the **same version**. A mismatch causes the newer version to attempt a file format migration requiring exclusive write access, which conflicts with other processes. Both are pinned to `1.4.4` — this also matches the `duckdb` version bundled by Cube's `@cubejs-backend/duckdb-driver` (see [Semantic layer (Cube)](#semantic-layer-cube)), which connects to the same `spotify.duckdb` file.
+Every DuckDB client is pinned to **1.5.5**, so they all read and write the lake and the streaming files the same way:
+
+| Client | Pin |
+|---|---|
+| Python (`.venv`) | `duckdb==1.5.5` in `requirements.txt` |
+| dbt-oss | ADBC driver `duckdb=1.5.5` (`task dbt:driver`) |
+| Cube | `@cubejs-backend/duckdb-driver` 1.8.8, which bundles `@duckdb/node-api` 1.5.5-r.5 |
+| Spotify dashboard | `@duckdb/node-api` 1.5.5-r.5 |
+| nao (`nao/.venv`) | `duckdb==1.5.5` in `task nao:install` |
+
+Upgrade them together.

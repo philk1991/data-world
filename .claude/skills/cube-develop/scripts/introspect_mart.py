@@ -16,7 +16,8 @@ Given a mart name, prints one JSON object with:
   seasonality/relationships) and per-column descriptions, read from
   dbt/target/manifest.json
 - the table's actual live columns and DuckDB types via DESCRIBE against
-  data/spotify.duckdb (read-only), each mapped to a suggested Cube type
+  the DuckLake (attached read-only via data-ingestion/lake.py), each mapped to
+  a suggested Cube type
 - warnings where the manifest and the live table disagree (a documented
   column that no longer exists, or a live column with no dbt description)
 
@@ -29,10 +30,10 @@ import re
 import sys
 from pathlib import Path
 
-import duckdb
+sys.path.insert(0, "data-ingestion")  # run from the repo root
+from lake import connect_lake  # noqa: E402
 
 MANIFEST_PATH = Path("dbt/target/manifest.json")
-DUCKDB_PATH = "data/spotify.duckdb"
 CUBES_DIR = Path("cube/model/cubes")
 
 
@@ -116,7 +117,7 @@ def introspect(manifest, mart_name):
         for name, col in target.get("columns", {}).items()
     }
 
-    conn = duckdb.connect(DUCKDB_PATH, read_only=True)
+    conn = connect_lake(read_only=True)
     try:
         rows = conn.execute(f'DESCRIBE "marts"."{mart_name}"').fetchall()
     except Exception as e:

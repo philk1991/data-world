@@ -2,8 +2,9 @@
 """
 Grade one generated ingestion pipeline copy against an eval's assertions.
 
-Runs the generated entry point twice against a fresh throwaway DuckDB (so row
-counts + idempotency are measured, not trusted), introspects the resulting raw
+Runs the generated entry point twice against a fresh throwaway lake (a
+DuckDB-file DuckLake catalog, so row counts + idempotency are measured, not
+trusted, and the real Postgres-backed lake is never touched), introspects the resulting raw
 tables, and inspects the source files for naming / fetch_-load_ / incremental
 conventions. Writes grading.json with {text, passed, evidence} per assertion.
 
@@ -13,7 +14,7 @@ Usage:
 import argparse, json, os, re, subprocess, sys, tempfile, glob
 from pathlib import Path
 
-ORIGINAL_ENTRYPOINTS = {"ingest.py", "ingest_nba.py", "ingest_statsbomb.py"}
+ORIGINAL_ENTRYPOINTS = {"ingest.py", "ingest_nba.py", "ingest_statsbomb.py", "ingest_openf1.py"}
 VENV_PY = None  # resolved from copy
 
 
@@ -22,9 +23,9 @@ def find_entrypoints(di: Path):
          + [p for p in di.glob("ingest.py") if p.name not in ORIGINAL_ENTRYPOINTS]
 
 
-def run_entrypoint(copy: Path, entry: Path, db_path: str):
-    """Run `python <entry>` from data-ingestion/ with DUCKDB_PATH overridden."""
-    env = dict(os.environ, DUCKDB_PATH=db_path)
+def run_entrypoint(copy: Path, entry: Path, lake_dir: str):
+    """Run `python <entry>` from data-ingestion/ with the lake pointed at lake_dir."""
+    env = dict(os.environ, LAKE_CATALOG=f"{lake_dir}/catalog.ducklake", LAKE_DATA_PATH=f"{lake_dir}/data/")
     proc = subprocess.run(
         [VENV_PY, entry.name],
         cwd=str(copy / "data-ingestion"),
@@ -33,19 +34,24 @@ def run_entrypoint(copy: Path, entry: Path, db_path: str):
     return proc.returncode, proc.stdout + "\n" + proc.stderr
 
 
-def introspect(db_path: str):
-    """Return {schema.table: {rows, columns:{name:type}}} for raw_ tables."""
+def introspect(lake_dir: str):
+    """Return {schema.table: {rows, columns:{name:type}}} for raw_ tables in a throwaway lake."""
     import duckdb
     out = {}
-    if not os.path.exists(db_path):
+    if not os.path.exists(f"{lake_dir}/catalog.ducklake"):
         return out
-    c = duckdb.connect(db_path, read_only=True)
+    c = duckdb.connect()
+    c.execute("INSTALL ducklake; LOAD ducklake")
+    c.execute(f"ATTACH 'ducklake:{lake_dir}/catalog.ducklake' AS lake (DATA_PATH '{lake_dir}/data/', READ_ONLY)")
+    c.execute("USE lake")
     tabs = c.execute(
-        "select schema_name, table_name from duckdb_tables() where schema_name like 'raw_%' order by 1,2"
+        "select schema_name, table_name from duckdb_tables() "
+        "where database_name = 'lake' and schema_name like 'raw_%' order by 1,2"
     ).fetchall()
     for s, t in tabs:
         cols = c.execute(
-            "select column_name, data_type from duckdb_columns() where schema_name=? and table_name=?",
+            "select column_name, data_type from duckdb_columns() "
+            "where database_name = 'lake' and schema_name=? and table_name=?",
             [s, t]).fetchall()
         n = c.execute(f'select count(*) from "{s}"."{t}"').fetchone()[0]
         out[f"{s}.{t}"] = {"rows": n, "columns": {cn: ct for cn, ct in cols}}
@@ -65,22 +71,19 @@ def grade(copy: Path, eval_id: int):
     all_py = "\n".join(p.read_text(errors="ignore") for p in di.rglob("*.py"))
     taskfile = (copy / "Taskfile.yml").read_text(errors="ignore")
 
-    # Run the pipeline (twice for idempotency) against throwaway DBs.
-    db1 = tempfile.mktemp(suffix=".duckdb")
+    # Run the pipeline (twice for idempotency) against a throwaway lake.
+    db1 = tempfile.mkdtemp(prefix="ingest_eval_lake_")
     rc1 = rc2 = None; log1 = log2 = ""
     tables1 = {}; tables2 = {}
     if entries:
         entry = entries[0]
         rc1, log1 = run_entrypoint(copy, entry, db1)
         tables1 = introspect(db1)
-        # second run on SAME db → idempotency
+        # second run on SAME lake → idempotency
         rc2, log2 = run_entrypoint(copy, entry, db1)
         tables2 = introspect(db1)
-    # Fallback: if nothing landed in throwaway (pipeline ignored DUCKDB_PATH),
-    # inspect whatever the subagent populated in the copy's default DBs.
-    if not tables1:
-        for dbf in glob.glob(str(copy / "data" / "*.duckdb")):
-            tables1.update(introspect(dbf))
+    # No fallback to the copy's real lake: a pipeline that ignores LAKE_CATALOG
+    # (e.g. calls duckdb.connect itself) lands nothing here and fails the checks.
 
     A = []  # assertions: (id, text, passed, evidence)
 

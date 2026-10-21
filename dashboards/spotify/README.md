@@ -1,6 +1,6 @@
 # dashboard
 
-The Spotify data dashboard — a SvelteKit app that reads directly from the local DuckDB database and renders your listening history in a Spotify-styled interface.
+The Spotify data dashboard — a SvelteKit app that reads the dbt marts directly from the lake (DuckLake) and renders your listening history in a Spotify-styled interface.
 
 ## Stack
 
@@ -8,7 +8,7 @@ The Spotify data dashboard — a SvelteKit app that reads directly from the loca
 |---|---|
 | Framework | [SvelteKit](https://kit.svelte.dev) with TypeScript |
 | Styling | [Tailwind CSS v4](https://tailwindcss.com) + Spotify CSS custom properties |
-| Database | [duckdb](https://www.npmjs.com/package/duckdb) npm package (v1.2.1) |
+| Database | [@duckdb/node-api](https://www.npmjs.com/package/@duckdb/node-api) 1.5.5-r.5, attaching the DuckLake READ_ONLY |
 | Font | Inter via `@fontsource/inter` |
 
 ## Architecture
@@ -43,7 +43,7 @@ dashboard/
 ├── src/
 │   ├── lib/
 │   │   ├── server/
-│   │   │   └── db.ts              # DuckDB singleton + query<T>() helper
+│   │   │   └── db.ts              # In-memory DuckDB + lake attach + query<T>() helper
 │   │   ├── components/
 │   │   │   ├── ArtistCard.svelte  # Artist image, rank badge, genres, popularity
 │   │   │   ├── TrackRow.svelte    # Track row with rank, name, artists, duration
@@ -68,7 +68,7 @@ dashboard/
 │   │       ├── +page.svelte       # Play feed + hourly chart
 │   │       └── +page.server.ts    # SELECT * FROM stg_recently_played LIMIT 50
 │   └── app.css                    # Tailwind base + Spotify colour tokens
-├── .env                           # DUCKDB_PATH (absolute path to spotify.duckdb)
+├── .env                           # optional LAKE_CATALOG / LAKE_DATA_PATH overrides
 ├── package.json
 ├── svelte.config.js
 └── vite.config.ts
@@ -78,19 +78,15 @@ dashboard/
 
 ### `src/lib/server/db.ts`
 
-Opens a single read-only DuckDB connection when the server starts. All queries go through `query<T>(sql)` which wraps the callback-based `db.all()` in a Promise.
+Opens one in-memory DuckDB connection when the server starts, loads the `ducklake` and `postgres` extensions, attaches the lake READ_ONLY and runs `USE lake`. A `search_path` of `lake.marts,lake.staging_spotify` lets pages use bare table names. All queries go through `query<T>(sql)`:
 
 ```typescript
-const db = new DuckDB.Database(DB_PATH, { access_mode: 'READ_ONLY' });
-
-export function query<T>(sql: string): Promise<T[]> {
-  return new Promise((resolve, reject) => {
-    db.all(sql, (err, rows) => { ... });
-  });
-}
+const conn = await ready;                        // the attached connection
+const reader = await conn.runAndReadAll(sql);
+return reader.getRowObjectsJS().map(...)         // bigint → number
 ```
 
-`db.all()` is called directly on the `Database` object — this uses DuckDB's built-in default connection. The database is opened in `READ_ONLY` mode so dbt can write to the same file while the dashboard is running.
+`getRowObjectsJS()` returns timestamps as `Date` objects, as the old `duckdb` package did. BIGINT columns arrive as JS `bigint`, so `query()` converts them to `number` in one place. Because the lake locks per commit rather than per file, dbt and ingest jobs can write while the dashboard is running.
 
 ### `src/lib/types.ts`
 
@@ -150,10 +146,4 @@ task dashboard:start
 
 ## Environment
 
-The `.env` file sets the database path:
-
-```
-DUCKDB_PATH=/absolute/path/to/data-world/data/spotify.duckdb
-```
-
-This must be an **absolute path**. The path is read at server startup by `src/lib/server/db.ts`.
+No `.env` is needed: `db.ts` uses the same defaults as `data-ingestion/lake.py` (catalog `postgres:dbname=data_world_lake host=localhost`, data path `../../data/lake/`). `task dashboard:dev` also exports `LAKE_DATA_PATH` from the root `.env`/Taskfile. To override, set `LAKE_CATALOG` and/or `LAKE_DATA_PATH` (an **absolute path**), read at server startup. Postgres must be running.

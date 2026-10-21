@@ -20,11 +20,13 @@ Profile one or more raw DuckDB tables before building dbt models. Produces a str
 Run this discovery script to resolve the argument to a list of matching tables. Replace `ARG_VALUE` with the actual argument.
 
     source .venv/bin/activate && python3 - <<'PYEOF'
-    import duckdb, json
+    import duckdb, json, sys
 
     arg = 'ARG_VALUE'
 
-    conn = duckdb.connect('data/spotify.duckdb', read_only=True)
+    sys.path.insert(0, 'data-ingestion')  # run from the repo root
+    from lake import connect_lake
+    conn = connect_lake(read_only=True)  # the DuckLake, attached as `lake` with USE lake
     try:
         conn.execute("ATTACH 'data/crypto_raw.duckdb' AS crypto_raw (READ_ONLY)")
     except Exception:
@@ -79,7 +81,7 @@ one at a time would make execution sequential again.
 
 Give each sub-agent this prompt, substituting the table details:
 
-> Connect to DuckDB: `duckdb.connect('data/spotify.duckdb', read_only=True)`.
+> Connect to the lake (from the repo root, with `.venv` active): `import sys; sys.path.insert(0, 'data-ingestion'); from lake import connect_lake; conn = connect_lake(read_only=True)`. Batch tables are then unqualified (`raw_nba.raw_nba_games`, `marts.nba_team_dim`).
 > Also try: `conn.execute("ATTACH 'data/crypto_raw.duckdb' AS crypto_raw (READ_ONLY)")`.
 >
 > Profile this table: `<ref>` (e.g. `"raw_spotify"."raw_top_artists"`)
@@ -124,11 +126,13 @@ Continue to Step 3.
 Run this script. Replace `ARG_VALUE` with the actual argument.
 
     source .venv/bin/activate && python3 - <<'PYEOF'
-    import duckdb, json
+    import duckdb, json, sys
 
     arg = 'ARG_VALUE'
 
-    conn = duckdb.connect('data/spotify.duckdb', read_only=True)
+    sys.path.insert(0, 'data-ingestion')  # run from the repo root
+    from lake import connect_lake
+    conn = connect_lake(read_only=True)  # the DuckLake, attached as `lake` with USE lake
     try:
         conn.execute("ATTACH 'data/crypto_raw.duckdb' AS crypto_raw (READ_ONLY)")
     except Exception:

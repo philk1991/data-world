@@ -106,8 +106,8 @@ Create the two empty `__init__.py` files (`<source>/__init__.py` and
 ## Step 4 — Generate the entry point
 
 Create `ingest_<source>.py` at `data-ingestion/` from the entry-point template.
-It loads `.env`, resolves `DUCKDB_PATH` (default `../data/spotify.duckdb`),
-opens the connection, and calls each `fetch_`/`load_` pair with progress prints,
+It loads `.env`, opens the lake with `connect_lake()` (from `data-ingestion/lake.py`),
+and calls each `fetch_`/`load_` pair with progress prints,
 then closes. Match the docstring shape of `ingest_statsbomb.py` — what it
 fetches, the env config, and the `Usage:` line.
 
@@ -129,21 +129,24 @@ fetches, the env config, and the `Usage:` line.
 
 ## Step 6 — Run it and verify rows landed
 
-A scaffold that hasn't run is not done. Execute it against a throwaway DuckDB so
-you don't touch the real one, then confirm the tables exist with rows and an
-`ingested_at`:
+A scaffold that hasn't run is not done. Execute it against a throwaway lake (a
+DuckDB-file catalog instead of Postgres) so you don't touch the real one, then
+confirm the tables exist with rows and an `ingested_at`:
 
 ```bash
 source .venv/bin/activate
-DUCKDB_PATH=/tmp/ingest_smoke.duckdb python data-ingestion/ingest_<source>.py
-python - <<'PY'
-import duckdb
-c = duckdb.connect('/tmp/ingest_smoke.duckdb', read_only=True)
+rm -rf /tmp/ingest_smoke && mkdir -p /tmp/ingest_smoke
+export LAKE_CATALOG=/tmp/ingest_smoke/catalog.ducklake LAKE_DATA_PATH=/tmp/ingest_smoke/data/
+(cd data-ingestion && python ingest_<source>.py)
+(cd data-ingestion && python - <<'PY'
+from lake import connect_lake
+c = connect_lake(read_only=True)
 for (s, t) in c.execute("select schema_name, table_name from duckdb_tables() where schema_name like 'raw_%' order by 1,2").fetchall():
     n = c.execute(f'select count(*) from "{s}"."{t}"').fetchone()[0]
     print(f"{s}.{t}: {n} rows")
 PY
-rm -f /tmp/ingest_smoke.duckdb
+)
+rm -rf /tmp/ingest_smoke && unset LAKE_CATALOG LAKE_DATA_PATH
 ```
 
 Every requested entity must show a table with `> 0` rows. Re-running the entry

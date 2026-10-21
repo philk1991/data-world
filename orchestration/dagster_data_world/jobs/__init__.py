@@ -1,5 +1,7 @@
 from dagster import AssetSelection, define_asset_job
 
+from dagster_data_world.jobs.lake_maintenance import lake_maintenance_job  # noqa: F401 — re-exported
+
 spotify_pipeline_job = define_asset_job(
     name="spotify_pipeline",
     selection=AssetSelection.groups("spotify_ingest") | AssetSelection.groups("spotify_dbt"),

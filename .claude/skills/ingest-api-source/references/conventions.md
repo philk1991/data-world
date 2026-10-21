@@ -37,21 +37,28 @@ now = datetime.now(timezone.utc).isoformat()
 
 The column is `ingested_at TIMESTAMPTZ`, always last in the table.
 
-## DuckDB path
+## Lake connection
 
-The entry point resolves the database path the same way every existing pipeline
-does — env override, else the shared default. Batch sources share
-`data/spotify.duckdb` (each isolated in its own `raw_<source>` schema); only
-streaming sources get a dedicated file.
+Batch sources write to the shared DuckLake (Parquet files in `data/lake/` plus a
+Postgres catalog), each isolated in its own `raw_<source>` schema; only
+streaming sources get a dedicated DuckDB file. The entry point never builds a
+path or calls `duckdb.connect` itself — it uses `data-ingestion/lake.py`:
 
 ```python
-_DEFAULT_DB_PATH = str(Path(__file__).parent.parent / "data" / "spotify.duckdb")
-db_path = os.environ.get("DUCKDB_PATH", _DEFAULT_DB_PATH)
-os.makedirs(os.path.dirname(db_path), exist_ok=True)
+from lake import connect_lake, lake_settings
+conn = connect_lake()   # in-memory DuckDB, lake attached as `lake`, USE lake
 ```
 
-Respecting `DUCKDB_PATH` is what lets the smoke test in SKILL.md Step 6 run
-against a throwaway file.
+`USE lake` means loaders keep writing plain `raw_<source>.<table>` names.
+
+Every `load_*` function is decorated with `@in_transaction` (from `lake`), so a
+whole load is **one** commit. Without it, `executemany` autocommits each row —
+on the lake that's one Postgres transaction and one snapshot per row, which is
+slow, bloats the catalog, and starves concurrent writers like dbt.
+
+`LAKE_CATALOG` / `LAKE_DATA_PATH` override the lake (read at call time). Pointing
+them at a throwaway DuckDB-file catalog is what lets the smoke test in SKILL.md
+Step 6 run without touching the real lake.
 
 ## .env loading
 

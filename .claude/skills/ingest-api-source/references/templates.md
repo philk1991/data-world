@@ -89,6 +89,8 @@ DuckDB table: raw_<source>_<entity>
 import duckdb
 from datetime import datetime, timezone
 
+from lake import in_transaction
+
 # (paste _str_or_none / _int_or_none / etc. and _fetch_with_retry here,
 #  plus _auth_headers if the source needs auth)
 
@@ -111,8 +113,9 @@ def fetch_<entity>() -> list[dict]:
     return records
 
 
+@in_transaction  # one commit per load — row-by-row autocommits flood the lake with snapshots
 def load_<entity>(conn: duckdb.DuckDBPyConnection, records: list[dict]) -> None:
-    """Replace all <entity> rows in DuckDB (full replace)."""
+    """Replace all <entity> rows in the lake (full replace)."""
     conn.execute("CREATE SCHEMA IF NOT EXISTS raw_<source>")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS raw_<source>.raw_<source>_<entity> (
@@ -199,6 +202,7 @@ def fetch_<entity>(<key>) -> list[dict]:
     ]
 
 
+@in_transaction  # the DELETE + INSERT commit together, as one snapshot
 def load_<entity>(conn: duckdb.DuckDBPyConnection, records: list[dict], <key>) -> None:
     """Insert one <key>'s rows; delete that key first so retries are clean."""
     conn.execute("CREATE SCHEMA IF NOT EXISTS raw_<source>")
@@ -229,35 +233,29 @@ def load_<entity>(conn: duckdb.DuckDBPyConnection, records: list[dict], <key>) -
 """
 <Source> API ingestion script.
 
-Fetches <entities> from the <Source> API (<base-url>) and loads them into DuckDB
-under the raw_<source> schema. <Note auth: none / requires <SOURCE>_API_KEY.>
+Fetches <entities> from the <Source> API (<base-url>) and loads them into the
+lake under the raw_<source> schema. <Note auth: none / requires <SOURCE>_API_KEY.>
 
 Configuration (via .env at the project root):
   <SOURCE>_API_KEY — <where to get it>          # omit if no auth
-  DUCKDB_PATH      — path to the DuckDB file (shared with other batch sources)
+  LAKE_CATALOG / LAKE_DATA_PATH — optional lake overrides (see lake.py)
 
 Usage (run from data-ingestion/):
     python ingest_<source>.py
 """
-import os
 from pathlib import Path
-import duckdb
 from dotenv import load_dotenv
 
+from lake import connect_lake, lake_settings
 from <source>.ingestion.<entity_a> import fetch_<entity_a>, load_<entity_a>
 from <source>.ingestion.<entity_b> import fetch_<entity_b>, load_<entity_b>
 
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 
-_DEFAULT_DB_PATH = str(Path(__file__).parent.parent / "data" / "spotify.duckdb")
-
 
 def main():
-    db_path = os.environ.get("DUCKDB_PATH", _DEFAULT_DB_PATH)
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-
-    print(f"Connecting to {db_path}\n")
-    conn = duckdb.connect(db_path)
+    print(f"Connecting to the lake ({lake_settings()[0]})\n")
+    conn = connect_lake()
 
     print("Fetching <entity_a>...")
     load_<entity_a>(conn, fetch_<entity_a>())
@@ -266,7 +264,7 @@ def main():
     load_<entity_b>(conn, fetch_<entity_b>())
 
     conn.close()
-    print(f"\nDone. Data written to {db_path}")
+    print("\nDone. Data written to the lake")
 
 
 if __name__ == "__main__":

@@ -98,10 +98,9 @@ arrive — the look-back window re-resolves the recent tail on each run.
 # Raw landing
 duckdb data/payments_raw.duckdb "select count(*) from raw_payments.raw_requests"
 
-# Outcome distribution (after dbt build) — expect a small pending tail
-duckdb data/spotify.duckdb "select status, count(*) from marts.payment_status group by 1"
+# Outcome distribution (after dbt build, which writes the marts to the lake) — expect a small pending tail
+task lake:sql SQL="select status, count(*) from marts.payment_status group by 1"
 
 # The dashboard serving query
-duckdb data/spotify.duckdb \
-  "select * from marts.payments_by_minute order by request_minute desc limit 20"
+task lake:sql SQL="select * from marts.payments_by_minute order by request_minute desc limit 20"
 ```

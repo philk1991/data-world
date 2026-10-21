@@ -1,6 +1,8 @@
 # data-ingestion
 
-Python ingestion scripts for all three data sources. All commands run from the project root via [Task](https://taskfile.dev).
+Python ingestion scripts for every data source. All commands run from the project root via [Task](https://taskfile.dev).
+
+The batch and bulk scripts write to the DuckLake through `lake.py`: `connect_lake()` attaches the lake and runs `USE lake`, so loaders use plain `raw_<source>.<table>` names. Every `load_*` function is decorated with `@in_transaction`, so each load is one commit (one snapshot) instead of one per row. Streaming consumers still write their own DuckDB files.
 
 ## Sources
 
@@ -10,7 +12,7 @@ Pulls top artists, top tracks, and recently played history from the [Spotify Web
 
 | Entry point | Destination | Task commands |
 |---|---|---|
-| `data-ingestion/ingest.py` | `data/spotify.duckdb` → `raw_spotify.*` | `task ingest`, `task ingest:no-cache-clear` |
+| `data-ingestion/ingest.py` | lake → `raw_spotify.*` | `task ingest`, `task ingest:no-cache-clear` |
 
 See [data-ingestion/spotify/](spotify/) for OAuth setup and output table schemas.
 
@@ -20,7 +22,7 @@ Fetches free open football data (competitions, matches, events, lineups) from th
 
 | Entry point | Destination | Task command |
 |---|---|---|
-| `data-ingestion/ingest_statsbomb.py` | `data/spotify.duckdb` → `raw_statsbomb.*` | `task ingest:statsbomb` |
+| `data-ingestion/ingest_statsbomb.py` | lake → `raw_statsbomb.*` | `task ingest:statsbomb` |
 
 ### NBA (batch)
 
@@ -28,17 +30,17 @@ Downloads historical NBA box scores (core + extended, 1947–present) from the [
 
 | Entry point | Destination | Task command |
 |---|---|---|
-| `data-ingestion/ingest_nba.py` | `data/spotify.duckdb` → `raw_nba.*` | `task ingest:nba` |
+| `data-ingestion/ingest_nba.py` | lake → `raw_nba.*` | `task ingest:nba` |
 
 See [data-ingestion/nba/README.md](nba/README.md) for credential setup and output table schemas.
 
 ### OpenF1 (batch)
 
-Fetches Formula 1 timing data (meetings, sessions, drivers, laps, pit stops, stints, weather) from the [OpenF1 API](https://openf1.org). No authentication required. By default it ingests every season from 2024 through the current calendar year. `meetings` and `sessions` are full-replaced per season (delete-by-year, so the range accumulates); the five per-session tables are incremental — already-loaded sessions are skipped, so the script resumes safely after a partial run. OpenF1 rate-limits, so requests are paced with 429 backoff. Set `OPENF1_START_YEAR` / `OPENF1_END_YEAR` to change the range and optionally `OPENF1_SESSION_LIMIT` (cap sessions per run, newest first).
+Fetches Formula 1 timing data (meetings, sessions, drivers, laps, pit stops, stints, weather) from the [OpenF1 API](https://openf1.org). No authentication required. By default it ingests every season from 2024 through the current calendar year. `meetings` and `sessions` are full-replaced per season (delete-by-year, so the range accumulates); the five per-session tables are incremental — already-loaded sessions are skipped, so the script resumes safely after a partial run. OpenF1 rate-limits, so requests are paced, and rate limits, 5xx errors, timeouts and dropped connections are retried with backoff. Set `OPENF1_START_YEAR` / `OPENF1_END_YEAR` to change the range and optionally `OPENF1_SESSION_LIMIT` (cap sessions per run, newest first).
 
 | Entry point | Destination | Task command |
 |---|---|---|
-| `data-ingestion/ingest_openf1.py` | `data/spotify.duckdb` → `raw_openf1.*` | `task ingest:openf1` |
+| `data-ingestion/ingest_openf1.py` | lake → `raw_openf1.*` | `task ingest:openf1` |
 
 ### Crypto — Binance (streaming)
 

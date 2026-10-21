@@ -216,6 +216,33 @@ tasks:
         '"
       - bash -c 'du -sh data/lake 2>/dev/null || echo "data/lake does not exist — run task lake:init"'
 
+  lake:sql:
+    desc: "Run a read-only SQL query against the lake and print the result. e.g. task lake:sql SQL='select count(*) from marts.nba_team_dim'"
+    requires:
+      vars: [SQL]
+    cmds:
+      - |
+        bash -c "source {{.VENV}} && cd data-ingestion && python -c '
+        import sys
+        from lake import connect_lake
+        connect_lake(read_only=True).sql(sys.argv[1]).show(max_rows=50)
+        ' \"\$1\"" _ {{shellQuote .SQL}}
+
+  lake:maintain:
+    desc: "Compact the lake and expire snapshots older than RETAIN (default 7 days), then delete unreferenced files. Safe alongside writers. e.g. task lake:maintain RETAIN='1 day'"
+    vars:
+      RETAIN: '{{.RETAIN | default "7 days"}}'
+    cmds:
+      - |
+        bash -c "source {{.VENV}} && cd data-ingestion && python -c '
+        from lake import connect_lake, maintain_lake
+        conn = connect_lake()
+        conn.execute(\"SET enable_progress_bar = false\")
+        r = maintain_lake(conn, retain=\"{{.RETAIN}}\")
+        for k in r[\"before\"]:
+            print(f\"{k:11s} {r[\"before\"][k]:>10} -> {r[\"after\"][k]}\")
+        '"
+
   # ── Schema Migration ────────────────────────────────────────────────────────
 
   migrate:schemas:
@@ -338,7 +365,7 @@ tasks:
   # ── nao (analytics agent) ─────────────────────────────────────────────────────
 
   nao:install:
-    desc: "Create nao's isolated venv and install nao-core. Kept separate from .venv on purpose — nao-core pulls protobuf 7, which conflicts with dbt/dagster in the shared venv."
+    desc: "Create nao's isolated venv and install nao-core. Kept separate from .venv: older nao-core pulled protobuf 7, which breaks Dagster (see CLAUDE.md)."
     cmds:
       - python3.12 -m venv nao/.venv
       - nao/.venv/bin/pip install --upgrade pip --quiet

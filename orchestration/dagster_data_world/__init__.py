@@ -19,11 +19,13 @@ from dagster_data_world.jobs import (
     statsbomb_pipeline_job,
     crypto_dbt_job,
     nba_pipeline_job,
+    lake_maintenance_job,
 )
 from dagster_data_world.schedules import (
     spotify_daily_schedule,
     statsbomb_weekly_schedule,
     nba_daily_schedule,
+    lake_maintenance_weekly_schedule,
 )
 from dagster_data_world.sensors.crypto_sensor import crypto_new_data_sensor
 from dagster_data_world.constants import DBT_PROJECT_DIR
@@ -51,7 +53,7 @@ defs = Definitions(
             profiles_dir=str(DBT_PROJECT_DIR),
         ),
     },
-    jobs=[spotify_pipeline_job, statsbomb_pipeline_job, crypto_dbt_job, nba_pipeline_job],
-    schedules=[spotify_daily_schedule, statsbomb_weekly_schedule, nba_daily_schedule],
+    jobs=[spotify_pipeline_job, statsbomb_pipeline_job, crypto_dbt_job, nba_pipeline_job, lake_maintenance_job],
+    schedules=[spotify_daily_schedule, statsbomb_weekly_schedule, nba_daily_schedule, lake_maintenance_weekly_schedule],
     sensors=[crypto_new_data_sensor],
 )

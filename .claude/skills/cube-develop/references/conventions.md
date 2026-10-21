@@ -224,9 +224,9 @@ dimension/measure entry, as shown above).
 
 There is no `cube:validate` task — only `task cube:dev`, which starts a
 long-running dev server and Playground (http://localhost:4000). It's the only
-way to confirm the YAML actually compiles as a valid Cube schema. Since the
-DuckDB driver always opens `data/spotify.duckdb` read-write with no read-only
-option, **never** run it while `task dbt:run` or an ingest job is running.
+way to confirm the YAML actually compiles as a valid Cube schema. Cube attaches
+the DuckLake READ_ONLY (see `cube/cube.js`), so it can run alongside dbt and
+ingest jobs.
 
 At minimum, always check without starting the server:
 1. The YAML parses (`yaml.safe_load`).

@@ -90,7 +90,7 @@ the point. All agents start simultaneously and their results are collected when 
 
 Give each sub-agent this prompt, substituting the failure JSON:
 
-> Connect to DuckDB: `duckdb.connect('data/spotify.duckdb', read_only=True)`.
+> Connect to the lake (from the repo root, with `.venv` active): `import sys; sys.path.insert(0, 'data-ingestion'); from lake import connect_lake; conn = connect_lake(read_only=True)`. Batch tables are then unqualified (`raw_nba.raw_nba_games`, `marts.nba_team_dim`).
 > Also try: `conn.execute("ATTACH 'data/crypto_raw.duckdb' AS crypto_raw (READ_ONLY)")`.
 >
 > Run a diagnostic query for this dbt test failure and return two things:
@@ -118,7 +118,9 @@ For each failure, run:
     python3 - <<'EOF'
     import duckdb, json, sys
 
-    conn = duckdb.connect('data/spotify.duckdb', read_only=True)
+    sys.path.insert(0, 'data-ingestion')  # run from the repo root
+    from lake import connect_lake
+    conn = connect_lake(read_only=True)  # the DuckLake, attached as `lake` with USE lake
     try:
         conn.execute("ATTACH 'data/crypto_raw.duckdb' AS crypto_raw (READ_ONLY)")
     except Exception:
