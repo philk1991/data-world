@@ -68,7 +68,9 @@ models:
   - name: stg_nba_player_statistics
     description: >
       Traditional player box scores, one row per player per game. Stat columns
-      are null for players who did not play (see comment / starting_position).
+      are null for players who did not play (see comment / starting_position),
+      and for whole games where the league did not record that stat yet (the
+      raw data zero-fills them; see the null_if_unrecorded macro).
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -106,7 +108,10 @@ models:
         grain: one row per (game_id, person_id)
         purpose: Clean and rename raw traditional player box scores.
   - name: stg_nba_team_statistics
-    description: Traditional team box scores, one row per team per game.
+    description: >
+      Traditional team box scores, one row per team per game. Stat columns are
+      null for games where the league did not record that stat yet (the raw data
+      zero-fills them; see the null_if_unrecorded macro).
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:

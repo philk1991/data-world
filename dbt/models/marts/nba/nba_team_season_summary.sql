@@ -52,6 +52,8 @@ SELECT
     losses,
     home_wins,
     away_wins,
+    total_points_for,
+    total_points_against,
     ROUND(wins::DOUBLE / NULLIF(wins + losses, 0), 3) AS win_pct,
     ROUND(total_points_for::DOUBLE / NULLIF(games_played, 0), 1) AS points_for_per_game,
     ROUND(

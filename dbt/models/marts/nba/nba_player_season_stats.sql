@@ -4,6 +4,8 @@
 -- belong to the prior start year). A player traded mid-season is combined into a
 -- single row per game type; primary_team_id is the team they played the most
 -- games for. Only games actually played (minutes_played not null) count.
+-- Made shots are only counted in games where the matching attempts were recorded,
+-- so the shooting percentages compare like with like.
 WITH box_scores AS (
     SELECT *
     FROM
@@ -60,11 +62,11 @@ season_totals AS (
         SUM(steals) AS total_steals,
         SUM(blocks) AS total_blocks,
         SUM(turnovers) AS total_turnovers,
-        SUM(field_goals_made) AS total_field_goals_made,
+        SUM(field_goals_made) FILTER (WHERE field_goals_attempted IS NOT NULL) AS total_field_goals_made,
         SUM(field_goals_attempted) AS total_field_goals_attempted,
-        SUM(three_pointers_made) AS total_three_pointers_made,
+        SUM(three_pointers_made) FILTER (WHERE three_pointers_attempted IS NOT NULL) AS total_three_pointers_made,
         SUM(three_pointers_attempted) AS total_three_pointers_attempted,
-        SUM(free_throws_made) AS total_free_throws_made,
+        SUM(free_throws_made) FILTER (WHERE free_throws_attempted IS NOT NULL) AS total_free_throws_made,
         SUM(free_throws_attempted) AS total_free_throws_attempted
     FROM
         seasoned
@@ -88,6 +90,12 @@ SELECT
     s.total_steals,
     s.total_blocks,
     s.total_turnovers,
+    s.total_field_goals_made,
+    s.total_field_goals_attempted,
+    s.total_three_pointers_made,
+    s.total_three_pointers_attempted,
+    s.total_free_throws_made,
+    s.total_free_throws_attempted,
     ROUND(s.total_points::DOUBLE / NULLIF(s.games_played, 0), 1) AS points_per_game,
     ROUND(s.total_rebounds::DOUBLE / NULLIF(s.games_played, 0), 1) AS rebounds_per_game,
     ROUND(s.total_assists::DOUBLE / NULLIF(s.games_played, 0), 1) AS assists_per_game,

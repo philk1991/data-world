@@ -1,5 +1,7 @@
 -- Staged traditional player box scores. One row per player per game.
 -- numMinutes is stored as text in the raw data and cast to a numeric value here.
+-- Box score stats the league did not record yet are zero-filled in the raw data;
+-- null_if_unrecorded turns them back into nulls (see the macro).
 WITH source AS (
     SELECT *
     FROM
@@ -29,23 +31,46 @@ SELECT
     comment,
     TRY_CAST(numMinutes AS DOUBLE) AS minutes_played,
     points,
-    assists,
-    blocks,
-    steals,
-    fieldGoalsAttempted AS field_goals_attempted,
-    fieldGoalsMade AS field_goals_made,
-    fieldGoalsPercentage AS field_goals_percentage,
-    threePointersAttempted AS three_pointers_attempted,
-    threePointersMade AS three_pointers_made,
-    threePointersPercentage AS three_pointers_percentage,
-    freeThrowsAttempted AS free_throws_attempted,
-    freeThrowsMade AS free_throws_made,
-    freeThrowsPercentage AS free_throws_percentage,
-    reboundsOffensive AS rebounds_offensive,
-    reboundsDefensive AS rebounds_defensive,
-    reboundsTotal AS rebounds_total,
-    foulsPersonal AS fouls_personal,
-    turnovers,
+    {{ null_if_unrecorded('assists') }} AS assists,
+    {{ null_if_unrecorded('blocks') }} AS blocks,
+    {{ null_if_unrecorded('steals') }} AS steals,
+    {{
+        null_if_unrecorded('fieldGoalsAttempted', attempts='fieldGoalsAttempted', made='fieldGoalsMade')
+    }} AS field_goals_attempted,
+    {{ null_if_unrecorded('fieldGoalsMade') }} AS field_goals_made,
+    {{
+        null_if_unrecorded(
+            'fieldGoalsPercentage', signal='fieldGoalsAttempted',
+            attempts='fieldGoalsAttempted', made='fieldGoalsMade'
+        )
+    }} AS field_goals_percentage,
+    {{
+        null_if_unrecorded('threePointersAttempted', attempts='threePointersAttempted', made='threePointersMade')
+    }} AS three_pointers_attempted,
+    {{
+        null_if_unrecorded('threePointersMade', signal='threePointersAttempted + threePointersMade')
+    }} AS three_pointers_made,
+    {{
+        null_if_unrecorded(
+            'threePointersPercentage', signal='threePointersAttempted',
+            attempts='threePointersAttempted', made='threePointersMade'
+        )
+    }} AS three_pointers_percentage,
+    {{
+        null_if_unrecorded('freeThrowsAttempted', attempts='freeThrowsAttempted', made='freeThrowsMade')
+    }} AS free_throws_attempted,
+    {{ null_if_unrecorded('freeThrowsMade') }} AS free_throws_made,
+    {{
+        null_if_unrecorded(
+            'freeThrowsPercentage', signal='freeThrowsAttempted',
+            attempts='freeThrowsAttempted', made='freeThrowsMade'
+        )
+    }} AS free_throws_percentage,
+    {{ null_if_unrecorded('reboundsOffensive') }} AS rebounds_offensive,
+    {{ null_if_unrecorded('reboundsDefensive') }} AS rebounds_defensive,
+    {{ null_if_unrecorded('reboundsTotal') }} AS rebounds_total,
+    {{ null_if_unrecorded('foulsPersonal') }} AS fouls_personal,
+    {{ null_if_unrecorded('turnovers') }} AS turnovers,
     plusMinusPoints AS plus_minus_points,
     ingested_at::TIMESTAMP AS ingested_at
 FROM

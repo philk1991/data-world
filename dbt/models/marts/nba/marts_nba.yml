@@ -223,6 +223,10 @@ models:
           - not_null
       - name: win_pct
         description: Wins divided by decided games (wins + losses), 0-1.
+      - name: total_points_for
+        description: Total points scored across the season's games.
+      - name: total_points_against
+        description: Total points conceded across the season's games.
       - name: points_for_per_game
         description: Average points scored per game.
       - name: points_against_per_game
@@ -498,6 +502,18 @@ models:
         description: Total blocks that season; null for pre-modern seasons.
       - name: total_turnovers
         description: Total turnovers that season; null for pre-modern seasons.
+      - name: total_field_goals_made
+        description: Field goals made that season, counted only in games where attempts were also recorded so it pairs with total_field_goals_attempted.
+      - name: total_field_goals_attempted
+        description: Field goals attempted that season; null for seasons before attempts were recorded (~1980s and earlier).
+      - name: total_three_pointers_made
+        description: Three pointers made that season, counted only in games where attempts were also recorded; null before the three-point line (1979-80).
+      - name: total_three_pointers_attempted
+        description: Three pointers attempted that season; null before attempts were recorded.
+      - name: total_free_throws_made
+        description: Free throws made that season, counted only in games where attempts were also recorded so it pairs with total_free_throws_attempted.
+      - name: total_free_throws_attempted
+        description: Free throws attempted that season; null for seasons before attempts were recorded.
       - name: points_per_game
         description: Average points per game that season.
       - name: rebounds_per_game

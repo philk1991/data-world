@@ -1,6 +1,8 @@
 -- One row per player aggregating their traditional box score totals and
 -- averages across every game they appeared in, enriched with player bio.
 -- Only games the player actually played (minutes_played is not null) count.
+-- Made shots are only counted in games where the matching attempts were recorded,
+-- so the shooting percentages compare like with like.
 WITH box_scores AS (
     SELECT *
     FROM
@@ -25,11 +27,11 @@ career AS (
         SUM(steals) AS total_steals,
         SUM(blocks) AS total_blocks,
         SUM(turnovers) AS total_turnovers,
-        SUM(field_goals_made) AS total_field_goals_made,
+        SUM(field_goals_made) FILTER (WHERE field_goals_attempted IS NOT NULL) AS total_field_goals_made,
         SUM(field_goals_attempted) AS total_field_goals_attempted,
-        SUM(three_pointers_made) AS total_three_pointers_made,
+        SUM(three_pointers_made) FILTER (WHERE three_pointers_attempted IS NOT NULL) AS total_three_pointers_made,
         SUM(three_pointers_attempted) AS total_three_pointers_attempted,
-        SUM(free_throws_made) AS total_free_throws_made,
+        SUM(free_throws_made) FILTER (WHERE free_throws_attempted IS NOT NULL) AS total_free_throws_made,
         SUM(free_throws_attempted) AS total_free_throws_attempted
     FROM
         box_scores
