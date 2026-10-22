@@ -14,7 +14,7 @@ cubes:
         sql: team_id
         type: number
         primary_key: true
-        description: Franchise/team identifier.
+        description: Franchise identifier, stable across relocations and renames.
 
       - name: current_full_name
         sql: current_full_name

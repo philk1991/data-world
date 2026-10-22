@@ -503,8 +503,8 @@ models:
           Games of this type the player's primary team played that season, so
           games_played can be read as a share of the games available. Falls
           back to the most games any team played when primary_team_id is null.
-          Varies within a season when teams played different numbers of games
-          (2019-20: 64-75). Null for All-Star games before 2025-26, which have
+          Differs from 82 in short or uneven seasons (1998-99: 50, 2011-12: 66,
+          2019-20: 64-75, 2020-21: 72). Null for All-Star games before 2025-26, which have
           no team box scores.
         tests:
           - not_null:

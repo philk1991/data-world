@@ -15,7 +15,10 @@ cubes:
         sql: game_id
         type: number
         primary_key: true
-        description: Unique NBA game identifier.
+        description: >
+          NBA game identifier. Encodes the game type and season (00TYYNNNNN,
+          stored without the leading zeros); game_type and season_start_year are
+          decoded from it.
 
       - name: game_date
         sql: game_date
@@ -25,7 +28,10 @@ cubes:
       - name: season_start_year
         sql: season_start_year
         type: number
-        description: Calendar year the season started (e.g. 2023 for 2023-24). Season comes from the game id, the league's own season assignment, so the 2020 bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
+        description: >
+          Calendar year the season started (e.g. 2023 for 2023-24), decoded from
+          the game id. Follows the league's own season assignment, so the 2020
+          bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
 
       - name: season_label
         sql: "{season_start_year}::VARCHAR || '-' || RIGHT(({season_start_year} + 1)::VARCHAR, 2)"
@@ -35,12 +41,16 @@ cubes:
       - name: game_type
         sql: game_type
         type: string
-        description: Type of game (Regular Season, Playoffs, etc.).
+        description: >
+          Type of game, decoded from the game id: Regular Season, Playoffs,
+          Play-in Tournament, Preseason, All-Star Game or NBA Cup Final. NBA Cup
+          group and knockout games are Regular Season; only the Cup final, which
+          does not count toward the standings, is separate.
 
       - name: home_team_id
         sql: home_team_id
         type: number
-        description: Team id of the home side.
+        description: Franchise identifier of the home side.
 
       - name: home_team_name
         sql: home_team_name
@@ -50,7 +60,7 @@ cubes:
       - name: away_team_id
         sql: away_team_id
         type: number
-        description: Team id of the away side.
+        description: Franchise identifier of the away side.
 
       - name: away_team_name
         sql: away_team_name
@@ -71,10 +81,12 @@ cubes:
         sql: is_neutral_site
         type: boolean
         description: >
-          True for games with no real home court: the 2020 Orlando bubble,
-          NBA Cup semifinals and finals in Las Vegas, and All-Star games. Home
-          and away labels on these games are nominal. International regular
-          season games are not flagged.
+          True for games with no real home court: the 2020 Orlando bubble
+          (scrimmages, seeding games, play-in and playoffs), NBA Cup semifinals
+          and finals in Las Vegas, and All-Star games. The home/away labels on
+          these games are nominal, so exclude them from home-advantage analysis.
+          International regular season games are not flagged (no arena data
+          before 2025-26 to identify them).
 
     segments:
       - name: home_court_games

@@ -63,6 +63,16 @@ not copied blindly:
 Use the YAML folded block scalar (`description: >`) with a blank line after it
 before `dimensions:`, matching the existing files exactly.
 
+### Dimension descriptions come from dbt
+
+A dimension whose `sql:` is a bare mart column takes that column's dbt
+description verbatim — rendered from the doc block where there is one — and
+`task cube:docs:sync` writes it (`cube/scripts/sync_dbt_descriptions.py`).
+Don't hand-write or paraphrase these: write any placeholder, run the sync, and
+`task cube:docs:check` will fail if they drift later. If a description needs
+more context, improve it in dbt, then sync. Only computed dimensions (`sql:`
+is an expression) and measures get hand-written descriptions.
+
 ## Choosing dimensions
 
 Not every dbt column becomes a dimension. Include:

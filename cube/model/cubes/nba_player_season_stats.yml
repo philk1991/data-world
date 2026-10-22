@@ -24,17 +24,17 @@ cubes:
         sql: person_id
         type: number
         primary_key: true
-        description: Player identifier. Part of the natural key.
+        description: NBA player identifier.
 
       - name: first_name
         sql: first_name
         type: string
-        description: Player first name, from the bio table.
+        description: Player first name. Missing for a couple of historical players.
 
       - name: last_name
         sql: last_name
         type: string
-        description: Player last name, from the bio table.
+        description: Player last name. Missing for a couple of historical players.
 
       - name: player_name
         sql: "{CUBE}.first_name || ' ' || {CUBE}.last_name"
@@ -46,7 +46,10 @@ cubes:
         type: number
         primary_key: true
         public: true
-        description: Calendar year the season started (e.g. 2023 for 2023-24).
+        description: >
+          Calendar year the season started (e.g. 2023 for 2023-24), decoded from
+          the game id. Follows the league's own season assignment, so the 2020
+          bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
 
       - name: season_label
         sql: season_label
@@ -58,7 +61,12 @@ cubes:
         type: string
         primary_key: true
         public: true
-        description: Type of game these totals cover (Regular Season, Playoffs, etc.). Part of the natural key.
+        description: >
+          Type of game, decoded from the game id: Regular Season, Playoffs,
+          Play-in Tournament, Preseason, All-Star Game or NBA Cup Final. NBA Cup
+          group and knockout games are Regular Season; only the Cup final, which
+          does not count toward the standings, is separate. The totals cover
+          games of this type.
 
       - name: primary_team_id
         sql: primary_team_id
@@ -69,17 +77,22 @@ cubes:
         sql: team_games_played
         type: number
         description: >
-          Games of this type the player's primary team played that season. In
-          short or uneven seasons it differs from 82 (1998-99: 50, 2011-12: 66,
-          2019-20: 64-75, 2020-21: 72).
+          Games of this type the player's primary team played that season, so
+          games_played can be read as a share of the games available. Falls back
+          to the most games any team played when primary_team_id is null.
+          Differs from 82 in short or uneven seasons (1998-99: 50, 2011-12: 66,
+          2019-20: 64-75, 2020-21: 72). Null for All-Star games before 2025-26,
+          which have no team box scores.
 
       - name: is_qualified
         sql: is_qualified
         type: boolean
         description: >
-          True when the player appeared in at least 70% of their team's games
-          (the 58-of-82 per-game minimum, scaled for short seasons). Only set
-          for the Regular Season.
+          True when the player appeared in at least 70% of team_games_played,
+          the NBA's 58-of-82 per-game minimum scaled to the games the team
+          actually played. Use it for per-game leaderboards instead of a fixed
+          games threshold, which is biased in short seasons. Null outside the
+          Regular Season.
 
     segments:
       - name: qualified

@@ -19,14 +19,17 @@ cubes:
         type: number
         primary_key: true
         public: true
-        description: Franchise/team identifier. Combined with season, forms the natural key.
+        description: Franchise identifier, stable across relocations and renames.
 
       - name: season_start_year
         sql: season_start_year
         type: number
         primary_key: true
         public: true
-        description: Calendar year the season started (e.g. 2023 for the 2023-24 season).
+        description: >
+          Calendar year the season started (e.g. 2023 for 2023-24), decoded from
+          the game id. Follows the league's own season assignment, so the 2020
+          bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
 
       - name: season_label
         sql: season_label

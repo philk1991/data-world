@@ -12,7 +12,7 @@ cubes:
         sql: artist_id
         type: string
         primary_key: true
-        description: Spotify artist ID.
+        description: Spotify artist ID. Unique per row.
 
       - name: artist_name
         sql: artist_name

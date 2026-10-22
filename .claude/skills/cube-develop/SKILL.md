@@ -110,8 +110,11 @@ overwrite.
 
 There's no `cube:validate` task. At minimum:
 
-1. Parse the YAML you just wrote (`python3 -c "import yaml; yaml.safe_load(open('cube/model/cubes/<mart>.yml'))"`) to catch syntax errors.
-2. Cross-check every `sql:` value against the `duckdb_columns` list from
+1. Run `task cube:docs:sync` to copy the dbt column descriptions onto the
+   dimensions that expose mart columns as-is (see the conventions), then
+   `task cube:docs:check`. The sync refuses to write YAML that doesn't parse.
+2. Parse the YAML you just wrote (`python3 -c "import yaml; yaml.safe_load(open('cube/model/cubes/<mart>.yml'))"`) to catch syntax errors.
+3. Cross-check every `sql:` value against the `duckdb_columns` list from
    Step 2's introspection output — a typo here fails silently in Cube until
    someone queries it.
 

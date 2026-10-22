@@ -375,6 +375,18 @@ tasks:
     cmds:
       - npm run dev
 
+  cube:docs:sync:
+    desc: "Copy dbt column descriptions (doc blocks rendered) onto the Cube dimensions that expose those columns as-is. Computed dimensions and measures are left alone."
+    cmds:
+      - task: dbt:parse
+      - .venv/bin/python cube/scripts/sync_dbt_descriptions.py
+
+  cube:docs:check:
+    desc: "Fail when a Cube dimension's description differs from the dbt column it exposes (fix with task cube:docs:sync)."
+    cmds:
+      - task: dbt:parse
+      - .venv/bin/python cube/scripts/sync_dbt_descriptions.py --check
+
   cube:mcp:install:
     desc: "Create the Cube MCP server's isolated venv (cube/mcp/.venv). Claude Code starts the server itself over stdio via .mcp.json; it talks only to the local Cube dev server."
     cmds:
