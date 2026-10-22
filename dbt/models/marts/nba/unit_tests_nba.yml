@@ -80,3 +80,100 @@ unit_tests:
         - {game_id: 9, is_neutral_site: false}   # inside the window but not a Cup game
         - {game_id: 10, is_neutral_site: false}  # Cup game, season's final not yet played
         - {game_id: 11, is_neutral_site: true}   # All-Star
+
+  - name: nba_player_season_stats_aggregates_player_seasons
+    model: nba_player_season_stats
+    description: >
+      Asserts one row per player per season per game type. Covers: a player
+      traded mid-season combined into one row with primary_team_id the team
+      they played most games for; playoff games for the same season kept as a
+      separate row with their own primary team; made shots counted only in
+      games where the matching attempts were recorded; per-game averages and
+      rounded shooting percentages; and rows dropped for a missing person_id,
+      minutes_played, game_date or game_type.
+    given:
+      - input: ref('stg_nba_players')
+        rows:
+          - {person_id: 1, first_name: Test, last_name: Player}
+      - input: ref('stg_nba_team_statistics')
+        rows: []
+      - input: ref('stg_nba_player_statistics')
+        rows:
+          # 1999-00 regular season: 3 games for team 10, then traded to team 20 for 2
+          # 101: FG 4/10, 3PT 1/3, FT 2/4
+          - {game_id: 101, person_id: 1, player_team_id: 10, game_date: 1999-11-01, season_start_year: 1999, game_type: Regular Season, minutes_played: 30, points: 10, rebounds_total: 5, assists: 1, field_goals_made: 4, field_goals_attempted: 10, three_pointers_made: 1, three_pointers_attempted: 3, free_throws_made: 2, free_throws_attempted: 4}
+          # 102: FG 5/10; FT made with no recorded attempts -> not counted
+          - {game_id: 102, person_id: 1, player_team_id: 10, game_date: 1999-11-03, season_start_year: 1999, game_type: Regular Season, minutes_played: 30, points: 20, rebounds_total: 5, assists: 1, field_goals_made: 5, field_goals_attempted: 10, free_throws_made: 3, free_throws_attempted: null}
+          # 103: FG made with no recorded attempts -> not counted
+          - {game_id: 103, person_id: 1, player_team_id: 10, game_date: 1999-11-05, season_start_year: 1999, game_type: Regular Season, minutes_played: 30, points: 30, rebounds_total: 5, assists: 1, field_goals_made: 3, field_goals_attempted: null}
+          - {game_id: 104, person_id: 1, player_team_id: 20, game_date: 2000-02-01, season_start_year: 1999, game_type: Regular Season, minutes_played: 30, points: 40, rebounds_total: 5, assists: 0, field_goals_made: 4, field_goals_attempted: 8}
+          - {game_id: 105, person_id: 1, player_team_id: 20, game_date: 2000-02-03, season_start_year: 1999, game_type: Regular Season, minutes_played: 30, points: 50, rebounds_total: 6, assists: 0, field_goals_made: 2, field_goals_attempted: 12}
+          # did not play (null minutes) -> excluded
+          - {game_id: 106, person_id: 1, player_team_id: 20, game_date: 2000-02-05, season_start_year: 1999, game_type: Regular Season, minutes_played: null, points: 0}
+          # missing game_date / game_type -> excluded
+          - {game_id: 107, person_id: 1, player_team_id: 20, game_date: null, season_start_year: 1999, game_type: Regular Season, minutes_played: 30, points: 99}
+          - {game_id: 108, person_id: 1, player_team_id: 20, game_date: 2000-02-07, season_start_year: 1999, game_type: null, minutes_played: 30, points: 99}
+          # missing person_id -> excluded (no null-person row)
+          - {game_id: 101, person_id: null, player_team_id: 10, game_date: 1999-11-01, season_start_year: 1999, game_type: Regular Season, minutes_played: 30, points: 99}
+          # same season's playoffs, with team 20 -> separate row
+          - {game_id: 201, person_id: 1, player_team_id: 20, game_date: 2000-04-20, season_start_year: 1999, game_type: Playoffs, minutes_played: 40, points: 25, rebounds_total: 10, assists: 4, field_goals_made: 9, field_goals_attempted: 20}
+    expect:
+      rows:
+        # 5 games, 150 pts; FG 15/40 (game 103's 3 made dropped); 3PT 1/3; FT 2/4 (game 102's 3 made dropped)
+        - {person_id: 1, first_name: Test, last_name: Player, season_start_year: 1999, season_label: 1999-00, game_type: Regular Season,
+           primary_team_id: 10, games_played: 5, total_points: 150, total_rebounds: 26, total_assists: 3,
+           total_field_goals_made: 15, total_field_goals_attempted: 40, total_three_pointers_made: 1, total_three_pointers_attempted: 3,
+           total_free_throws_made: 2, total_free_throws_attempted: 4,
+           points_per_game: 30.0, rebounds_per_game: 5.2, assists_per_game: 0.6,
+           field_goal_pct: 0.375, three_point_pct: 0.333, free_throw_pct: 0.5}
+        - {person_id: 1, first_name: Test, last_name: Player, season_start_year: 1999, season_label: 1999-00, game_type: Playoffs,
+           primary_team_id: 20, games_played: 1, total_points: 25, total_rebounds: 10, total_assists: 4,
+           total_field_goals_made: 9, total_field_goals_attempted: 20, total_three_pointers_made: null, total_three_pointers_attempted: null,
+           total_free_throws_made: null, total_free_throws_attempted: null,
+           points_per_game: 25.0, rebounds_per_game: 10.0, assists_per_game: 4.0,
+           field_goal_pct: 0.45, three_point_pct: null, free_throw_pct: null}
+
+  - name: nba_player_season_stats_qualifies_on_team_games
+    model: nba_player_season_stats
+    description: >
+      Asserts team_games_played and is_qualified (games_played >= 70% of the
+      primary team's games). Covers: exactly 70% qualifying (the >= boundary),
+      just under not qualifying, a primary team missing from the team box
+      scores falling back to the most games any team played that season and
+      game type, and playoff rows getting team_games_played for the playoffs
+      only and a null is_qualified.
+    given:
+      - input: ref('stg_nba_players')
+        rows: []
+      # 2023-24: team 10 plays 10 regular season games (1-10) and 4 playoff games
+      # (11-14), team 20 plays 8 regular season games (21-28)
+      - input: ref('stg_nba_team_statistics')
+        format: sql
+        rows: |
+          select range::bigint as game_id, 10::bigint as team_id, 2023::bigint as season_start_year, 'Regular Season' as game_type from range(1, 11)
+          union all select range, 10, 2023, 'Playoffs' from range(11, 15)
+          union all select range, 20, 2023, 'Regular Season' from range(21, 29)
+      - input: ref('stg_nba_player_statistics')
+        format: sql
+        rows: |
+          -- player 1: 7 of team 10's 10 games -> exactly 70%, qualified
+          select range::bigint as game_id, 1::bigint as person_id, 10::bigint as player_team_id, '2024-01-01'::date as game_date,
+                 2023::bigint as season_start_year, 'Regular Season' as game_type, 30.0::double as minutes_played,
+                 -- sql fixtures must supply every column the model reads; stats aren't under test here
+                 null::double as points, null::double as rebounds_total, null::double as assists, null::double as steals,
+                 null::double as blocks, null::double as turnovers, null::double as field_goals_made,
+                 null::double as field_goals_attempted, null::double as three_pointers_made,
+                 null::double as three_pointers_attempted, null::double as free_throws_made, null::double as free_throws_attempted
+          from range(1, 8)
+          -- player 2: 6 of team 10's 10 games -> not qualified
+          union all select range, 2, 10, '2024-01-01'::date, 2023, 'Regular Season', 30.0, null, null, null, null, null, null, null, null, null, null, null, null from range(1, 7)
+          -- player 3: team 30 has no team box rows -> falls back to the league max (10); 7 games, qualified
+          union all select range, 3, 30, '2024-01-01'::date, 2023, 'Regular Season', 30.0, null, null, null, null, null, null, null, null, null, null, null, null from range(31, 38)
+          -- player 1 in the playoffs: 2 of team 10's 4 playoff games -> is_qualified null
+          union all select range, 1, 10, '2024-05-01'::date, 2023, 'Playoffs', 30.0, null, null, null, null, null, null, null, null, null, null, null, null from range(11, 13)
+    expect:
+      rows:
+        - {person_id: 1, game_type: Regular Season, primary_team_id: 10, games_played: 7, team_games_played: 10, is_qualified: true}
+        - {person_id: 2, game_type: Regular Season, primary_team_id: 10, games_played: 6, team_games_played: 10, is_qualified: false}
+        - {person_id: 3, game_type: Regular Season, primary_team_id: 30, games_played: 7, team_games_played: 10, is_qualified: true}
+        - {person_id: 1, game_type: Playoffs, primary_team_id: 10, games_played: 2, team_games_played: 4, is_qualified: null}
