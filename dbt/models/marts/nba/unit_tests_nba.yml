@@ -184,7 +184,8 @@ unit_tests:
       Asserts rate metrics are minutes-weighted (sum(metric * minutes) /
       sum(minutes)), not a simple mean of games: 30 minutes at a 120 offensive
       rating plus 10 at 80 is 110.0, where a simple mean would be 100.0. Also
-      covers games dropped for zero or null minutes or a null offensive_rating
+      covers regular season and playoff games combining, games dropped for zero
+      or null minutes, a null offensive_rating, or being preseason or All-Star
       (none of their stats or double-doubles count), a null person_id, a player
       whose only game is dropped getting no row, double/triple-double counts,
       minutes_per_game, and a player missing from stg_nba_players keeping a row
@@ -196,30 +197,37 @@ unit_tests:
       - input: ref('stg_nba_player_statistics_extended')
         rows:
           # player 1: two counted games, 30 and 10 minutes
-          - {game_id: 1, person_id: 1, minutes_played: 30, is_double_double: true, is_triple_double: false,
+          - {game_id: 1, person_id: 1, game_type: Regular Season, minutes_played: 30, is_double_double: true, is_triple_double: false,
              offensive_rating: 120, defensive_rating: 100, net_rating: 20, usage_percentage: 0.30, true_shooting_percentage: 0.60,
              effective_field_goal_percentage: 0.55, assist_percentage: 0.25, rebound_percentage: 0.10, player_impact_estimate: 0.15}
-          - {game_id: 2, person_id: 1, minutes_played: 10, is_double_double: false, is_triple_double: false,
+          - {game_id: 2, person_id: 1, game_type: Playoffs, minutes_played: 10, is_double_double: false, is_triple_double: false,
              offensive_rating: 80, defensive_rating: 110, net_rating: -30, usage_percentage: 0.10, true_shooting_percentage: 0.40,
              effective_field_goal_percentage: 0.35, assist_percentage: 0.05, rebound_percentage: 0.20, player_impact_estimate: 0.05}
           # dropped: zero minutes, null minutes, null offensive_rating
-          - {game_id: 3, person_id: 1, minutes_played: 0, is_double_double: true, is_triple_double: true,
+          - {game_id: 3, person_id: 1, game_type: Regular Season, minutes_played: 0, is_double_double: true, is_triple_double: true,
              offensive_rating: 200, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
              effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
-          - {game_id: 4, person_id: 1, minutes_played: null, is_double_double: true, is_triple_double: true,
+          - {game_id: 4, person_id: 1, game_type: Regular Season, minutes_played: null, is_double_double: true, is_triple_double: true,
              offensive_rating: 200, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
              effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
-          - {game_id: 5, person_id: 1, minutes_played: 20, is_double_double: true, is_triple_double: true,
+          - {game_id: 5, person_id: 1, game_type: Regular Season, minutes_played: 20, is_double_double: true, is_triple_double: true,
              offensive_rating: null, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
              effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
+          # dropped: preseason and All-Star games
+          - {game_id: 6, person_id: 1, game_type: Preseason, minutes_played: 30, is_double_double: true, is_triple_double: true,
+             offensive_rating: 200, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
+             effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
+          - {game_id: 7, person_id: 1, game_type: All-Star Game, minutes_played: 30, is_double_double: true, is_triple_double: true,
+             offensive_rating: 200, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
+             effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
           # player 2: not in stg_nba_players; one triple-double game
-          - {game_id: 1, person_id: 2, minutes_played: 36, is_double_double: true, is_triple_double: true,
+          - {game_id: 1, person_id: 2, game_type: Regular Season, minutes_played: 36, is_double_double: true, is_triple_double: true,
              offensive_rating: 115, defensive_rating: 105, net_rating: 10, usage_percentage: 0.25, true_shooting_percentage: 0.58,
              effective_field_goal_percentage: 0.52, assist_percentage: 0.40, rebound_percentage: 0.15, player_impact_estimate: 0.20}
           # player 3: only game has zero minutes -> no row
-          - {game_id: 2, person_id: 3, minutes_played: 0, is_double_double: false, is_triple_double: false, offensive_rating: 100}
+          - {game_id: 2, person_id: 3, game_type: Regular Season, minutes_played: 0, is_double_double: false, is_triple_double: false, offensive_rating: 100}
           # null person_id -> no row
-          - {game_id: 1, person_id: null, minutes_played: 30, is_double_double: false, is_triple_double: false, offensive_rating: 100}
+          - {game_id: 1, person_id: null, game_type: Regular Season, minutes_played: 30, is_double_double: false, is_triple_double: false, offensive_rating: 100}
     expect:
       rows:
         # 40 minutes over 2 games
@@ -244,8 +252,8 @@ unit_tests:
         rows: []
       - input: ref('stg_nba_player_statistics_extended')
         rows:
-          - {game_id: 1, person_id: 1, minutes_played: 30, offensive_rating: 120, usage_percentage: 0.30}
-          - {game_id: 2, person_id: 1, minutes_played: 10, offensive_rating: 80, usage_percentage: null}
+          - {game_id: 1, person_id: 1, game_type: Regular Season, minutes_played: 30, offensive_rating: 120, usage_percentage: 0.30}
+          - {game_id: 2, person_id: 1, game_type: Regular Season, minutes_played: 10, offensive_rating: 80, usage_percentage: null}
     expect:
       rows:
         - {person_id: 1, games_with_advanced: 2, offensive_rating: 110.0, usage_pct: 0.30}

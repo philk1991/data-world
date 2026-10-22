@@ -3,6 +3,9 @@
 -- careers of earlier players are not represented. Rate metrics are minutes-weighted
 -- (sum(metric * minutes) / sum(minutes)) so high-minute games count for more than
 -- garbage-time cameos; only games with recorded minutes and advanced data count.
+-- Only competitive games count (Regular Season, Playoffs, Play-in Tournament and
+-- NBA Cup Final), matching nba_player_career_stats; preseason and All-Star games
+-- are excluded.
 -- Each metric's denominator is the minutes where that metric was recorded, so a
 -- game missing one metric (usage_percentage is sometimes null) doesn't dilute it.
 WITH player_advanced AS (
@@ -49,6 +52,7 @@ weighted AS (
         AND minutes_played IS NOT NULL
         AND minutes_played > 0
         AND offensive_rating IS NOT NULL
+        AND game_type IN ('Regular Season', 'Playoffs', 'Play-in Tournament', 'NBA Cup Final')
     GROUP BY
         person_id
 )

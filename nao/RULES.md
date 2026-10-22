@@ -29,8 +29,9 @@ staging tables.
   leaders; for regular-season-only careers, sum the Regular Season rows of
   `nba_player_season_stats`.
 - `nba_player_advanced_career` — one row per player; minutes-weighted advanced
-  efficiency (usage, TS%, ratings, PIE) and double/triple-double counts.
-  Advanced-stats era only (~1996+).
+  efficiency (usage, TS%, ratings, PIE) and double/triple-double counts over
+  competitive games, like `nba_player_career_stats`. Advanced-stats era only
+  (~1996+).
 - `nba_player_season_stats` — one row per (`person_id`, `season_start_year`,
   `game_type`). Use for season-level questions and regular-season-vs-playoff
   splits. **Filter `game_type = 'Regular Season'`** for "led the league"-style

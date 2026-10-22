@@ -31,8 +31,10 @@ Career figures cover only games present in the dataset.
 Minutes-weighted advanced career efficiency (`usage_pct`, `true_shooting_pct`,
 `offensive/defensive/net_rating`, `assist_pct`, `rebound_pct`,
 `player_impact_estimate`) plus `double_doubles` / `triple_doubles`. Sourced from
-the advanced box scores (~1996 onward), so earlier careers are absent. Rate
-metrics weight high-minute games more than cameos.
+the advanced box scores (~1996 onward), so earlier careers are absent. Counts
+competitive games only (Regular Season, Playoffs, Play-in Tournament, NBA Cup
+Final; preseason and All-Star games excluded). Rate metrics weight high-minute
+games more than cameos.
 
 ## nba_player_season_stats
 **Grain:** one row per (`person_id`, `season_start_year`, `game_type`).

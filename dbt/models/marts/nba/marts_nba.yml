@@ -384,7 +384,9 @@ models:
     description: >
       One row per player summarising advanced career efficiency, enriched with
       bio. Sourced from the advanced player box scores (~1996 onward), so earlier
-      careers are absent. Rate metrics are minutes-weighted so high-minute games
+      careers are absent. Counts competitive games only (Regular Season,
+      Playoffs, Play-in Tournament and NBA Cup Final; preseason and All-Star
+      games are excluded). Rate metrics are minutes-weighted so high-minute games
       count for more than cameos. Ordered by career triple-doubles then net rating.
     columns:
       - name: person_id
