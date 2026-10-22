@@ -315,3 +315,61 @@ unit_tests:
         - {team_id: 10, opponent_team_id: 30, games_played: 2, wins: 1, losses: 0, win_pct: 1.0,
            avg_points_for: 99.0, avg_points_against: 94.5, avg_point_margin: 4.5,
            first_meeting_date: 2023-01-20, last_meeting_date: 2023-03-20}
+
+  - name: nba_team_season_summary_records_regular_season
+    model: nba_team_season_summary
+    description: >
+      Asserts one row per team per season built from Regular Season games only:
+      NBA Cup group games count (they are regular season by game id), while
+      playoff, play-in, Cup final and preseason games don't, and a team with no
+      regular season games gets no row. Covers the home/away win split, the
+      per-game averages over games_played, and season_label across a century
+      (1999 -> 1999-00).
+    given:
+      - input: ref('stg_nba_team_statistics')
+        rows:
+          # team 10, 2023-24 regular season: 3-2 (1-1 home, 2-1 away), 523 for / 519 against
+          - {game_id: 1, team_id: 10, season_start_year: 2023, game_type: Regular Season, is_home: true, is_win: true, team_score: 110, opponent_score: 100}
+          - {game_id: 2, team_id: 10, season_start_year: 2023, game_type: Regular Season, is_home: true, is_win: false, team_score: 98, opponent_score: 102}
+          - {game_id: 3, team_id: 10, season_start_year: 2023, game_type: Regular Season, is_home: false, is_win: true, team_score: 105, opponent_score: 99}
+          # NBA Cup group game -> regular season, counts
+          - {game_id: 4, team_id: 10, season_start_year: 2023, game_type: Regular Season, game_label: Emirates NBA Cup, is_home: false, is_win: true, team_score: 120, opponent_score: 118}
+          - {game_id: 5, team_id: 10, season_start_year: 2023, game_type: Regular Season, is_home: false, is_win: false, team_score: 90, opponent_score: 100}
+          # team 10, 2023-24 non-regular-season games -> excluded
+          - {game_id: 6, team_id: 10, season_start_year: 2023, game_type: Playoffs, is_home: true, is_win: true, team_score: 150, opponent_score: 50}
+          - {game_id: 7, team_id: 10, season_start_year: 2023, game_type: Play-in Tournament, is_home: true, is_win: true, team_score: 150, opponent_score: 50}
+          - {game_id: 8, team_id: 10, season_start_year: 2023, game_type: NBA Cup Final, is_home: false, is_win: true, team_score: 150, opponent_score: 50}
+          - {game_id: 9, team_id: 10, season_start_year: 2023, game_type: Preseason, is_home: true, is_win: true, team_score: 150, opponent_score: 50}
+          # team 10, 1999-00 -> its own row
+          - {game_id: 10, team_id: 10, season_start_year: 1999, game_type: Regular Season, is_home: true, is_win: true, team_score: 100, opponent_score: 90}
+          # team 30: playoff games only -> no row
+          - {game_id: 6, team_id: 30, season_start_year: 2023, game_type: Playoffs, is_home: false, is_win: false, team_score: 50, opponent_score: 150}
+    expect:
+      rows:
+        - {team_id: 10, season_start_year: 2023, season_label: 2023-24, games_played: 5, wins: 3, losses: 2,
+           home_wins: 1, away_wins: 2, total_points_for: 523, total_points_against: 519,
+           win_pct: 0.6, points_for_per_game: 104.6, points_against_per_game: 103.8, point_margin_per_game: 0.8}
+        - {team_id: 10, season_start_year: 1999, season_label: 1999-00, games_played: 1, wins: 1, losses: 0,
+           home_wins: 1, away_wins: 0, total_points_for: 100, total_points_against: 90,
+           win_pct: 1.0, points_for_per_game: 100.0, points_against_per_game: 90.0, point_margin_per_game: 10.0}
+
+  - name: nba_team_season_summary_null_results
+    model: nba_team_season_summary
+    description: >
+      Asserts a game with a null is_win counts in games_played and the per-game
+      averages but in neither wins, losses, the home/away win split nor the
+      win_pct denominator (wins + losses). Averages round to 1 decimal place
+      and win_pct to 3.
+    given:
+      - input: ref('stg_nba_team_statistics')
+        rows:
+          - {game_id: 1, team_id: 20, season_start_year: 2023, game_type: Regular Season, is_home: true, is_win: false, team_score: 95, opponent_score: 100}
+          - {game_id: 2, team_id: 20, season_start_year: 2023, game_type: Regular Season, is_home: false, is_win: true, team_score: 101, opponent_score: 99}
+          - {game_id: 3, team_id: 20, season_start_year: 2023, game_type: Regular Season, is_home: false, is_win: true, team_score: 100, opponent_score: 98}
+          # result unrecorded
+          - {game_id: 4, team_id: 20, season_start_year: 2023, game_type: Regular Season, is_home: true, is_win: null, team_score: 104, opponent_score: 103}
+    expect:
+      rows:
+        # 2-1 -> 0.667; 400 for / 400 against over 4 games
+        - {team_id: 20, season_start_year: 2023, games_played: 4, wins: 2, losses: 1, home_wins: 0, away_wins: 2,
+           win_pct: 0.667, points_for_per_game: 100.0, points_against_per_game: 100.0, point_margin_per_game: 0.0}
