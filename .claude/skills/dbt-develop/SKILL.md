@@ -158,6 +158,8 @@ WHERE
 
 **If it doesn't exist:** create a new file with `version: 2` and the `models:` array.
 
+**Shared column descriptions:** if the domain has a docs file (`dbt/models/docs/<domain>.md`), every column that also appears in another model of the domain must use its doc block — `description: "{{ doc('<domain>__<column>') }}"`, plus any context specific to this model after it. Reuse an existing block when the meaning matches; add a new block to the docs file when a column becomes shared for the first time (move the existing model's inline description into it); add a `<domain>__<column>__<variant>` block when the name matches but the meaning doesn't. See the doc blocks section of `dbt-conventions.md`.
+
 For **staging**, apply these tests per column:
 - `not_null` on every column
 - `unique` on the natural key
@@ -189,6 +191,7 @@ Run:
 ```
 task dbt:fix
 task dbt:lint
+task dbt:docs:check   # domains with a docs file
 task dbt:compile
 ```
 

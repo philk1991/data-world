@@ -7,23 +7,20 @@ models:
       home_team_won from the winning team id.
     columns:
       - name: game_id
-        description: Unique NBA game identifier.
+        description: "{{ doc('nba__game_id') }}"
         tests:
           - not_null
           - unique
       - name: game_datetime_est
-        description: Scheduled tip-off timestamp (US Eastern).
+        description: "{{ doc('nba__game_datetime_est') }}"
         tests:
           - not_null
       - name: game_date
-        description: Calendar date of the game.
+        description: "{{ doc('nba__game_date') }}"
         tests:
           - not_null
       - name: game_type
-        description: >
-          Type of game, decoded from the game id (Regular Season, Playoffs,
-          etc.). NBA Cup group and knockout games are Regular Season; only the
-          Cup final, which does not count toward the standings, is separate.
+        description: "{{ doc('nba__game_type') }}"
         tests:
           - not_null
           - accepted_values:
@@ -36,35 +33,33 @@ models:
                   - "All-Star Game"
                   - "NBA Cup Final"
       - name: season_start_year
-        description: >
-          Calendar year the season started (e.g. 2023 for 2023-24), decoded
-          from the game id — so the 2020 bubble games belong to 2019-20.
+        description: "{{ doc('nba__season_start_year') }}"
         tests:
           - not_null
       - name: home_team_id
-        description: Team id of the home side.
+        description: "{{ doc('nba__home_team_id') }}"
         tests:
           - not_null
       - name: away_team_id
-        description: Team id of the away side.
+        description: "{{ doc('nba__away_team_id') }}"
         tests:
           - not_null
       - name: home_score
-        description: Final points scored by the home team.
+        description: "{{ doc('nba__home_score') }}"
       - name: away_score
-        description: Final points scored by the away team.
+        description: "{{ doc('nba__away_score') }}"
       - name: winner_team_id
         description: Team id of the winning side.
         tests:
           - not_null
       - name: home_team_won
-        description: True when the home team won (winner_team_id = home_team_id).
+        description: "{{ doc('nba__home_team_won') }}"
         tests:
           - not_null
       - name: attendance
-        description: Reported attendance; null for many older games.
+        description: "{{ doc('nba__attendance') }}"
       - name: ingested_at
-        description: Timestamp when the source row was ingested.
+        description: "{{ doc('nba__ingested_at') }}"
         tests:
           - not_null
 
@@ -86,27 +81,27 @@ models:
               - person_id
     columns:
       - name: game_id
-        description: Game the box score belongs to.
+        description: "{{ doc('nba__game_id') }}"
         tests:
           - not_null
       - name: person_id
-        description: Player the box score belongs to; a handful of historical rows have no player id.
+        description: "{{ doc('nba__person_id') }} Null on a handful of rows."
         tests:
           - not_null:
               config:
                 severity: warn
       - name: player_team_id
-        description: Team the player played for; null for many pre-modern games where team ids were not recorded.
+        description: "{{ doc('nba__player_team_id') }}"
       - name: is_home
-        description: True when the player's team was the home side.
+        description: "{{ doc('nba__is_home') }}"
       - name: is_win
-        description: True when the player's team won; null when the result is unknown.
+        description: "{{ doc('nba__is_win') }}"
       - name: minutes_played
         description: Minutes played, parsed to a numeric value; null for DNP.
       - name: points
         description: Points scored; null for players who did not play.
       - name: ingested_at
-        description: Timestamp when the source row was ingested.
+        description: "{{ doc('nba__ingested_at') }}"
         tests:
           - not_null
 
@@ -127,27 +122,27 @@ models:
               - team_id
     columns:
       - name: game_id
-        description: Game the box score belongs to.
+        description: "{{ doc('nba__game_id') }}"
         tests:
           - not_null
       - name: team_id
-        description: Team the box score belongs to.
+        description: "{{ doc('nba__team_id') }}"
         tests:
           - not_null
       - name: opponent_team_id
-        description: Opposing team id.
+        description: "{{ doc('nba__opponent_team_id') }}"
         tests:
           - not_null
       - name: is_home
-        description: True when this team was the home side.
+        description: "{{ doc('nba__is_home') }}"
       - name: is_win
-        description: True when this team won; null when the result is unknown.
+        description: "{{ doc('nba__is_win') }}"
       - name: team_score
         description: Points scored by this team.
       - name: opponent_score
         description: Points scored by the opponent.
       - name: ingested_at
-        description: Timestamp when the source row was ingested.
+        description: "{{ doc('nba__ingested_at') }}"
         tests:
           - not_null
 
@@ -159,18 +154,18 @@ models:
     description: Player biographies, one row per player.
     columns:
       - name: person_id
-        description: Unique player identifier.
+        description: "{{ doc('nba__person_id') }}"
         tests:
           - not_null
           - unique
       - name: first_name
-        description: Player first name; a couple of historical records have none.
+        description: "{{ doc('nba__first_name') }}"
         tests:
           - not_null:
               config:
                 severity: warn
       - name: last_name
-        description: Player last name; a couple of historical records have none.
+        description: "{{ doc('nba__last_name') }}"
         tests:
           - not_null:
               config:
@@ -178,19 +173,19 @@ models:
       - name: birth_date
         description: Date of birth; null when unknown.
       - name: height_inches
-        description: Listed height in inches; null when unknown.
+        description: "{{ doc('nba__height_inches') }}"
       - name: body_weight_lbs
         description: Listed weight in pounds; null when unknown.
       - name: is_guard
-        description: True when the player is listed as a guard.
+        description: "{{ doc('nba__is_guard') }}"
       - name: is_forward
-        description: True when the player is listed as a forward.
+        description: "{{ doc('nba__is_forward') }}"
       - name: is_center
-        description: True when the player is listed as a center.
+        description: "{{ doc('nba__is_center') }}"
       - name: draft_year
-        description: Year the player was drafted; null if undrafted/unknown.
+        description: "{{ doc('nba__draft_year') }}"
       - name: ingested_at
-        description: Timestamp when the source row was ingested.
+        description: "{{ doc('nba__ingested_at') }}"
         tests:
           - not_null
 
@@ -208,7 +203,7 @@ models:
               - season_founded
     columns:
       - name: team_id
-        description: Franchise/team identifier (stable across an era).
+        description: "{{ doc('nba__team_id') }}"
         tests:
           - not_null
       - name: team_name
@@ -228,7 +223,7 @@ models:
         tests:
           - not_null
       - name: ingested_at
-        description: Timestamp when the source row was ingested.
+        description: "{{ doc('nba__ingested_at') }}"
         tests:
           - not_null
 
@@ -250,29 +245,29 @@ models:
               - person_id
     columns:
       - name: game_id
-        description: Game the box score belongs to.
+        description: "{{ doc('nba__game_id') }}"
         tests:
           - not_null
       - name: person_id
-        description: Player the box score belongs to.
+        description: "{{ doc('nba__person_id') }}"
         tests:
           - not_null
       - name: player_team_id
-        description: Team the player played for; null for some older games where team ids were not recorded.
+        description: "{{ doc('nba__player_team_id') }}"
       - name: offensive_rating
-        description: Points produced per 100 possessions.
+        description: "{{ doc('nba__offensive_rating') }}"
       - name: defensive_rating
-        description: Points allowed per 100 possessions.
+        description: "{{ doc('nba__defensive_rating') }}"
       - name: net_rating
-        description: Offensive rating minus defensive rating.
+        description: "{{ doc('nba__net_rating') }}"
       - name: usage_percentage
         description: Estimated share of team plays used by the player while on court.
       - name: true_shooting_percentage
-        description: Shooting efficiency accounting for 2s, 3s and free throws.
+        description: "{{ doc('nba__true_shooting_pct') }} Can exceed 1 in a single game with few shots."
       - name: player_impact_estimate
-        description: PIE — share of the game's total statistical contribution.
+        description: "{{ doc('nba__player_impact_estimate') }} Usually 0-0.2; single games with very few minutes can fall outside 0-1."
       - name: ingested_at
-        description: Timestamp when the source row was ingested.
+        description: "{{ doc('nba__ingested_at') }}"
         tests:
           - not_null
 
@@ -294,31 +289,31 @@ models:
               - team_id
     columns:
       - name: game_id
-        description: Game the box score belongs to.
+        description: "{{ doc('nba__game_id') }}"
         tests:
           - not_null
       - name: team_id
-        description: Team the box score belongs to.
+        description: "{{ doc('nba__team_id') }}"
         tests:
           - not_null
       - name: opponent_team_id
-        description: Opposing team id.
+        description: "{{ doc('nba__opponent_team_id') }}"
         tests:
           - not_null
       - name: offensive_rating
-        description: Points scored per 100 possessions.
+        description: "{{ doc('nba__offensive_rating') }}"
       - name: defensive_rating
-        description: Points allowed per 100 possessions.
+        description: "{{ doc('nba__defensive_rating') }}"
       - name: net_rating
-        description: Offensive rating minus defensive rating.
+        description: "{{ doc('nba__net_rating') }}"
       - name: pace
-        description: Estimated possessions per 48 minutes.
+        description: "{{ doc('nba__pace') }}"
       - name: effective_field_goal_percentage
         description: Field goal percentage adjusted for the extra value of 3-pointers.
       - name: true_shooting_percentage
-        description: Shooting efficiency accounting for 2s, 3s and free throws.
+        description: "{{ doc('nba__true_shooting_pct') }}"
       - name: ingested_at
-        description: Timestamp when the source row was ingested.
+        description: "{{ doc('nba__ingested_at') }}"
         tests:
           - not_null
     config:

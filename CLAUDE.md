@@ -61,6 +61,7 @@ dbt runs on **dbt-oss 2.0.8** (dbt v2, Apache-2.0 — not Fusion, and not dbt-co
 - dbt-oss reaches DuckDB through an ADBC driver installed by `task dbt:driver` (`dbc install duckdb=1.5.5`). The driver bundled with dbt-oss can't load extensions, so the lake can't attach without it.
 - YAML uses the v2 shapes (`config.meta`, generic test `arguments:`) — `dbt-autofix deprecations` produced them.
 - `dbt lint` needs the proprietary distribution (`dbt system upgrade-distribution`), so SQL is linted with SQLFluff instead: `task dbt:lint` / `task dbt:fix`, config in `dbt/.sqlfluff`. It uses the `jinja` templater with `apply_dbt_builtins` — the `dbt` templater is built on dbt-core 1.x and can't drive dbt-oss.
+- Columns shared by several models of a domain take their description from a doc block in `dbt/models/docs/<domain>.md` (`"{{ doc('nba__season_start_year') }}"`, model-specific context after it); `task dbt:docs:check` (`dbt/scripts/check_column_docs.py`) enforces it. Only NBA has a docs file so far — see `.claude/conventions/dbt-conventions.md`.
 - There's no static analysis, so unit-test fixtures for `TIMESTAMPTZ` columns must be `format: sql` with explicit `::timestamptz` casts (see `models/marts/payments/unit_tests_payments.yml`).
 
 Models follow a two-layer structure: `staging/` (views, light cleaning) → `marts/` (tables, analysis-ready). Each data source gets its own subdirectory under both layers.

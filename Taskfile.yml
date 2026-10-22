@@ -84,6 +84,11 @@ tasks:
     cmds:
       - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && sqlfluff fix {{.MODELS | default "models"}}"
 
+  dbt:docs:check:
+    desc: "Fail when a column shared by several models in a domain doesn't take its description from one doc block (models/docs/<domain>.md) -- optionally DOMAINS='nba spotify'"
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && python scripts/check_column_docs.py {{.DOMAINS | default "nba"}}"
+
   dbt:parse:
     desc: Parse dbt project and regenerate manifest.json (required after adding/renaming models)
     cmds:
