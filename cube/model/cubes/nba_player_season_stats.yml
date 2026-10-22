@@ -4,7 +4,7 @@ cubes:
     description: >
       One row per player per season per game type (Regular Season, Playoffs,
       etc.) of traditional box score totals, per-game averages and shooting
-      splits, enriched with bio. Season is derived from the game date. A
+      splits, enriched with bio. Season comes from the game id. A
       player traded mid-season is combined into one row per game type, with
       primary_team_id set to the team they played the most games for. Only
       games actually played count. Splitting by game_type lets visualisations
@@ -45,6 +45,7 @@ cubes:
         sql: season_start_year
         type: number
         primary_key: true
+        public: true
         description: Calendar year the season started (e.g. 2023 for 2023-24).
 
       - name: season_label
@@ -56,12 +57,37 @@ cubes:
         sql: game_type
         type: string
         primary_key: true
+        public: true
         description: Type of game these totals cover (Regular Season, Playoffs, etc.). Part of the natural key.
 
       - name: primary_team_id
         sql: primary_team_id
         type: number
         description: Team the player played the most games for that season. Null for old seasons where team ids were not recorded.
+
+      - name: team_games_played
+        sql: team_games_played
+        type: number
+        description: >
+          Games of this type the player's primary team played that season. In
+          short or uneven seasons it differs from 82 (1998-99: 50, 2011-12: 66,
+          2019-20: 64-75, 2020-21: 72).
+
+      - name: is_qualified
+        sql: is_qualified
+        type: boolean
+        description: >
+          True when the player appeared in at least 70% of their team's games
+          (the 58-of-82 per-game minimum, scaled for short seasons). Only set
+          for the Regular Season.
+
+    segments:
+      - name: qualified
+        sql: "{CUBE}.is_qualified"
+        description: >
+          Players who meet the per-game minimum (70% of team games, Regular
+          Season only). Apply this for per-game and percentage leaderboards
+          instead of a fixed games-played filter.
 
     measures:
       - name: count

@@ -25,6 +25,22 @@ models:
         description: Type of game (Regular Season, Playoffs, etc.).
         tests:
           - not_null
+      - name: season_start_year
+        description: >
+          Calendar year the season started (e.g. 2023 for 2023-24), from the
+          game id — so the 2020 bubble games belong to 2019-20.
+        tests:
+          - not_null
+      - name: is_neutral_site
+        description: >
+          True for games with no real home court: the 2020 Orlando bubble
+          (scrimmages, seeding games, play-in and playoffs), NBA Cup semifinals
+          and finals in Las Vegas, and All-Star games. The home/away labels on
+          these games are nominal, so exclude them from home-advantage analysis.
+          International regular season games are not flagged (no arena data
+          before 2025-26 to identify them).
+        tests:
+          - not_null
       - name: home_team_id
         description: Team id of the home side.
         tests:
@@ -179,9 +195,8 @@ models:
   - name: nba_team_season_summary
     description: >
       One row per team per regular season with win/loss record, home/away wins
-      and scoring averages. Season is derived from the game date (the NBA season
-      spans Oct-Apr, so months before July belong to the prior start year).
-      Restricted to Regular Season games. Ordered by season then win percentage.
+      and scoring averages. Season comes from the game id, so the 2020 bubble
+      games belong to 2019-20. Restricted to Regular Season games. Ordered by season then win percentage.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -237,7 +252,7 @@ models:
     config:
       meta:
         grain: one row per (team_id, season_start_year)
-        purpose: Aggregate regular-season team box scores into a season-level standings row per team, deriving the season from the game date.
+        purpose: Aggregate regular-season team box scores into a season-level standings row per team, taking the season from the game id.
         business_question: How did each team perform in a given regular season — record, home/away split and scoring margin?
         relationships:
           decomposes_into:
@@ -436,7 +451,7 @@ models:
     description: >
       One row per player per season per game type (Regular Season, Playoffs,
       etc.) of traditional box score totals, per-game averages and shooting
-      splits, enriched with bio. Season is derived from the game date. A player
+      splits, enriched with bio. Season comes from the game id. A player
       traded mid-season is combined into one row per game type, with
       primary_team_id set to the team they played the most games for. Only games
       actually played count. Splitting by game_type lets visualisations compare
@@ -478,16 +493,32 @@ models:
                   - "Play-in Tournament"
                   - "Preseason"
                   - "All-Star Game"
-                  - "NBA Cup"
-                  - "NBA Emirates Cup"
-                  - "Emirates NBA Cup"
-                  - "in-season-knockout"
+                  - "NBA Cup Final"
       - name: primary_team_id
         description: Team the player played the most games for that season. Null for old seasons where team ids were not recorded.
       - name: games_played
         description: Distinct games of this type the player appeared in that season.
         tests:
           - not_null
+      - name: team_games_played
+        description: >
+          Games of this type the player's primary team played that season, so
+          games_played can be read as a share of the games available. Falls
+          back to the most games any team played when primary_team_id is null.
+          Varies within a season when teams played different numbers of games
+          (2019-20: 64-75). Null for All-Star games before 2025-26, which have
+          no team box scores.
+        tests:
+          - not_null:
+              config:
+                where: "game_type <> 'All-Star Game'"
+      - name: is_qualified
+        description: >
+          True when the player appeared in at least 70% of team_games_played,
+          the NBA's 58-of-82 per-game minimum scaled to the games the team
+          actually played. Use it for per-game leaderboards instead of a fixed
+          games threshold, which is biased in short seasons. Null outside the
+          Regular Season.
       - name: total_points
         description: Total points scored that season in this game type.
         tests:

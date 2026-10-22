@@ -1,6 +1,6 @@
 -- One row per team per regular season summarising advanced efficiency metrics.
 -- Sourced from the advanced team box scores (available since ~1996), so earlier
--- seasons are absent. Season is derived from the game date the same way as
+-- seasons are absent. Season comes from the game id, the same way as
 -- nba_team_season_summary. Each regular-season game is a near-uniform number of
 -- possessions, so per-game ratings are summarised with a simple mean.
 WITH team_advanced AS (
@@ -12,10 +12,7 @@ WITH team_advanced AS (
 seasoned AS (
     SELECT
         team_id,
-        CASE
-            WHEN MONTH(game_datetime_est) >= 7 THEN YEAR(game_datetime_est)
-            ELSE YEAR(game_datetime_est) - 1
-        END AS season_start_year,
+        season_start_year,
         offensive_rating,
         defensive_rating,
         net_rating,

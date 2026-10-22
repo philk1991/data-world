@@ -36,8 +36,8 @@ metrics weight high-minute games more than cameos.
 ## nba_player_season_stats
 **Grain:** one row per (`person_id`, `season_start_year`, `game_type`).
 Season-level traditional totals, per-game averages and shooting splits, enriched
-with bio. Season is derived from the game date (Oct–Apr; games before July belong
-to the prior start year). A mid-season-traded player is combined into one row per
+with bio. Season comes from the game id (so the 2020 bubble games belong to
+2019-20). A mid-season-traded player is combined into one row per
 game type, with `primary_team_id` = the team they played the most games for.
 Split by `game_type` so you can compare regular-season vs playoff production —
 **filter `game_type = 'Regular Season'` for league-leader questions.** This is the

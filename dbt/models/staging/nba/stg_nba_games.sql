@@ -1,4 +1,5 @@
 -- Staged NBA games. Renames/casts raw columns and derives home_team_won.
+-- game_type and season_start_year are decoded from the game id (see macros/nba_game_id.sql).
 WITH source AS (
     SELECT *
     FROM
@@ -9,7 +10,8 @@ SELECT
     gameId AS game_id,
     gameDateTimeEst::TIMESTAMP AS game_datetime_est,
     gameDate::DATE AS game_date,
-    gameType AS game_type,
+    {{ nba_game_type('gameId') }} AS game_type,
+    {{ nba_season_start_year('gameId') }} AS season_start_year,
     gameSubtype AS game_subtype,
     gameLabel AS game_label,
     gameSubLabel AS game_sub_label,

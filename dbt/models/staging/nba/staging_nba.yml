@@ -20,7 +20,10 @@ models:
         tests:
           - not_null
       - name: game_type
-        description: Type of game (Regular Season, Playoffs, etc.).
+        description: >
+          Type of game, decoded from the game id (Regular Season, Playoffs,
+          etc.). NBA Cup group and knockout games are Regular Season; only the
+          Cup final, which does not count toward the standings, is separate.
         tests:
           - not_null
           - accepted_values:
@@ -31,9 +34,13 @@ models:
                   - "Play-in Tournament"
                   - "Preseason"
                   - "All-Star Game"
-                  - "NBA Cup"
-                  - "NBA Emirates Cup"
-                  - "Emirates NBA Cup"
+                  - "NBA Cup Final"
+      - name: season_start_year
+        description: >
+          Calendar year the season started (e.g. 2023 for 2023-24), decoded
+          from the game id — so the 2020 bubble games belong to 2019-20.
+        tests:
+          - not_null
       - name: home_team_id
         description: Team id of the home side.
         tests:

@@ -1,6 +1,6 @@
 -- One row per team per regular season with their win/loss record and scoring
--- averages. The NBA season spans two calendar years (Oct-Apr), so the season is
--- derived from the game date: months before July belong to the prior start year.
+-- averages. The season comes from the game id (see macros/nba_game_id.sql), so the
+-- 2020 bubble games count toward 2019-20.
 -- Restricted to Regular Season games so the record reflects the standings.
 WITH team_box AS (
     SELECT *
@@ -11,10 +11,7 @@ WITH team_box AS (
 seasoned AS (
     SELECT
         team_id,
-        CASE
-            WHEN MONTH(game_date) >= 7 THEN YEAR(game_date)
-            ELSE YEAR(game_date) - 1
-        END AS season_start_year,
+        season_start_year,
         is_win,
         is_home,
         team_score,

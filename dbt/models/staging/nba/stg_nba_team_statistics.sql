@@ -1,4 +1,5 @@
 -- Staged traditional team box scores. One row per team per game.
+-- game_type and season_start_year are decoded from the game id (see macros/nba_game_id.sql).
 -- Box score stats the league did not record yet are zero-filled in the raw data;
 -- null_if_unrecorded turns them back into nulls (see the macro).
 WITH source AS (
@@ -17,7 +18,8 @@ SELECT
     opponentTeamName AS opponent_team_name,
     gameDate::DATE AS game_date,
     gameDateTimeEst::TIMESTAMP AS game_datetime_est,
-    gameType AS game_type,
+    {{ nba_game_type('gameId') }} AS game_type,
+    {{ nba_season_start_year('gameId') }} AS season_start_year,
     gameLabel AS game_label,
     gameSubLabel AS game_sub_label,
     seriesGameNumber AS series_game_number,
@@ -93,3 +95,7 @@ SELECT
     ingested_at::TIMESTAMP AS ingested_at
 FROM
     source
+-- Postponed games leave a placeholder row (teamId 0, 0-0 score) next to the two
+-- real rows once they are replayed.
+WHERE
+    teamId <> 0

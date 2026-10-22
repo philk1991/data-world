@@ -12,6 +12,34 @@ team_box AS (
         {{ ref('stg_nba_team_statistics') }}
 ),
 
+-- Transform
+with_cup_final AS (
+    SELECT
+        *,
+        MAX(game_date) FILTER (WHERE game_type = 'NBA Cup Final')
+            OVER (PARTITION BY season_start_year) AS cup_final_date
+    FROM
+        games
+),
+
+-- Games with no real home court: the 2020 Orlando bubble (scrimmages, seeding games,
+-- play-in and playoffs), the NBA Cup semifinals and final in Las Vegas (Cup games in
+-- the 3 days before the final; quarterfinals are at the higher seed's arena), and
+-- All-Star games. International regular season games stay FALSE: there is no arena
+-- data before 2025-26 to identify them.
+flagged AS (
+    SELECT
+        *,
+        COALESCE(
+            (season_start_year = 2019 AND game_date >= '2020-07-01'::DATE)
+            OR game_type IN ('NBA Cup Final', 'All-Star Game')
+            OR (game_label ILIKE '%Cup%' AND game_date >= cup_final_date - 3),
+            FALSE
+        ) AS is_neutral_site
+    FROM
+        with_cup_final
+),
+
 game_team_stats AS (
     SELECT
         game_id,
@@ -40,6 +68,8 @@ SELECT
     g.game_date,
     g.game_datetime_est,
     g.game_type,
+    g.season_start_year,
+    g.is_neutral_site,
     g.home_team_id,
     g.home_team_name,
     g.away_team_id,
@@ -66,7 +96,7 @@ SELECT
     s.away_points_in_the_paint,
     g.ingested_at
 FROM
-    games g
+    flagged g
 LEFT JOIN
     game_team_stats s
     USING (game_id)

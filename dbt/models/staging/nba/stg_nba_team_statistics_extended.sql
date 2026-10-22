@@ -1,4 +1,5 @@
 -- Staged advanced team box scores (since ~1996). One row per team per game.
+-- game_type and season_start_year are decoded from the game id (see macros/nba_game_id.sql).
 -- Renames every raw metric to snake_case and casts flags to booleans; metric
 -- values are passed through as-is.
 WITH source AS (
@@ -16,7 +17,8 @@ SELECT
     opponentTeamCity AS opponent_team_city,
     opponentTeamName AS opponent_team_name,
     gameDateTimeEst::TIMESTAMP AS game_datetime_est,
-    gameType AS game_type,
+    {{ nba_game_type('gameId') }} AS game_type,
+    {{ nba_season_start_year('gameId') }} AS season_start_year,
     gameLabel AS game_label,
     gameSubLabel AS game_sub_label,
     seriesGameNumber AS series_game_number,

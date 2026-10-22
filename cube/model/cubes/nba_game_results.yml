@@ -23,9 +23,9 @@ cubes:
         description: Calendar date of the game.
 
       - name: season_start_year
-        sql: "CASE WHEN MONTH({CUBE}.game_date) >= 7 THEN YEAR({CUBE}.game_date) ELSE YEAR({CUBE}.game_date) - 1 END"
+        sql: season_start_year
         type: number
-        description: Calendar year the season started (e.g. 2023 for 2023-24). Months before July belong to the prior start year.
+        description: Calendar year the season started (e.g. 2023 for 2023-24). Season comes from the game id, the league's own season assignment, so the 2020 bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
 
       - name: season_label
         sql: "{season_start_year}::VARCHAR || '-' || RIGHT(({season_start_year} + 1)::VARCHAR, 2)"
@@ -66,6 +66,23 @@ cubes:
         sql: home_team_won
         type: boolean
         description: True when the home team won.
+
+      - name: is_neutral_site
+        sql: is_neutral_site
+        type: boolean
+        description: >
+          True for games with no real home court: the 2020 Orlando bubble,
+          NBA Cup semifinals and finals in Las Vegas, and All-Star games. Home
+          and away labels on these games are nominal. International regular
+          season games are not flagged.
+
+    segments:
+      - name: home_court_games
+        sql: "NOT {CUBE}.is_neutral_site"
+        description: >
+          Games played at a real home arena. Apply this for home-advantage
+          questions (home_win_rate, home vs away scoring) so bubble and
+          Las Vegas games don't dilute the result.
 
     measures:
       - name: count

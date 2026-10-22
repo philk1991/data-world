@@ -1,11 +1,13 @@
 -- One row per player per season per game type (Regular Season, Playoffs, etc.)
 -- of traditional box score totals, per-game averages and shooting splits,
--- enriched with bio. Season is derived from the game date (months before July
--- belong to the prior start year). A player traded mid-season is combined into a
--- single row per game type; primary_team_id is the team they played the most
--- games for. Only games actually played (minutes_played not null) count.
+-- enriched with bio. Season comes from the game id (see macros/nba_game_id.sql).
+-- A player traded mid-season is combined into a single row per game type;
+-- primary_team_id is the team they played the most games for. Only games
+-- actually played (minutes_played not null) count.
 -- Made shots are only counted in games where the matching attempts were recorded,
--- so the shooting percentages compare like with like.
+-- so the shooting percentages compare like with like. team_games_played and
+-- is_qualified make per-game leaderboards fair in short seasons (2019-20, 2020-21,
+-- lockouts), where a fixed games-played minimum is biased.
 WITH box_scores AS (
     SELECT *
     FROM
@@ -18,13 +20,41 @@ players AS (
         {{ ref('stg_nba_players') }}
 ),
 
+team_box AS (
+    SELECT *
+    FROM
+        {{ ref('stg_nba_team_statistics') }}
+),
+
+-- Transform
+team_games AS (
+    SELECT
+        team_id,
+        season_start_year,
+        game_type,
+        COUNT(DISTINCT game_id) AS team_games_played
+    FROM
+        team_box
+    GROUP BY
+        team_id, season_start_year, game_type
+),
+
+-- Fallback for players with no primary team: the most games any team played.
+league_games AS (
+    SELECT
+        season_start_year,
+        game_type,
+        MAX(team_games_played) AS max_team_games_played
+    FROM
+        team_games
+    GROUP BY
+        season_start_year, game_type
+),
+
 seasoned AS (
     SELECT
         person_id,
-        CASE
-            WHEN MONTH(game_date) >= 7 THEN YEAR(game_date)
-            ELSE YEAR(game_date) - 1
-        END AS season_start_year,
+        season_start_year,
         game_type,
         player_team_id,
         game_id,
@@ -84,6 +114,13 @@ SELECT
     s.game_type,
     s.primary_team_id,
     s.games_played,
+    COALESCE(tg.team_games_played, lg.max_team_games_played) AS team_games_played,
+    -- The 58-of-82 per-game minimum, scaled to the games the team actually played.
+    -- Only defined for the regular season.
+    CASE
+        WHEN s.game_type = 'Regular Season'
+            THEN s.games_played >= 0.7 * COALESCE(tg.team_games_played, lg.max_team_games_played)
+    END AS is_qualified,
     s.total_points,
     s.total_rebounds,
     s.total_assists,
@@ -116,5 +153,16 @@ FROM
 LEFT JOIN
     players p
     USING (person_id)
+LEFT JOIN
+    team_games tg
+    ON
+        s.primary_team_id = tg.team_id
+        AND s.season_start_year = tg.season_start_year
+        AND s.game_type = tg.game_type
+LEFT JOIN
+    league_games lg
+    ON
+        s.season_start_year = lg.season_start_year
+        AND s.game_type = lg.game_type
 ORDER BY
     s.season_start_year DESC, s.total_points DESC

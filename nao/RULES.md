@@ -47,8 +47,9 @@ staging tables.
 
 ## Key definitions
 
-- **Season derivation**: the NBA season spans Oct–Apr, so games before July
-  belong to the prior start year. `season_start_year = 2023` is the "2023-24"
+- **Season derivation**: `season_start_year` comes from the game id — the
+  league's own assignment — so the 2020 bubble games belong to 2019-20 and the
+  July 2021 Finals to 2020-21. `season_start_year = 2023` is the "2023-24"
   season; `season_label` gives the readable form. Never derive a season from the
   raw calendar year of a spring game.
 - **Mid-season trades**: in `nba_player_season_stats` a traded player is combined
@@ -56,10 +57,18 @@ staging tables.
   games for that season. Do not expect a separate row per team.
 - **game_type splits**: `nba_player_season_stats` splits by `game_type`
   (Regular Season, Playoffs, Play-in Tournament, Preseason, All-Star Game, NBA
-  Cup, …). Team summary/profile marts are Regular Season only; head-to-head is
+  Cup Final). Team summary/profile marts are Regular Season only; head-to-head is
   Regular Season + Playoffs only.
 - **"Games played" counts only games actually played** (recorded minutes) on the
   player marts.
+- **Qualified players**: for per-game or percentage leaderboards on
+  `nba_player_season_stats`, filter `is_qualified` (at least 70% of
+  `team_games_played`, Regular Season only) rather than a fixed games minimum,
+  which is biased in short seasons (1998-99: 50 games, 2011-12: 66, 2019-20:
+  64-75, 2020-21: 72).
+- **Neutral sites**: `nba_game_results.is_neutral_site` flags games with no real
+  home court (2020 bubble, NBA Cup semifinals/finals, All-Star). Exclude them
+  from home-advantage questions.
 - **Per-game vs totals**: player marts expose both `total_*` and `*_per_game`.
   Use `points_per_game` for "points per game" / scoring-average questions, not
   `total_points / games_played` recomputed by hand.

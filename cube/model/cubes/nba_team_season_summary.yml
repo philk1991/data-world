@@ -3,8 +3,8 @@ cubes:
     sql_table: marts.nba_team_season_summary
     description: >
       One row per team per regular season with win/loss record, home/away wins
-      and scoring averages. Season is derived from the game date (the NBA season
-      spans Oct-Apr, so months before July belong to the prior start year).
+      and scoring averages. Season comes from the game id, so the 2020 bubble
+      games belong to 2019-20.
       Restricted to Regular Season games. Joined to nba_team_dim on team_id for
       team names.
 
@@ -18,12 +18,14 @@ cubes:
         sql: team_id
         type: number
         primary_key: true
+        public: true
         description: Franchise/team identifier. Combined with season, forms the natural key.
 
       - name: season_start_year
         sql: season_start_year
         type: number
         primary_key: true
+        public: true
         description: Calendar year the season started (e.g. 2023 for the 2023-24 season).
 
       - name: season_label
