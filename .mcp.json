@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "cube": {
+      "type": "stdio",
+      "command": "cube/mcp/.venv/bin/python",
+      "args": ["cube/mcp/server.py"]
+    }
+  }
+}

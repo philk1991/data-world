@@ -1,0 +1,6 @@
+# Isolated venv for the Cube MCP server (cube/mcp/.venv, created by `task cube:mcp:install`).
+# Kept out of the shared .venv so the MCP SDK's dependencies can't disturb Dagster.
+mcp==2.3.0
+httpx==0.28.1
+pyjwt==2.15.1
+python-dotenv==1.2.4

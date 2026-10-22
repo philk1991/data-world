@@ -370,6 +370,28 @@ tasks:
     cmds:
       - npm run dev
 
+  cube:mcp:install:
+    desc: "Create the Cube MCP server's isolated venv (cube/mcp/.venv). Claude Code starts the server itself over stdio via .mcp.json; it talks only to the local Cube dev server."
+    cmds:
+      - python3.12 -m venv cube/mcp/.venv
+      - cube/mcp/.venv/bin/pip install --upgrade pip --quiet
+      - cube/mcp/.venv/bin/pip install -r cube/mcp/requirements.txt --quiet
+
+  cube:mcp:check:
+    desc: "Smoke-test the Cube MCP server's tools against the running Cube dev server (task cube:dev)."
+    cmds:
+      - |
+        cube/mcp/.venv/bin/python -c "
+        import asyncio, sys
+        sys.path.insert(0, 'cube/mcp')
+        import server
+        async def main():
+            cubes = await server.describe_model()
+            print(cubes[:400] + '...')
+            print(await server.query({'measures': ['nba_team_season_summary.count']}))
+        asyncio.run(main())
+        "
+
   # ── nao (analytics agent) ─────────────────────────────────────────────────────
 
   nao:install:
