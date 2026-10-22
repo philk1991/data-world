@@ -24,7 +24,10 @@ staging tables.
 - `nba_game_results` — one row per game (`game_id`); home/away box scores pivoted
   onto one row. Use for single-game questions, margins, attendance, arenas.
 - `nba_player_career_stats` — one row per player (`person_id`); traditional
-  career totals, per-game averages, shooting splits. Use for career leaders.
+  career totals, per-game averages, shooting splits over competitive games
+  (regular season + playoffs + play-in + Cup final, combined). Use for career
+  leaders; for regular-season-only careers, sum the Regular Season rows of
+  `nba_player_season_stats`.
 - `nba_player_advanced_career` — one row per player; minutes-weighted advanced
   efficiency (usage, TS%, ratings, PIE) and double/triple-double counts.
   Advanced-stats era only (~1996+).

@@ -110,10 +110,12 @@ models:
   - name: nba_player_career_stats
     description: >
       One row per player aggregating their traditional box score totals,
-      per-game averages and shooting efficiency across every game they appeared
-      in, enriched with player biography. Only games the player actually played
-      (minutes_played is not null) are counted. Ordered by total_points
-      descending. Career figures cover only games present in the dataset.
+      per-game averages and shooting efficiency across their competitive games
+      (Regular Season, Playoffs, Play-in Tournament and NBA Cup Final; preseason
+      and All-Star games are excluded), enriched with player biography. Only
+      games the player actually played (minutes_played is not null) are
+      counted. Ordered by total_points descending. Career figures cover only
+      games present in the dataset.
     columns:
       - name: person_id
         description: "{{ doc('nba__person_id') }}"

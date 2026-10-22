@@ -19,8 +19,9 @@ NULL for older games).
 
 ## nba_player_career_stats
 **Grain:** one row per `person_id`.
-Career traditional totals, per-game averages and shooting efficiency across every
-game the player appeared in, enriched with bio (`is_guard/forward/center`,
+Career traditional totals, per-game averages and shooting efficiency across the
+player's competitive games (Regular Season, Playoffs, Play-in Tournament, NBA Cup
+Final; preseason and All-Star games excluded), enriched with bio (`is_guard/forward/center`,
 `draft_year`, `height_inches`). Only games actually played (minutes recorded)
 count. `first_game_date` / `last_game_date` bound the player's coverage.
 Career figures cover only games present in the dataset.

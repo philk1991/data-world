@@ -1,6 +1,8 @@
 -- One row per player aggregating their traditional box score totals and
--- averages across every game they appeared in, enriched with player bio.
--- Only games the player actually played (minutes_played is not null) count.
+-- averages across their competitive games (Regular Season, Playoffs, Play-in
+-- Tournament and NBA Cup Final; preseason and All-Star games are excluded),
+-- enriched with player bio. Only games the player actually played
+-- (minutes_played is not null) count.
 -- Made shots are only counted in games where the matching attempts were recorded,
 -- so the shooting percentages compare like with like.
 WITH box_scores AS (
@@ -38,6 +40,7 @@ career AS (
     WHERE
         person_id IS NOT NULL
         AND minutes_played IS NOT NULL
+        AND game_type IN ('Regular Season', 'Playoffs', 'Play-in Tournament', 'NBA Cup Final')
     GROUP BY
         person_id
 ),
