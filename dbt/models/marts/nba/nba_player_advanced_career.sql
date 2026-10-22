@@ -3,6 +3,8 @@
 -- careers of earlier players are not represented. Rate metrics are minutes-weighted
 -- (sum(metric * minutes) / sum(minutes)) so high-minute games count for more than
 -- garbage-time cameos; only games with recorded minutes and advanced data count.
+-- Each metric's denominator is the minutes where that metric was recorded, so a
+-- game missing one metric (usage_percentage is sometimes null) doesn't dilute it.
 WITH player_advanced AS (
     SELECT *
     FROM
@@ -22,15 +24,24 @@ weighted AS (
         SUM(minutes_played) AS total_minutes,
         COUNT(CASE WHEN is_double_double THEN 1 END) AS double_doubles,
         COUNT(CASE WHEN is_triple_double THEN 1 END) AS triple_doubles,
-        SUM(usage_percentage * minutes_played) AS w_usage,
-        SUM(true_shooting_percentage * minutes_played) AS w_true_shooting,
-        SUM(effective_field_goal_percentage * minutes_played) AS w_efg,
-        SUM(offensive_rating * minutes_played) AS w_offensive_rating,
-        SUM(defensive_rating * minutes_played) AS w_defensive_rating,
-        SUM(net_rating * minutes_played) AS w_net_rating,
-        SUM(assist_percentage * minutes_played) AS w_assist,
-        SUM(rebound_percentage * minutes_played) AS w_rebound,
-        SUM(player_impact_estimate * minutes_played) AS w_pie
+        SUM(usage_percentage * minutes_played)
+        / NULLIF(SUM(minutes_played) FILTER (WHERE usage_percentage IS NOT NULL), 0) AS w_usage,
+        SUM(true_shooting_percentage * minutes_played)
+        / NULLIF(SUM(minutes_played) FILTER (WHERE true_shooting_percentage IS NOT NULL), 0) AS w_true_shooting,
+        SUM(effective_field_goal_percentage * minutes_played)
+        / NULLIF(SUM(minutes_played) FILTER (WHERE effective_field_goal_percentage IS NOT NULL), 0) AS w_efg,
+        SUM(offensive_rating * minutes_played)
+        / NULLIF(SUM(minutes_played) FILTER (WHERE offensive_rating IS NOT NULL), 0) AS w_offensive_rating,
+        SUM(defensive_rating * minutes_played)
+        / NULLIF(SUM(minutes_played) FILTER (WHERE defensive_rating IS NOT NULL), 0) AS w_defensive_rating,
+        SUM(net_rating * minutes_played)
+        / NULLIF(SUM(minutes_played) FILTER (WHERE net_rating IS NOT NULL), 0) AS w_net_rating,
+        SUM(assist_percentage * minutes_played)
+        / NULLIF(SUM(minutes_played) FILTER (WHERE assist_percentage IS NOT NULL), 0) AS w_assist,
+        SUM(rebound_percentage * minutes_played)
+        / NULLIF(SUM(minutes_played) FILTER (WHERE rebound_percentage IS NOT NULL), 0) AS w_rebound,
+        SUM(player_impact_estimate * minutes_played)
+        / NULLIF(SUM(minutes_played) FILTER (WHERE player_impact_estimate IS NOT NULL), 0) AS w_pie
     FROM
         player_advanced
     WHERE
@@ -53,15 +64,15 @@ SELECT
     ROUND(w.total_minutes / NULLIF(w.games_with_advanced, 0), 1) AS minutes_per_game,
     w.double_doubles,
     w.triple_doubles,
-    ROUND(w.w_usage / NULLIF(w.total_minutes, 0), 3) AS usage_pct,
-    ROUND(w.w_true_shooting / NULLIF(w.total_minutes, 0), 3) AS true_shooting_pct,
-    ROUND(w.w_efg / NULLIF(w.total_minutes, 0), 3) AS effective_field_goal_pct,
-    ROUND(w.w_offensive_rating / NULLIF(w.total_minutes, 0), 1) AS offensive_rating,
-    ROUND(w.w_defensive_rating / NULLIF(w.total_minutes, 0), 1) AS defensive_rating,
-    ROUND(w.w_net_rating / NULLIF(w.total_minutes, 0), 1) AS net_rating,
-    ROUND(w.w_assist / NULLIF(w.total_minutes, 0), 3) AS assist_pct,
-    ROUND(w.w_rebound / NULLIF(w.total_minutes, 0), 3) AS rebound_pct,
-    ROUND(w.w_pie / NULLIF(w.total_minutes, 0), 3) AS player_impact_estimate
+    ROUND(w.w_usage, 3) AS usage_pct,
+    ROUND(w.w_true_shooting, 3) AS true_shooting_pct,
+    ROUND(w.w_efg, 3) AS effective_field_goal_pct,
+    ROUND(w.w_offensive_rating, 1) AS offensive_rating,
+    ROUND(w.w_defensive_rating, 1) AS defensive_rating,
+    ROUND(w.w_net_rating, 1) AS net_rating,
+    ROUND(w.w_assist, 3) AS assist_pct,
+    ROUND(w.w_rebound, 3) AS rebound_pct,
+    ROUND(w.w_pie, 3) AS player_impact_estimate
 FROM
     weighted w
 LEFT JOIN

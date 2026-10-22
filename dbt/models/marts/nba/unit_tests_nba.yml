@@ -177,3 +177,75 @@ unit_tests:
         - {person_id: 2, game_type: Regular Season, primary_team_id: 10, games_played: 6, team_games_played: 10, is_qualified: false}
         - {person_id: 3, game_type: Regular Season, primary_team_id: 30, games_played: 7, team_games_played: 10, is_qualified: true}
         - {person_id: 1, game_type: Playoffs, primary_team_id: 10, games_played: 2, team_games_played: 4, is_qualified: null}
+
+  - name: nba_player_advanced_career_weights_by_minutes
+    model: nba_player_advanced_career
+    description: >
+      Asserts rate metrics are minutes-weighted (sum(metric * minutes) /
+      sum(minutes)), not a simple mean of games: 30 minutes at a 120 offensive
+      rating plus 10 at 80 is 110.0, where a simple mean would be 100.0. Also
+      covers games dropped for zero or null minutes or a null offensive_rating
+      (none of their stats or double-doubles count), a null person_id, a player
+      whose only game is dropped getting no row, double/triple-double counts,
+      minutes_per_game, and a player missing from stg_nba_players keeping a row
+      with null bio.
+    given:
+      - input: ref('stg_nba_players')
+        rows:
+          - {person_id: 1, first_name: Test, last_name: Player, is_guard: true, is_forward: false, is_center: false}
+      - input: ref('stg_nba_player_statistics_extended')
+        rows:
+          # player 1: two counted games, 30 and 10 minutes
+          - {game_id: 1, person_id: 1, minutes_played: 30, is_double_double: true, is_triple_double: false,
+             offensive_rating: 120, defensive_rating: 100, net_rating: 20, usage_percentage: 0.30, true_shooting_percentage: 0.60,
+             effective_field_goal_percentage: 0.55, assist_percentage: 0.25, rebound_percentage: 0.10, player_impact_estimate: 0.15}
+          - {game_id: 2, person_id: 1, minutes_played: 10, is_double_double: false, is_triple_double: false,
+             offensive_rating: 80, defensive_rating: 110, net_rating: -30, usage_percentage: 0.10, true_shooting_percentage: 0.40,
+             effective_field_goal_percentage: 0.35, assist_percentage: 0.05, rebound_percentage: 0.20, player_impact_estimate: 0.05}
+          # dropped: zero minutes, null minutes, null offensive_rating
+          - {game_id: 3, person_id: 1, minutes_played: 0, is_double_double: true, is_triple_double: true,
+             offensive_rating: 200, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
+             effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
+          - {game_id: 4, person_id: 1, minutes_played: null, is_double_double: true, is_triple_double: true,
+             offensive_rating: 200, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
+             effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
+          - {game_id: 5, person_id: 1, minutes_played: 20, is_double_double: true, is_triple_double: true,
+             offensive_rating: null, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
+             effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
+          # player 2: not in stg_nba_players; one triple-double game
+          - {game_id: 1, person_id: 2, minutes_played: 36, is_double_double: true, is_triple_double: true,
+             offensive_rating: 115, defensive_rating: 105, net_rating: 10, usage_percentage: 0.25, true_shooting_percentage: 0.58,
+             effective_field_goal_percentage: 0.52, assist_percentage: 0.40, rebound_percentage: 0.15, player_impact_estimate: 0.20}
+          # player 3: only game has zero minutes -> no row
+          - {game_id: 2, person_id: 3, minutes_played: 0, is_double_double: false, is_triple_double: false, offensive_rating: 100}
+          # null person_id -> no row
+          - {game_id: 1, person_id: null, minutes_played: 30, is_double_double: false, is_triple_double: false, offensive_rating: 100}
+    expect:
+      rows:
+        # 40 minutes over 2 games
+        - {person_id: 1, first_name: Test, last_name: Player, is_guard: true, is_forward: false, is_center: false,
+           games_with_advanced: 2, minutes_per_game: 20.0, double_doubles: 1, triple_doubles: 0,
+           offensive_rating: 110.0, defensive_rating: 102.5, net_rating: 7.5, usage_pct: 0.25, true_shooting_pct: 0.55,
+           effective_field_goal_pct: 0.5, assist_pct: 0.2, rebound_pct: 0.125, player_impact_estimate: 0.125}
+        - {person_id: 2, first_name: null, last_name: null, is_guard: null, is_forward: null, is_center: null,
+           games_with_advanced: 1, minutes_per_game: 36.0, double_doubles: 1, triple_doubles: 1,
+           offensive_rating: 115.0, defensive_rating: 105.0, net_rating: 10.0, usage_pct: 0.25, true_shooting_pct: 0.58,
+           effective_field_goal_pct: 0.52, assist_pct: 0.4, rebound_pct: 0.15, player_impact_estimate: 0.2}
+
+  - name: nba_player_advanced_career_skips_null_metric_minutes
+    model: nba_player_advanced_career
+    description: >
+      Asserts a metric missing from a game is weighted only over the minutes
+      where it was recorded. usage_percentage is null for some player-games
+      whose other advanced stats are present; those minutes must not dilute
+      usage_pct (0.30 over 30 recorded minutes stays 0.30, not 9 / 40 = 0.225).
+    given:
+      - input: ref('stg_nba_players')
+        rows: []
+      - input: ref('stg_nba_player_statistics_extended')
+        rows:
+          - {game_id: 1, person_id: 1, minutes_played: 30, offensive_rating: 120, usage_percentage: 0.30}
+          - {game_id: 2, person_id: 1, minutes_played: 10, offensive_rating: 80, usage_percentage: null}
+    expect:
+      rows:
+        - {person_id: 1, games_with_advanced: 2, offensive_rating: 110.0, usage_pct: 0.30}
