@@ -57,8 +57,9 @@ staging tables.
   games for that season. Do not expect a separate row per team.
 - **game_type splits**: `nba_player_season_stats` splits by `game_type`
   (Regular Season, Playoffs, Play-in Tournament, Preseason, All-Star Game, NBA
-  Cup Final). Team summary/profile marts are Regular Season only; head-to-head is
-  Regular Season + Playoffs only.
+  Cup Final). Team summary/profile marts are Regular Season only; head-to-head counts
+  competitive meetings only (Regular Season, Playoffs, Play-in Tournament, NBA
+  Cup Final — no Preseason or All-Star).
 - **"Games played" counts only games actually played** (recorded minutes) on the
   player marts.
 - **Qualified players**: for per-game or percentage leaderboards on

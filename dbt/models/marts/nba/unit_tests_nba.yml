@@ -249,3 +249,69 @@ unit_tests:
     expect:
       rows:
         - {person_id: 1, games_with_advanced: 2, offensive_rating: 110.0, usage_pct: 0.30}
+
+  - name: nba_team_head_to_head_records_each_side
+    model: nba_team_head_to_head
+    description: >
+      Asserts one row per ordered (team_id, opponent_team_id) pair, each from
+      that team's own perspective: team 10's record against 20 and team 20's
+      record against 10 are mirror images. Regular season, playoff, play-in and
+      NBA Cup final meetings all count; averages round to 1 decimal place and
+      win_pct to 3.
+    given:
+      - input: ref('stg_nba_team_statistics')
+        rows:
+          # 10 beats 20, 110-100 (regular season)
+          - {game_id: 1, team_id: 10, opponent_team_id: 20, game_date: 2023-01-10, game_type: Regular Season, is_win: true, team_score: 110, opponent_score: 100}
+          - {game_id: 1, team_id: 20, opponent_team_id: 10, game_date: 2023-01-10, game_type: Regular Season, is_win: false, team_score: 100, opponent_score: 110}
+          # 20 beats 10, 105-95 (regular season)
+          - {game_id: 2, team_id: 10, opponent_team_id: 20, game_date: 2023-02-10, game_type: Regular Season, is_win: false, team_score: 95, opponent_score: 105}
+          - {game_id: 2, team_id: 20, opponent_team_id: 10, game_date: 2023-02-10, game_type: Regular Season, is_win: true, team_score: 105, opponent_score: 95}
+          # 10 beats 20, 120-101 (playoffs)
+          - {game_id: 3, team_id: 10, opponent_team_id: 20, game_date: 2023-05-01, game_type: Playoffs, is_win: true, team_score: 120, opponent_score: 101}
+          - {game_id: 3, team_id: 20, opponent_team_id: 10, game_date: 2023-05-01, game_type: Playoffs, is_win: false, team_score: 101, opponent_score: 120}
+          # 20 beats 10, 108-100 (play-in)
+          - {game_id: 4, team_id: 10, opponent_team_id: 20, game_date: 2023-04-12, game_type: Play-in Tournament, is_win: false, team_score: 100, opponent_score: 108}
+          - {game_id: 4, team_id: 20, opponent_team_id: 10, game_date: 2023-04-12, game_type: Play-in Tournament, is_win: true, team_score: 108, opponent_score: 100}
+          # 10 beats 20, 115-110 (NBA Cup final) -> the last meeting
+          - {game_id: 5, team_id: 10, opponent_team_id: 20, game_date: 2023-12-09, game_type: NBA Cup Final, is_win: true, team_score: 115, opponent_score: 110}
+          - {game_id: 5, team_id: 20, opponent_team_id: 10, game_date: 2023-12-09, game_type: NBA Cup Final, is_win: false, team_score: 110, opponent_score: 115}
+    expect:
+      rows:
+        # 3-2; for 540 / 5 = 108.0, against 524 / 5 = 104.8, margin 16 / 5 = 3.2
+        - {team_id: 10, opponent_team_id: 20, games_played: 5, wins: 3, losses: 2, win_pct: 0.6,
+           avg_points_for: 108.0, avg_points_against: 104.8, avg_point_margin: 3.2,
+           first_meeting_date: 2023-01-10, last_meeting_date: 2023-12-09}
+        - {team_id: 20, opponent_team_id: 10, games_played: 5, wins: 2, losses: 3, win_pct: 0.4,
+           avg_points_for: 104.8, avg_points_against: 108.0, avg_point_margin: -3.2,
+           first_meeting_date: 2023-01-10, last_meeting_date: 2023-12-09}
+
+  - name: nba_team_head_to_head_filters_and_null_results
+    model: nba_team_head_to_head
+    description: >
+      Asserts preseason and All-Star games don't count toward a matchup (they
+      change neither the record, the averages nor the meeting dates), rows with
+      no opponent are dropped, and a game with a null is_win counts in
+      games_played and the averages but in neither wins, losses nor the
+      win_pct denominator.
+    given:
+      - input: ref('stg_nba_team_statistics')
+        rows:
+          # one counted game: 10 beats 20, 110-100
+          - {game_id: 1, team_id: 10, opponent_team_id: 20, game_date: 2023-01-10, game_type: Regular Season, is_win: true, team_score: 110, opponent_score: 100}
+          # excluded: preseason and All-Star meetings, a row with no opponent
+          - {game_id: 2, team_id: 10, opponent_team_id: 20, game_date: 2022-10-01, game_type: Preseason, is_win: false, team_score: 80, opponent_score: 130}
+          - {game_id: 3, team_id: 10, opponent_team_id: 20, game_date: 2023-02-19, game_type: All-Star Game, is_win: false, team_score: 150, opponent_score: 190}
+          - {game_id: 4, team_id: 10, opponent_team_id: null, game_date: 2023-03-01, game_type: Regular Season, is_win: true, team_score: 100, opponent_score: 90}
+          # 10 vs 30: one win, one game with an unrecorded result
+          - {game_id: 5, team_id: 10, opponent_team_id: 30, game_date: 2023-01-20, game_type: Regular Season, is_win: true, team_score: 100, opponent_score: 90}
+          - {game_id: 6, team_id: 10, opponent_team_id: 30, game_date: 2023-03-20, game_type: Regular Season, is_win: null, team_score: 98, opponent_score: 99}
+    expect:
+      rows:
+        - {team_id: 10, opponent_team_id: 20, games_played: 1, wins: 1, losses: 0, win_pct: 1.0,
+           avg_points_for: 110.0, avg_points_against: 100.0, avg_point_margin: 10.0,
+           first_meeting_date: 2023-01-10, last_meeting_date: 2023-01-10}
+        # 2 games, 1 win / 0 losses -> win_pct 1.0; averages include both games
+        - {team_id: 10, opponent_team_id: 30, games_played: 2, wins: 1, losses: 0, win_pct: 1.0,
+           avg_points_for: 99.0, avg_points_against: 94.5, avg_point_margin: 4.5,
+           first_meeting_date: 2023-01-20, last_meeting_date: 2023-03-20}

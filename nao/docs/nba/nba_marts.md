@@ -70,7 +70,8 @@ Use this to turn any `team_id` into a readable name.
 ## nba_team_head_to_head
 **Grain:** one row per (`team_id`, `opponent_team_id`).
 All-time matchup record from `team_id`'s perspective (the reverse matchup is a
-separate row). Restricted to competitive meetings (Regular Season + Playoffs).
+separate row). Restricted to competitive meetings (Regular Season, Playoffs,
+Play-in Tournament, NBA Cup Final); preseason and All-Star games are excluded.
 `wins`/`losses`/`win_pct`, average points for/against/margin, and
 `first_meeting_date` / `last_meeting_date`. Join to `nba_team_dim` on either id
 for readable names.

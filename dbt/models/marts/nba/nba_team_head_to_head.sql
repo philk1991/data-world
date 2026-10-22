@@ -1,8 +1,9 @@
 -- All-time matchup record, one row per ordered (team_id, opponent_team_id) pair.
 -- Each game contributes one team-perspective row in the source, so a team's row
 -- against an opponent is its record directly; the reverse matchup is a separate
--- row. Restricted to competitive meetings (Regular Season + Playoffs) to exclude
--- preseason and exhibition games. Join nba_team_dim on either id for team names.
+-- row. Restricted to competitive meetings (Regular Season, Playoffs, Play-in
+-- Tournament and NBA Cup Final) to exclude preseason and All-Star exhibitions.
+-- Join nba_team_dim on either id for team names.
 WITH team_box AS (
     SELECT *
     FROM
@@ -21,7 +22,7 @@ matchups AS (
     FROM
         team_box
     WHERE
-        game_type IN ('Regular Season', 'Playoffs')
+        game_type IN ('Regular Season', 'Playoffs', 'Play-in Tournament', 'NBA Cup Final')
         AND opponent_team_id IS NOT NULL
 )
 

@@ -573,7 +573,8 @@ models:
       All-time matchup record, one row per ordered (team_id, opponent_team_id)
       pair. A team's row against an opponent is its record from its own
       perspective; the reverse matchup is a separate row. Restricted to
-      competitive meetings (Regular Season and Playoffs). Ordered by games_played
+      competitive meetings (Regular Season, Playoffs, Play-in Tournament and NBA
+      Cup Final), excluding preseason and All-Star games. Ordered by games_played
       descending.
     tests:
       - dbt_utils.unique_combination_of_columns:
