@@ -1,0 +1,82 @@
+version: 2
+
+unit_tests:
+  - name: nba_game_results_pivots_team_box_scores
+    model: nba_game_results
+    description: >
+      Asserts that the two team box score rows per game are pivoted onto the
+      home/away axis by is_home, and that point_margin is home minus away.
+      Covers: a home win, an away win (negative margin), a stat the league did
+      not record for one side staying null rather than borrowing the other
+      side's value, and a game with no team box rows keeping its game row with
+      null stats (the LEFT JOIN).
+    given:
+      - input: ref('stg_nba_games')
+        rows:
+          # home win 110-100
+          - {game_id: 1, game_date: 2024-01-10, home_team_id: 10, away_team_id: 20, home_score: 110, away_score: 100, home_team_won: true}
+          # away win 95-102 -> negative margin
+          - {game_id: 2, game_date: 2024-01-11, home_team_id: 30, away_team_id: 40, home_score: 95, away_score: 102, home_team_won: false}
+          # older game with no team box rows
+          - {game_id: 3, game_date: 1985-01-12, home_team_id: 50, away_team_id: 60, home_score: 99, away_score: 98, home_team_won: true}
+      - input: ref('stg_nba_team_statistics')
+        rows:
+          # each side gets distinct values in every stat so a home/away swap is caught
+          - {game_id: 1, team_id: 10, is_home: true, field_goals_made: 41, field_goals_attempted: 88, three_pointers_made: 12, rebounds_total: 45, assists: 25, turnovers: 11, points_in_the_paint: 48}
+          - {game_id: 1, team_id: 20, is_home: false, field_goals_made: 37, field_goals_attempted: 85, three_pointers_made: 10, rebounds_total: 40, assists: 21, turnovers: 14, points_in_the_paint: 42}
+          # home points_in_the_paint unrecorded (null) -> must stay null for home
+          - {game_id: 2, team_id: 30, is_home: true, field_goals_made: 35, field_goals_attempted: 90, three_pointers_made: 9, rebounds_total: 42, assists: 19, turnovers: 16, points_in_the_paint: null}
+          - {game_id: 2, team_id: 40, is_home: false, field_goals_made: 39, field_goals_attempted: 84, three_pointers_made: 14, rebounds_total: 47, assists: 27, turnovers: 10, points_in_the_paint: 38}
+    expect:
+      rows:
+        - {game_id: 1, point_margin: 10, home_team_won: true,
+           home_field_goals_made: 41, home_field_goals_attempted: 88, home_three_pointers_made: 12, home_rebounds_total: 45, home_assists: 25, home_turnovers: 11, home_points_in_the_paint: 48,
+           away_field_goals_made: 37, away_field_goals_attempted: 85, away_three_pointers_made: 10, away_rebounds_total: 40, away_assists: 21, away_turnovers: 14, away_points_in_the_paint: 42}
+        - {game_id: 2, point_margin: -7, home_team_won: false,
+           home_field_goals_made: 35, home_field_goals_attempted: 90, home_three_pointers_made: 9, home_rebounds_total: 42, home_assists: 19, home_turnovers: 16, home_points_in_the_paint: null,
+           away_field_goals_made: 39, away_field_goals_attempted: 84, away_three_pointers_made: 14, away_rebounds_total: 47, away_assists: 27, away_turnovers: 10, away_points_in_the_paint: 38}
+        - {game_id: 3, point_margin: 1, home_team_won: true,
+           home_field_goals_made: null, home_field_goals_attempted: null, home_three_pointers_made: null, home_rebounds_total: null, home_assists: null, home_turnovers: null, home_points_in_the_paint: null,
+           away_field_goals_made: null, away_field_goals_attempted: null, away_three_pointers_made: null, away_rebounds_total: null, away_assists: null, away_turnovers: null, away_points_in_the_paint: null}
+
+  - name: nba_game_results_flags_neutral_sites
+    model: nba_game_results
+    description: >
+      Asserts the is_neutral_site rules: the 2020 Orlando bubble (season 2019
+      from 1 July 2020, inclusive), the NBA Cup final, Cup games in the 3 days
+      up to the final (inclusive), and All-Star games. Also covers the cases
+      that must stay FALSE: pre-bubble 2019-20 games, Cup quarterfinals and
+      group games, a non-Cup game inside the final's window, and a Cup game in
+      a season whose final hasn't been played yet (null cup_final_date).
+    given:
+      - input: ref('stg_nba_team_statistics')
+        rows: []
+      - input: ref('stg_nba_games')
+        rows:
+          - {game_id: 1, game_date: 2023-11-01, season_start_year: 2023, game_type: Regular Season, game_label: null}
+          # 2019-20 season: before the bubble, the first bubble day, inside the bubble
+          - {game_id: 2, game_date: 2020-03-11, season_start_year: 2019, game_type: Regular Season, game_label: null}
+          - {game_id: 3, game_date: 2020-07-01, season_start_year: 2019, game_type: Regular Season, game_label: null}
+          - {game_id: 4, game_date: 2020-08-20, season_start_year: 2019, game_type: Playoffs, game_label: null}
+          # 2024-25 Cup: final on 2024-12-17
+          - {game_id: 5, game_date: 2024-12-17, season_start_year: 2024, game_type: NBA Cup Final, game_label: Emirates NBA Cup}
+          - {game_id: 6, game_date: 2024-12-14, season_start_year: 2024, game_type: Regular Season, game_label: Emirates NBA Cup}
+          - {game_id: 7, game_date: 2024-12-13, season_start_year: 2024, game_type: Regular Season, game_label: Emirates NBA Cup}
+          - {game_id: 8, game_date: 2024-11-12, season_start_year: 2024, game_type: Regular Season, game_label: Emirates NBA Cup}
+          - {game_id: 9, game_date: 2024-12-15, season_start_year: 2024, game_type: Regular Season, game_label: null}
+          # 2025-26 Cup game with no final in the data yet
+          - {game_id: 10, game_date: 2025-12-13, season_start_year: 2025, game_type: Regular Season, game_label: Emirates NBA Cup}
+          - {game_id: 11, game_date: 2026-02-15, season_start_year: 2025, game_type: All-Star Game, game_label: All-Star}
+    expect:
+      rows:
+        - {game_id: 1, is_neutral_site: false}   # ordinary regular season game
+        - {game_id: 2, is_neutral_site: false}   # 2019-20, before the bubble
+        - {game_id: 3, is_neutral_site: true}    # bubble start, >= boundary
+        - {game_id: 4, is_neutral_site: true}    # bubble playoffs
+        - {game_id: 5, is_neutral_site: true}    # Cup final
+        - {game_id: 6, is_neutral_site: true}    # Cup semifinal, exactly final - 3 days
+        - {game_id: 7, is_neutral_site: false}   # Cup quarterfinal, final - 4 days
+        - {game_id: 8, is_neutral_site: false}   # Cup group game
+        - {game_id: 9, is_neutral_site: false}   # inside the window but not a Cup game
+        - {game_id: 10, is_neutral_site: false}  # Cup game, season's final not yet played
+        - {game_id: 11, is_neutral_site: true}   # All-Star

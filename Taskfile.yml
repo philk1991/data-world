@@ -108,6 +108,18 @@ tasks:
     requires:
       vars: [MODEL]
 
+  dbt:test:unit:
+    desc: Run all dbt unit tests (no data tests)
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt test --select test_type:unit"
+
+  dbt:test:unit:select:
+    desc: "Run the unit tests for a specific dbt model -- usage: task dbt:test:unit:select MODEL=nba_game_results"
+    cmds:
+      - bash -c "source {{.VENV}} && cd {{.DBT_DIR}} && dbt test --select {{.MODEL}},test_type:unit"
+    requires:
+      vars: [MODEL]
+
   dbt:build:select:
     desc: "Run and test a specific dbt model -- usage: task dbt:build:select MODEL=top_tracks_by_period"
     cmds:
