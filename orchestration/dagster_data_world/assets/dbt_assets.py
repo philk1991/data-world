@@ -57,4 +57,19 @@ class _DataWorldDbtTranslator(DagsterDbtTranslator):
     dagster_dbt_translator=_DataWorldDbtTranslator(),
 )
 def all_dbt_assets(context, dbt: DbtCliResource):
-    yield from dbt.cli(["build"], context=context).stream()
+    invocation = dbt.cli(["build"], context=context)
+    for event in invocation.stream_raw_events():
+        # dbt-oss emits Fusion-style events, and dagster-dbt's Fusion parser looks unit
+        # tests up in manifest["nodes"] (they live in manifest["unit_tests"]), raising
+        # KeyError. Skip their events; a failing unit test still fails the step, because
+        # stream_raw_events() raises on dbt's non-zero exit code.
+        unique_id = event.raw_event["data"].get("node_info", {}).get("unique_id", "")
+        if unique_id.startswith("unit_test."):
+            continue
+        yield from event.to_default_asset_events(
+            manifest=invocation.manifest,
+            dagster_dbt_translator=invocation.dagster_dbt_translator,
+            context=context,
+            target_path=invocation.target_path,
+            project=invocation.project,
+        )
