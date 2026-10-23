@@ -137,17 +137,13 @@ models:
       - name: height_inches
         description: "{{ doc('nba__height_inches') }}"
       - name: first_game_date
-        description: >
-          Date of the player's earliest game in the dataset. Null for a handful
-          of historical players whose box score rows carry no game date.
+        description: "{{ doc('nba__first_game_date') }}"
         tests:
           - not_null:
               config:
                 severity: warn
       - name: last_game_date
-        description: >
-          Date of the player's most recent game in the dataset. Null for a handful
-          of historical players whose box score rows carry no game date.
+        description: "{{ doc('nba__last_game_date') }}"
         tests:
           - not_null:
               config:
@@ -314,6 +310,104 @@ models:
         relationships:
           decomposes_into:
             - "stg_nba_team_histories: source of every franchise era; latest era kept via QUALIFY"
+  - name: nba_players_dim
+    description: >
+      Conformed player dimension, one row per person_id carrying biography
+      (birth date, height, weight, position, draft, school, country) and the
+      span of competitive games played (Regular Season, Playoffs, Play-in
+      Tournament and NBA Cup Final, games with recorded minutes only). Covers
+      every player in the bio table and every player in the box scores;
+      box-score-only players (has_bio_record false) take their name from their
+      latest box score and have null bio. Height and weight are a single
+      current listing, not per-season values. Intended as the join target that
+      adds age and physical profile to the player stats marts.
+    columns:
+      - name: person_id
+        description: "{{ doc('nba__person_id') }}"
+        tests:
+          - not_null
+          - unique
+      - name: first_name
+        description: "{{ doc('nba__first_name') }} Taken from the latest box score when the player has no bio record."
+      - name: last_name
+        description: "{{ doc('nba__last_name') }} Taken from the latest box score when the player has no bio record."
+      - name: player_name
+        description: First and last name joined with a space; null when both are missing.
+      - name: has_bio_record
+        description: >
+          True when the player has a row in the bio table. False for players who
+          only appear in the box scores, whose bio columns are all null.
+        tests:
+          - not_null
+      - name: birth_date
+        description: "{{ doc('nba__birth_date') }}"
+      - name: height_inches
+        description: "{{ doc('nba__height_inches') }}"
+      - name: height_cm
+        description: height_inches converted to centimetres, rounded to 0.1.
+      - name: height_feet_inches
+        description: Height as feet-inches (e.g. "6-9"), the way NBA rosters list it.
+      - name: body_weight_lbs
+        description: "{{ doc('nba__body_weight_lbs') }}"
+      - name: body_weight_kg
+        description: body_weight_lbs converted to kilograms, rounded to 0.1.
+      - name: is_guard
+        description: "{{ doc('nba__is_guard') }}"
+      - name: is_forward
+        description: "{{ doc('nba__is_forward') }}"
+      - name: is_center
+        description: "{{ doc('nba__is_center') }}"
+      - name: position
+        description: >
+          Listed positions combined from the guard/forward/center flags in that
+          order (G, F, C, G-F, F-C); null when no position is listed.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['G', 'F', 'C', 'G-F', 'F-C', 'G-C', 'G-F-C']
+      - name: school
+        description: College or school the player came from; null when unknown.
+      - name: country
+        description: Country the player is from; null when unknown.
+      - name: is_undrafted
+        description: "{{ doc('nba__is_undrafted') }}"
+      - name: draft_year
+        description: "{{ doc('nba__draft_year') }}"
+      - name: draft_round
+        description: "{{ doc('nba__draft_round') }}"
+      - name: draft_number
+        description: "{{ doc('nba__draft_number') }}"
+      - name: first_game_date
+        description: "{{ doc('nba__first_game_date') }} Also null for players with no competitive games."
+      - name: last_game_date
+        description: "{{ doc('nba__last_game_date') }} Also null for players with no competitive games."
+      - name: first_season_start_year
+        description: Season (start year) of the player's first competitive game with recorded minutes; null when they have none.
+      - name: last_season_start_year
+        description: Season (start year) of the player's latest competitive game with recorded minutes; null when they have none.
+      - name: seasons_played
+        description: Distinct seasons with at least one competitive game with recorded minutes; null when they have none.
+      - name: played_in_last_two_seasons
+        description: >
+          True when the player's last competitive game is in the latest season in
+          the dataset or the one before, a proxy for an active player that still
+          holds early in a new season; null when they have no competitive games.
+      - name: age_at_first_game
+        description: Age in completed years on first_game_date; null when birth_date or first_game_date is null.
+      - name: age_at_last_game
+        description: Age in completed years on last_game_date; null when birth_date or last_game_date is null.
+
+    config:
+      meta:
+        grain: one row per person_id
+        purpose: Resolve each person_id to a single biography row with physical profile, draft and career span, so player stats can be profiled by age, height and weight.
+        business_question: How old, tall and heavy is this player, how were they drafted, and when did their career start and end?
+        relationships:
+          decomposes_into:
+            - "stg_nba_players: source of biography, position flags and draft details"
+            - "stg_nba_player_statistics: source of names for players without a bio row, and of the competitive-game career span"
+          correlates_with:
+            - "nba_player_season_stats, nba_player_career_stats, nba_player_advanced_career: share person_id"
   - name: nba_team_advanced_profile
     description: >
       One row per team per regular season of advanced efficiency metrics

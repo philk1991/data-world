@@ -126,8 +126,28 @@ Player last name. Missing for a couple of historical players.
 Year the player was drafted; null if undrafted or unknown.
 {% enddocs %}
 
+{% docs nba__draft_round %}
+Round the player was drafted in; null if undrafted or unknown.
+{% enddocs %}
+
+{% docs nba__draft_number %}
+Overall pick number the player was drafted with; null if undrafted or unknown.
+{% enddocs %}
+
+{% docs nba__is_undrafted %}
+True when the player went undrafted, false when drafted, null when draft status is unknown.
+{% enddocs %}
+
+{% docs nba__birth_date %}
+Date of birth; null when unknown or when the source carries a placeholder date (1900-01-01, 1995-01-01, April 1905).
+{% enddocs %}
+
 {% docs nba__height_inches %}
 Listed height in inches; null when unknown.
+{% enddocs %}
+
+{% docs nba__body_weight_lbs %}
+Listed weight in pounds; null when unknown. A single current listing, not a per-season weight.
 {% enddocs %}
 
 {% docs nba__is_guard %}
@@ -140,6 +160,14 @@ True when the player is listed as a forward.
 
 {% docs nba__is_center %}
 True when the player is listed as a center.
+{% enddocs %}
+
+{% docs nba__first_game_date %}
+Date of the player's earliest competitive game (Regular Season, Playoffs, Play-in Tournament or NBA Cup Final) with recorded minutes in the dataset. Null for a handful of historical players whose box score rows carry no game date.
+{% enddocs %}
+
+{% docs nba__last_game_date %}
+Date of the player's most recent competitive game (Regular Season, Playoffs, Play-in Tournament or NBA Cup Final) with recorded minutes in the dataset. Null for a handful of historical players whose box score rows carry no game date.
 {% enddocs %}
 
 {% docs nba__games_played__player %}

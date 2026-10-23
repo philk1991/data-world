@@ -171,19 +171,25 @@ models:
               config:
                 severity: warn
       - name: birth_date
-        description: Date of birth; null when unknown.
+        description: "{{ doc('nba__birth_date') }}"
       - name: height_inches
         description: "{{ doc('nba__height_inches') }}"
       - name: body_weight_lbs
-        description: Listed weight in pounds; null when unknown.
+        description: "{{ doc('nba__body_weight_lbs') }}"
       - name: is_guard
         description: "{{ doc('nba__is_guard') }}"
       - name: is_forward
         description: "{{ doc('nba__is_forward') }}"
       - name: is_center
         description: "{{ doc('nba__is_center') }}"
+      - name: is_undrafted
+        description: "{{ doc('nba__is_undrafted') }}"
       - name: draft_year
         description: "{{ doc('nba__draft_year') }}"
+      - name: draft_round
+        description: "{{ doc('nba__draft_round') }}"
+      - name: draft_number
+        description: "{{ doc('nba__draft_number') }}"
       - name: ingested_at
         description: "{{ doc('nba__ingested_at') }}"
         tests:

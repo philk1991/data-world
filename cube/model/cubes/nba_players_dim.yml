@@ -1,0 +1,236 @@
+cubes:
+  - name: nba_players_dim
+    sql_table: marts.nba_players_dim
+    description: >
+      Conformed player dimension, one row per person_id carrying biography
+      (birth date, height, weight, position, draft, school, country) and the
+      span of competitive games played (Regular Season, Playoffs, Play-in
+      Tournament and NBA Cup Final, games with recorded minutes only). Covers
+      every player in the bio table and every player in the box scores;
+      box-score-only players (has_bio_record false) have null bio. Height and
+      weight are a single current listing, not per-season values; birth date
+      is missing for about a fifth of players, so age-based results cover only
+      players with a known birth date. Join target for nba_player_season_stats
+      (person_id), which uses it for a per-season age dimension.
+
+    dimensions:
+      - name: person_id
+        sql: person_id
+        type: number
+        primary_key: true
+        public: true
+        description: NBA player identifier.
+
+      - name: player_name
+        sql: player_name
+        type: string
+        description: First and last name joined with a space; null when both are missing.
+
+      - name: has_bio_record
+        sql: has_bio_record
+        type: boolean
+        description: >
+          True when the player has a row in the bio table. False for players who
+          only appear in the box scores, whose bio columns are all null.
+
+      - name: birth_date
+        sql: birth_date
+        type: time
+        description: >
+          Date of birth; null when unknown or when the source carries a
+          placeholder date (1900-01-01, 1995-01-01, April 1905).
+
+      - name: height_inches
+        sql: height_inches
+        type: number
+        description: Listed height in inches; null when unknown.
+
+      - name: height_cm
+        sql: height_cm
+        type: number
+        description: height_inches converted to centimetres, rounded to 0.1.
+
+      - name: height_feet_inches
+        sql: height_feet_inches
+        type: string
+        description: Height as feet-inches (e.g. "6-9"), the way NBA rosters list it.
+
+      - name: body_weight_lbs
+        sql: body_weight_lbs
+        type: number
+        description: >
+          Listed weight in pounds; null when unknown. A single current listing,
+          not a per-season weight.
+
+      - name: body_weight_kg
+        sql: body_weight_kg
+        type: number
+        description: body_weight_lbs converted to kilograms, rounded to 0.1.
+
+      - name: is_guard
+        sql: is_guard
+        type: boolean
+        description: True when the player is listed as a guard.
+
+      - name: is_forward
+        sql: is_forward
+        type: boolean
+        description: True when the player is listed as a forward.
+
+      - name: is_center
+        sql: is_center
+        type: boolean
+        description: True when the player is listed as a center.
+
+      - name: position
+        sql: position
+        type: string
+        description: >
+          Listed positions combined from the guard/forward/center flags in that
+          order (G, F, C, G-F, F-C); null when no position is listed.
+
+      - name: school
+        sql: school
+        type: string
+        description: College or school the player came from; null when unknown.
+
+      - name: country
+        sql: country
+        type: string
+        description: Country the player is from; null when unknown.
+
+      - name: is_undrafted
+        sql: is_undrafted
+        type: boolean
+        description: >
+          True when the player went undrafted, false when drafted, null when
+          draft status is unknown.
+
+      - name: draft_year
+        sql: draft_year
+        type: number
+        description: Year the player was drafted; null if undrafted or unknown.
+
+      - name: draft_round
+        sql: draft_round
+        type: number
+        description: Round the player was drafted in; null if undrafted or unknown.
+
+      - name: draft_number
+        sql: draft_number
+        type: number
+        description: Overall pick number the player was drafted with; null if undrafted or unknown.
+
+      - name: first_game_date
+        sql: first_game_date
+        type: time
+        description: >
+          Date of the player's earliest competitive game (Regular Season,
+          Playoffs, Play-in Tournament or NBA Cup Final) with recorded minutes
+          in the dataset. Null for a handful of historical players whose box
+          score rows carry no game date. Also null for players with no
+          competitive games.
+
+      - name: last_game_date
+        sql: last_game_date
+        type: time
+        description: >
+          Date of the player's most recent competitive game (Regular Season,
+          Playoffs, Play-in Tournament or NBA Cup Final) with recorded minutes
+          in the dataset. Null for a handful of historical players whose box
+          score rows carry no game date. Also null for players with no
+          competitive games.
+
+      - name: first_season_start_year
+        sql: first_season_start_year
+        type: number
+        description: >
+          Season (start year) of the player's first competitive game with
+          recorded minutes; null when they have none.
+
+      - name: last_season_start_year
+        sql: last_season_start_year
+        type: number
+        description: >
+          Season (start year) of the player's latest competitive game with
+          recorded minutes; null when they have none.
+
+      - name: seasons_played
+        sql: seasons_played
+        type: number
+        description: >
+          Distinct seasons with at least one competitive game with recorded
+          minutes; null when they have none.
+
+      - name: played_in_last_two_seasons
+        sql: played_in_last_two_seasons
+        type: boolean
+        description: >
+          True when the player's last competitive game is in the latest season
+          in the dataset or the one before, a proxy for an active player that
+          still holds early in a new season; null when they have no competitive
+          games.
+
+      - name: age_at_first_game
+        sql: age_at_first_game
+        type: number
+        description: >
+          Age in completed years on first_game_date; null when birth_date or
+          first_game_date is null.
+
+      - name: age_at_last_game
+        sql: age_at_last_game
+        type: number
+        description: >
+          Age in completed years on last_game_date; null when birth_date or
+          last_game_date is null.
+
+    measures:
+      - name: count
+        type: count
+        description: Number of players.
+
+      - name: avg_height_inches
+        sql: height_inches
+        type: avg
+        description: Average listed height in inches across matching players.
+
+      - name: avg_height_cm
+        sql: height_cm
+        type: avg
+        description: Average listed height in centimetres across matching players.
+
+      - name: avg_body_weight_lbs
+        sql: body_weight_lbs
+        type: avg
+        description: Average listed weight in pounds across matching players.
+
+      - name: avg_body_weight_kg
+        sql: body_weight_kg
+        type: avg
+        description: Average listed weight in kilograms across matching players.
+
+      - name: avg_age_at_first_game
+        sql: age_at_first_game
+        type: avg
+        description: Average age at first competitive game across matching players with a known birth date.
+
+      - name: avg_age_at_last_game
+        sql: age_at_last_game
+        type: avg
+        description: Average age at most recent competitive game across matching players with a known birth date.
+
+      - name: avg_seasons_played
+        sql: seasons_played
+        type: avg
+        description: Average number of seasons with a competitive game across matching players.
+
+      - name: max_seasons_played
+        sql: seasons_played
+        type: max
+        description: Highest number of seasons with a competitive game among matching players.
+
+      - name: undrafted_rate
+        sql: "CASE WHEN {CUBE}.is_undrafted THEN 1.0 WHEN {CUBE}.is_undrafted = FALSE THEN 0.0 END"
+        type: avg
+        description: Share of players in this slice who went undrafted, among players whose draft status is known.

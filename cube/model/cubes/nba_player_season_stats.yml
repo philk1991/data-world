@@ -12,11 +12,16 @@ cubes:
       record yet (steals and blocks before 1973-74, turnovers before ~1977-78,
       attempts in some early seasons) are null, and the per-game and
       percentage measures only count seasons where their inputs were recorded.
-      Joined to nba_team_dim on primary_team_id for team names.
+      Joined to nba_team_dim on primary_team_id for team names, and to
+      nba_players_dim on person_id for biography and per-season age.
 
     joins:
       - name: nba_team_dim
         sql: "{CUBE}.primary_team_id = {nba_team_dim}.team_id"
+        relationship: many_to_one
+
+      - name: nba_players_dim
+        sql: "{CUBE}.person_id = {nba_players_dim}.person_id"
         relationship: many_to_one
 
     dimensions:
@@ -67,6 +72,14 @@ cubes:
           group and knockout games are Regular Season; only the Cup final, which
           does not count toward the standings, is separate. The totals cover
           games of this type.
+
+      - name: age
+        sql: "DATE_SUB('year', {nba_players_dim.birth_date}, MAKE_DATE({CUBE}.season_start_year::INTEGER + 1, 2, 1))"
+        type: number
+        description: >
+          Player's age in completed years on 1 February of the season (e.g.
+          1 Feb 2024 for 2023-24), the Basketball-Reference convention. Null when
+          the birth date is unknown (about a fifth of players).
 
       - name: primary_team_id
         sql: primary_team_id
