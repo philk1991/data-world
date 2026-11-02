@@ -44,14 +44,14 @@ The lake locks per commit, not per connection, so ingest jobs, dbt builds and ev
 
 ### Analytics agent (nao)
 
-`nao/` runs [nao](https://github.com/getnao/nao) (`nao-core` 0.3.25, Apache 2.0), a self-hosted agentic analytics agent: `nao sync` builds a file-based context (schema docs under `nao/databases/`, hand-authored context under `nao/docs/`, agent instructions in `nao/RULES.md`) and `task nao:dev` (`nao chat`) serves a chat UI that turns natural-language questions into SQL. It is **complementary to Cube, not competing**: Cube serves defined metrics to BI tools/dashboards, nao answers ad-hoc NL questions over the same marts. Like Cube, it materializes nothing and is **not wired into Dagster** — it only reads.
+`nao/` runs [nao](https://github.com/getnao/nao) (`nao-core` 0.3.31, Apache 2.0), a self-hosted agentic analytics agent: `nao sync` builds a file-based context (schema docs under `nao/databases/`, hand-authored context under `nao/docs/`, agent instructions in `nao/RULES.md`) and `task nao:dev` (`nao chat`) serves a chat UI that turns natural-language questions into SQL. It is **complementary to Cube, not competing**: Cube serves defined metrics to BI tools/dashboards, nao answers ad-hoc NL questions over the same marts. Like Cube, it materializes nothing and is **not wired into Dagster** — it only reads.
 
-Currently scoped to the eight NBA marts via `include: ["lake.marts.nba_*"]` in `nao/nao_config.yaml` (nao's include globs are catalog-qualified for DuckLake). The database is `type: ducklake` with a Postgres catalog; nao attaches it READ_ONLY and then locks down filesystem access to the lake's data path.
+Currently scoped to the NBA marts via `include: ["lake.marts.nba_*"]` in `nao/nao_config.yaml` (nao's include globs are catalog-qualified for DuckLake). The database is `type: ducklake` with a Postgres catalog; nao attaches it READ_ONLY and then locks down filesystem access to the lake's data path.
 
 Operational caveats specific to nao:
 
-- **Isolated venv.** nao lives in its own `nao/.venv` (created by `task nao:install`), **not** the shared `.venv`, and all `nao:*` tasks invoke `nao/.venv/bin/nao` directly. It was isolated because older `nao-core` (0.0.x) pulled `protobuf` 7, which breaks Dagster (it pins protobuf <7). 0.3.25 no longer installs protobuf, so merging into `.venv` may now work, but that hasn't been tested. The install is `nao-core[duckdb]==0.3.25` (the `duckdb` extra brings `pyarrow` — without it `nao sync` silently skips every schema) plus `duckdb==1.5.5` (nao would otherwise resolve a newer DuckDB).
-- **LLM provider is unset.** nao 0.3.25 supports openai, anthropic, mistral, gemini, openrouter, requesty, ollama, bedrock, vertex and qwen — `ollama` makes a zero-cost local model possible. `nao sync`/`nao debug` work without one; `nao chat` needs `llm:` set in `nao_config.yaml` (plus a key in `nao/.env` for hosted providers).
+- **Shared venv.** nao is installed in the shared `.venv` from `requirements.txt` as `nao-core[duckdb]==0.3.31` (the `duckdb` extra brings `pyarrow` — without it `nao sync` silently skips every schema). The `duckdb==1.5.5` pin in the same file keeps nao on the project's DuckDB. It used to have its own `nao/.venv` because `nao-core` 0.0.x pulled `protobuf` 7, which the Dagster 1.13.26 in `.venv` doesn't accept (it pins protobuf <7). Since 0.3.x nao doesn't depend on protobuf. Its only clash was `python-dotenv` (nao needs >=1.2.1), so that pin moved to 1.2.4.
+- **LLM provider is unset.** nao 0.3.31 supports openai, anthropic, mistral, gemini, openrouter, requesty, ollama, bedrock, vertex, qwen, minimax, moonshot, meta and any OpenAI-compatible endpoint (`openaiCompatible`) — `ollama` makes a zero-cost local model possible. `nao sync`/`nao debug` work without one; `nao chat` needs `llm:` set in `nao_config.yaml` (plus a key in `nao/.env` for hosted providers).
 - Local chat sessions use an embedded SQLite store. Config in `nao/nao_config.yaml`, secrets in `nao/.env` (see `nao/.env.example`). Validate a setup with `task nao:debug`.
 
 ### dbt conventions
@@ -72,7 +72,7 @@ There is no Elementary (it doesn't run on dbt v2 + DuckDB). Run history is in th
 
 ### DuckDB constraints
 
-**Version pinning** — every DuckDB client is on **1.5.5**: Python (`requirements.txt`), the dbt-oss ADBC driver (`task dbt:driver`), Cube (1.8.8 bundles `@duckdb/node-api` 1.5.5-r.5), the Spotify dashboard (`@duckdb/node-api` 1.5.5-r.5) and nao (`task nao:install`). Upgrade them together.
+**Version pinning** — every DuckDB client is on **1.5.5**: Python (`requirements.txt`), the dbt-oss ADBC driver (`task dbt:driver`), Cube (1.8.8 bundles `@duckdb/node-api` 1.5.5-r.5), the Spotify dashboard (`@duckdb/node-api` 1.5.5-r.5) and nao (shares `.venv`). Upgrade them together.
 
 **Lock contention (streaming files only)** — a `.duckdb` file is single-writer. A streaming consumer holds the write lock on its file while running, so any other process (dbt, Dagster's crypto sensor) must open it with `read_only=True`. Streaming dashboards read the JSON sidecar (`data/live_data.json`) rather than querying DuckDB directly. The lake has no such constraint; Dagster ingest assets that write it can run concurrently (the NBA `deps` chain is now just ordering, not lock avoidance).
 

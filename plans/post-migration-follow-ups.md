@@ -51,8 +51,12 @@ Progress so far:
 ## 5. nao decisions
 
 - [ ] **Pick an LLM provider.** `nao chat` needs `llm:` in `nao/nao_config.yaml`. nao-core 0.3.25 supports `ollama`, which makes a free local model possible. The alternative is a hosted provider (key in `nao/.env`).
-- [ ] **Try merging nao into the main venv.** It was isolated because nao-core 0.0.x pulled protobuf 7, which breaks Dagster. 0.3.25 doesn't install protobuf at all. Test in a scratch venv with `requirements.txt` plus `nao-core[duckdb]==0.3.25`, then check that `pip check`, `dbt build` and Dagster validation still pass. If it works, drop `nao/.venv` and update `nao:*` tasks and CLAUDE.md.
-- [ ] Optional: nao 0.3.26 is out. Upgrade together with its DuckDB pin (keep `duckdb==1.5.5` unless every other client moves too).
+- [x] **Try merging nao into the main venv.** It was isolated because nao-core 0.0.x pulled protobuf 7, which breaks Dagster. 0.3.25 doesn't install protobuf at all. Test in a scratch venv with `requirements.txt` plus `nao-core[duckdb]==0.3.25`, then check that `pip check`, `dbt build` and Dagster validation still pass. If it works, drop `nao/.venv` and update `nao:*` tasks and CLAUDE.md.
+- [x] Optional: nao 0.3.26 is out. Upgrade together with its DuckDB pin (keep `duckdb==1.5.5` unless every other client moves too).
+
+Done 2 Nov, together: nao-core 0.3.31 is in `requirements.txt` and lives in `.venv`. The only conflict was `python-dotenv` (nao needs >=1.2.1), now pinned to 1.2.4. Tested on a copy of `.venv` first: `pip check` clean, Dagster validates (65 assets), `dbt parse` ok, `nao debug` and `nao sync` ok. Protobuf stays at 6.33.6 and Dagster at 1.13.26. `nao/.venv` and `task nao:install` are gone.
+
+Heads-up for the next Dagster upgrade: `requirements.txt` doesn't pin Dagster, and a fresh resolve pulls Dagster 1.13.28 with protobuf 7 (Dagster now allows <8, and `grpcio-health-checking` 1.85 requires 7). That comes from Dagster's own dependencies, not nao.
 
 ## 6. OpenF1 stints data-quality tests
 

@@ -423,28 +423,20 @@ tasks:
 
   # ── nao (analytics agent) ─────────────────────────────────────────────────────
 
-  nao:install:
-    desc: "Create nao's isolated venv and install nao-core. Kept separate from .venv: older nao-core pulled protobuf 7, which breaks Dagster (see CLAUDE.md)."
-    cmds:
-      - python3.12 -m venv nao/.venv
-      - nao/.venv/bin/pip install --upgrade pip --quiet
-      # duckdb pinned to the same version as .venv, the dbc driver and Cube (nao-core would resolve a newer one).
-      - nao/.venv/bin/pip install "nao-core[duckdb]==0.3.25" duckdb==1.5.5
-
   nao:sync:
     desc: "Refresh nao's context from the lake's NBA marts (writes nao/databases/**). Reads lake.marts.nba_* READ_ONLY, so it can run alongside dbt and ingest jobs."
     dir: nao
     cmds:
-      - .venv/bin/nao sync
+      - bash -c "source ../{{.VENV}} && nao sync"
 
   nao:debug:
     desc: "Validate nao config and test the lake connection (LLM check runs only if a provider is set)."
     dir: nao
     cmds:
-      - .venv/bin/nao debug
+      - bash -c "source ../{{.VENV}} && nao debug"
 
   nao:dev:
     desc: "Start the nao chat UI (http://localhost:5005). Requires an LLM provider in nao_config.yaml — none set by default (see CLAUDE.md). Reads the lake READ_ONLY."
     dir: nao
     cmds:
-      - .venv/bin/nao chat
+      - bash -c "source ../{{.VENV}} && nao chat"

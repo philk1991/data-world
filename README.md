@@ -365,11 +365,7 @@ connection comes from `cube/cube.js` (same defaults as `lake.py`).
 
 ### nao analytics agent
 
-```bash
-task nao:install           # isolated nao/.venv (nao-core[duckdb] 0.3.25, DuckDB 1.5.5)
-```
-
-Copy `nao/.env.example` to `nao/.env`. `task nao:sync` builds nao's context from
+nao-core is installed into `.venv` with the rest of `requirements.txt`. Copy `nao/.env.example` to `nao/.env`. `task nao:sync` builds nao's context from
 the NBA marts; `task nao:dev` additionally needs an LLM provider set in
 `nao/nao_config.yaml`.
 
@@ -508,10 +504,9 @@ Every DuckDB client is pinned to **1.5.5**, so they all read and write the lake 
 
 | Client | Pin |
 |---|---|
-| Python (`.venv`) | `duckdb==1.5.5` in `requirements.txt` |
+| Python (`.venv`, including nao) | `duckdb==1.5.5` in `requirements.txt` |
 | dbt-oss | ADBC driver `duckdb=1.5.5` (`task dbt:driver`) |
 | Cube | `@cubejs-backend/duckdb-driver` 1.8.8, which bundles `@duckdb/node-api` 1.5.5-r.5 |
 | Spotify dashboard | `@duckdb/node-api` 1.5.5-r.5 |
-| nao (`nao/.venv`) | `duckdb==1.5.5` in `task nao:install` |
 
 Upgrade them together.

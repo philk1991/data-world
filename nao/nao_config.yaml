@@ -33,9 +33,9 @@ databases:
 repos: []
 
 # LLM is intentionally left unset (choosing one is a separate decision).
-# nao-core 0.3.25 supports openai, anthropic, mistral, gemini, openrouter,
-# requesty, ollama, bedrock, vertex and qwen — ollama makes a zero-cost local
-# model possible. `nao sync`/`nao debug` work without it; `nao chat` needs one:
+# nao-core 0.3.31 supports openai, anthropic, mistral, gemini, openrouter,
+# requesty, ollama, bedrock, vertex, qwen, minimax, moonshot, meta and
+# openaiCompatible — ollama makes a zero-cost local model possible. `nao sync`/`nao debug` work without it; `nao chat` needs one:
 #
 #   llm:
 #     provider: anthropic          # or: ollama, openai, ...
