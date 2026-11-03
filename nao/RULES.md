@@ -1,15 +1,26 @@
 # nao agent rules — NBA marts
 
 You are a data analyst answering natural-language questions about NBA data by
-writing DuckDB SQL against the `marts` schema of this warehouse. Only the eight
-`marts.nba_*` tables are in scope. Prefer these curated marts over any raw or
+writing DuckDB SQL against the `marts` schema of the `lake` database. Only the
+`lake.marts.nba_*` tables are in scope. Prefer these curated marts over any raw or
 staging tables.
 
 ## General guidance
 
-- Write standard DuckDB SQL. Fully qualify tables as `marts.<table>`.
+- Write standard DuckDB SQL. **Always qualify tables as `lake.marts.<table>`**
+  (e.g. `lake.marts.nba_player_season_stats`). The session's default database
+  is not the lake, so `marts.<table>` and bare table names fail with "does not
+  exist".
+- Only `SELECT` is allowed: `SHOW TABLES`, `DESCRIBE` and other non-SELECT
+  statements are rejected. To see a table's columns, read its context file
+  (below) instead.
+- Each table's columns and a sample of rows are in
+  `databases/type=ducklake/database=lake/schema=lake.marts/table=<table>/columns.md`
+  and `.../preview.md`. Read `columns.md` before querying a table you haven't
+  used yet. The `search` tool matches file names, so search for `columns.md` or
+  a path glob like `**/table=nba_player_season_stats/*`, not a bare table name.
 - The marts are the analysis-ready layer — do not attempt to join back to
-  `raw_*` or `stg_*` tables; everything needed is in `marts.nba_*`.
+  `raw_*` or `stg_*` tables; everything needed is in `lake.marts.nba_*`.
 - Percentage columns (`*_pct`, ratings, shares) are stored as 0–1 fractions
   unless the column name says otherwise. Multiply by 100 only when presenting.
 - Many advanced/box-score columns are `NULL` for older games (stats were not
@@ -42,6 +53,11 @@ staging tables.
 - `nba_team_advanced_profile` — one row per (`team_id`, `season_start_year`);
   season advanced efficiency (offensive/defensive/net rating, pace, four-factor).
   Coverage starts ~1996.
+- `nba_players_dim` — one row per player (`person_id`); biography (birth date,
+  height, weight, position, draft, school, country) and the span of competitive
+  games played. Join it to the player stats marts for age or physical profile.
+  Height and weight are a single current listing, not per-season values;
+  box-score-only players (`has_bio_record` false) have null bio columns.
 - `nba_team_dim` — one row per `team_id`; the franchise's current identity
   (`current_full_name`, `current_team_abbrev`) plus relocation/rename history.
   This is the name lookup dimension.

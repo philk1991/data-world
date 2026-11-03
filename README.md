@@ -366,8 +366,12 @@ connection comes from `cube/cube.js` (same defaults as `lake.py`).
 ### nao analytics agent
 
 nao-core is installed into `.venv` with the rest of `requirements.txt`. Copy `nao/.env.example` to `nao/.env`. `task nao:sync` builds nao's context from
-the NBA marts; `task nao:dev` additionally needs an LLM provider set in
-`nao/nao_config.yaml`.
+the NBA marts. `task nao:dev` chats through a local model, so it also needs Ollama:
+
+```bash
+brew install ollama && brew services start ollama
+task nao:model             # nao-qwen3:14b: qwen3:14b with a 32K context; ~9 GB download, ~12 GB RAM while loaded
+```
 
 ## Usage
 
@@ -441,7 +445,7 @@ task payments:consumer   # Kafka → DuckDB
 |---|---|
 | `task cube:dev` | Start the Cube dev server + Playground at http://localhost:4000 |
 | `task nao:sync` | Rebuild nao's context from the NBA marts |
-| `task nao:dev` | Start the nao chat UI at http://localhost:5005 (needs an LLM provider) |
+| `task nao:dev` | Start the nao chat UI at http://localhost:5005 (needs Ollama running) |
 
 ### Lake
 

@@ -1,0 +1,8 @@
+# The local model nao chats with: qwen3:14b with a 32K context window.
+# Ollama's default window is 4,096 tokens and it silently drops the start of a
+# longer prompt. nao's prompt (instructions, tool definitions, context) is
+# ~11K tokens, so at the default the model never saw its instructions or the
+# real table names. 32K costs ~2.7 GB of KV cache (q8_0), ~12 GB loaded in all.
+# Build with `task nao:model`.
+FROM qwen3:14b
+PARAMETER num_ctx 32768

@@ -6,8 +6,10 @@
 databases/
 repos/
 
-# Local chat session store (SQLite) if created in-project
+# Local chat store: accounts and chat history (DB_URI in the nao:dev task)
 *.sqlite
 *.sqlite3
+*.sqlite-wal
+*.sqlite-shm
 
 __pycache__/

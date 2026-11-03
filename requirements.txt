@@ -9,5 +9,5 @@ kagglehub
 dagster
 dagster-webserver
 dagster-dbt
-# nao analytics agent; the duckdb extra brings pyarrow, without which `nao sync` silently skips every schema.
-nao-core[duckdb]==0.3.31
+# nao analytics agent; the duckdb extra brings pyarrow, without which `nao sync` silently skips every schema, and the ollama extra the local-model client.
+nao-core[duckdb,ollama]==0.3.31

@@ -423,20 +423,35 @@ tasks:
 
   # ── nao (analytics agent) ─────────────────────────────────────────────────────
 
+  nao:model:
+    desc: "Build the local model nao chats with (nao-qwen3:14b: qwen3:14b with a 32K context window, see nao/Modelfile). Needs Ollama running (brew services start ollama)."
+    dir: nao
+    cmds:
+      - ollama pull qwen3:14b
+      - ollama create nao-qwen3:14b -f Modelfile
+
   nao:sync:
     desc: "Refresh nao's context from the lake's NBA marts (writes nao/databases/**). Reads lake.marts.nba_* READ_ONLY, so it can run alongside dbt and ingest jobs."
     dir: nao
+    env:
+      POSTHOG_DISABLED: "true"  # nao's usage analytics (CLI and chat server)
     cmds:
       - bash -c "source ../{{.VENV}} && nao sync"
 
   nao:debug:
     desc: "Validate nao config and test the lake connection (LLM check runs only if a provider is set)."
     dir: nao
+    env:
+      POSTHOG_DISABLED: "true"  # nao's usage analytics (CLI and chat server)
     cmds:
       - bash -c "source ../{{.VENV}} && nao debug"
 
   nao:dev:
-    desc: "Start the nao chat UI (http://localhost:5005). Requires an LLM provider in nao_config.yaml — none set by default (see CLAUDE.md). Reads the lake READ_ONLY."
+    desc: "Start the nao chat UI (http://localhost:5005). Uses the local Ollama model in nao_config.yaml, so Ollama must be running (brew services start ollama) and the model built (task nao:model). Reads the lake READ_ONLY."
     dir: nao
+    env:
+      POSTHOG_DISABLED: "true"  # nao's usage analytics (CLI and chat server)
+      # Accounts and chat history. Without this the server writes db.sqlite inside .venv's nao_core package, so reinstalling nao wipes it.
+      DB_URI: "sqlite:{{.ROOT_DIR}}/nao/db.sqlite"
     cmds:
       - bash -c "source ../{{.VENV}} && nao chat"

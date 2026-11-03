@@ -25,23 +25,24 @@ databases:
       - columns      # column names + types
       - preview      # a small sample of rows
     # Glob patterns matched against "<catalog>.<schema>.<table>". Empty =
-    # everything; this keeps nao scoped to the eight NBA marts only.
+    # everything; this keeps nao scoped to the NBA marts only.
     include:
       - "lake.marts.nba_*"
     exclude: []
 
 repos: []
 
-# LLM is intentionally left unset (choosing one is a separate decision).
-# nao-core 0.3.31 supports openai, anthropic, mistral, gemini, openrouter,
-# requesty, ollama, bedrock, vertex, qwen, minimax, moonshot, meta and
-# openaiCompatible — ollama makes a zero-cost local model possible. `nao sync`/`nao debug` work without it; `nao chat` needs one:
-#
-#   llm:
-#     provider: anthropic          # or: ollama, openai, ...
-#     api_key: "${{ env('ANTHROPIC_API_KEY') }}"
-#
-# See nao/.env.example and the "Analytics agent (nao)" section of CLAUDE.md.
-llm: null
+# A local model through Ollama (brew services start ollama; task nao:model builds it),
+# so chat costs nothing and nothing leaves the machine. No API key needed.
+# Ollama listens on localhost:11434; set OLLAMA_BASE_URL in nao/.env to change it.
+# nao-core 0.3.31 also supports openai, anthropic, mistral, gemini, openrouter,
+# requesty, bedrock, vertex, qwen, minimax, moonshot, meta and openaiCompatible
+# (hosted ones need a key in nao/.env).
+llm:
+  providers:
+    - provider: ollama
+      models:
+        - id: nao-qwen3:14b
+          default: true
 
 slack: null
