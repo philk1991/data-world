@@ -62,13 +62,15 @@ Plus period, turnover, steal (live only — legacy logs steals inside the Turnov
 - **Play-in, NBA Cup and All-Star games:** covered where they exist.
 - **130 games aren't in `raw_nba_games`:** 85 preseason, 23 regular season and 22 All-Star.
 
-Shot coordinates (`xLegacy`/`yLegacy`, where 0/0 means missing):
+Shot coordinates (`xLegacy`/`yLegacy`): every field goal except 26 has them.
 
-| Seasons | FGA without coordinates |
-|---|---|
-| 1996-97 | 35% |
-| 1997-98 → 2009-10 | 22–25% |
-| 2010-11 → today | 0% |
+> **Correction (same day, while building the shot-zone mart):** a first pass read `0,0` as
+> "no location", which made 22–35% of FGA before 2010-11 look unlocated. Every one of
+> those shots is a layup, dunk or tip: the legacy feed puts shots at the rim at exactly
+> `0,0`. They are located. The feed's own `shotDistance` is the unreliable field. The
+> legacy feed parses it from the description and leaves it at 0 when the text gives no
+> distance (many threes, some jumpers). Where both are set, coordinate distance agrees
+> with it to within 0.25 ft, so distance is computed from the coordinates.
 
 Assist attribution:
 
@@ -87,7 +89,7 @@ Most nulls are structural: a column only applies to some event types, or only to
 |---|---|---|
 | Legacy scores 0 on non-scoring rows | ~72% of rows | Forward-fill `scoreHome`/`scoreAway` per game before any score-state metric |
 | No `possession` in legacy | 72.4% | Possessions must be derived (made FG/FT end, defensive rebound, turnover) |
-| No shot coordinates 1996–2009 | ~25% of those FGA | Shot charts reliable from 2010-11; use `shotDistance` (0% null) before that |
+| Legacy `shotDistance` 0 when the description gives none | ~9K threes a season, plus at-rim shots | Compute distance from `xLegacy`/`yLegacy` instead (complete) |
 | Team IDs in `personId` | 5.1% of events | Team rebounds/turnovers; exclude from player joins |
 | `personId` not in `raw_nba_players` | 755 players, 18,187 events (0.1%) | Minor; left join |
 
@@ -109,7 +111,7 @@ Most nulls are structural: a column only applies to some event types, or only to
   It's large (18.8M rows), so consider materialising it as a table, or doing the forward-fill in an intermediate model.
 
 ### Potential marts
-1. **`nba_player_shot_zones`** — grain: player × season × game type × shot zone (distance band; area where live). Question: where does a player shoot from, and how efficiently, compared with the league? Covers 1996-97 onward, with coordinate-based zones from 2010-11.
+1. **`nba_player_shot_zones`** — grain: player × season × game type × shot zone (distance band; area where live). Question: where does a player shoot from, and how efficiently, compared with the league? Covers 1996-97 onward, with coordinate-based zones throughout.
 2. **`nba_player_clutch_stats`** — grain: player × season × game type. Clutch means the last 5 minutes of the 4th quarter or OT with the score within 5 points. Columns: points, FG/FGA, TS%, turnovers. Question: who performs in close games? Needs the forward-filled score; covers all seasons.
 3. **`nba_lineup_stints`** → **`nba_player_on_off`** — grain: game × stint (the five players on court per team between substitutions), then player × season with on-court and off-court net rating. Question: which players and lineups win their minutes? This is the most valuable model and the hardest. Who is on court at the start of a period has to be inferred, because the feed only logs substitutions. The legacy format also gives only the incoming player's name.
 

@@ -110,11 +110,16 @@ SELECT
     is_shot_made,
     shot_value,
     CASE WHEN is_shot_made THEN shot_value ELSE 0 END AS points_scored,
-    CASE WHEN event_type = 'field_goal' THEN shotDistance END AS shot_distance_ft,
-    -- Court coordinates in tenths of a foot from the basket. 0,0 marks a shot with no
-    -- location recorded (about a quarter of field goals before 2010-11).
-    CASE WHEN event_type = 'field_goal' AND NOT (xLegacy = 0 AND yLegacy = 0) THEN xLegacy END AS shot_x,
-    CASE WHEN event_type = 'field_goal' AND NOT (xLegacy = 0 AND yLegacy = 0) THEN yLegacy END AS shot_y,
+    -- Court coordinates in tenths of a foot from the basket, set for every field goal but
+    -- a handful. The legacy feed puts shots at the rim at exactly 0,0.
+    CASE WHEN event_type = 'field_goal' THEN xLegacy END AS shot_x,
+    CASE WHEN event_type = 'field_goal' THEN yLegacy END AS shot_y,
+    -- Distance from the coordinates: the legacy feed's own distance is parsed from the
+    -- description and is 0 whenever the text gives none (many threes, some jumpers).
+    CASE
+        WHEN event_type = 'field_goal'
+            THEN COALESCE(ROUND(SQRT(xLegacy * xLegacy + yLegacy * yLegacy) / 10, 1), shotDistance)
+    END AS shot_distance_ft,
     CASE WHEN event_type = 'field_goal' THEN area END AS shot_area,
     CASE WHEN event_type = 'field_goal' THEN areaDetail END AS shot_area_detail,
     CASE WHEN feed_format = 'live' THEN qualifiers END AS qualifiers,

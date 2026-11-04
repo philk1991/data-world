@@ -482,18 +482,19 @@ models:
         description: "Points the event scored: shot_value for a made shot, else 0."
         tests:
           - not_null
-      - name: shot_distance_ft
-        description: Field goals only. Distance of the shot from the basket in feet.
       - name: shot_x
         description: >
           Field goals only. Horizontal court position in tenths of a foot from the
-          basket (negative = left, from the shooter's view of the basket). Null
-          where the feed recorded no location (about a quarter of field goals
-          before 2010-11).
+          basket (negative = left, looking from half court at the basket). Set
+          for all but a handful of field goals; the legacy feed puts shots at the
+          rim at exactly 0,0.
       - name: shot_y
+        description: Field goals only. Distance up the court from the basket, in tenths of a foot.
+      - name: shot_distance_ft
         description: >
-          Field goals only. Distance up the court from the basket, in tenths of a
-          foot. Null where shot_x is.
+          Field goals only. Distance of the shot from the basket in feet, from the
+          court coordinates (the legacy feed's own distance is 0 whenever its text
+          gives none).
       - name: shot_area
         description: Live feed only. Court area of a field goal (e.g. Restricted Area, Above the Break 3).
       - name: shot_area_detail

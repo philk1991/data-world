@@ -222,6 +222,14 @@ Minutes played in the game.
 Points scored in the game.
 {% enddocs %}
 
+{% docs nba__field_goals_made %}
+Field goals made.
+{% enddocs %}
+
+{% docs nba__field_goals_attempted %}
+Field goals attempted.
+{% enddocs %}
+
 {% docs nba__field_goal_pct %}
 Field goal percentage (made / attempted), 0-1.
 {% enddocs %}

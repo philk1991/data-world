@@ -55,6 +55,27 @@ type, team, opponent, home/away, result, starter), `is_double_double` /
 game logs, single-game highs, streaks and recent form, and the season mart for
 season totals.
 
+## nba_player_shot_zones
+**Grain:** one row per (`person_id`, `season_start_year`, `game_type`,
+`shot_zone`), from the play-by-play (1996-97 on). Zones are the NBA's court
+areas computed from shot coordinates: Restricted Area (under 4 ft), In The
+Paint (Non-RA), Mid-Range (other twos), Corner 3, Above the Break 3, and Heave
+(40+ ft). Per zone: attempts, makes, field goal %, points per shot, the share
+of the player's attempts, and the league's field goal %, points per shot and
+share of attempts for the same zone and season. Field goals only.
+`points_per_shot` is the fairest way to compare zones, since threes are worth
+more. Rates are noisy on few attempts: filter on `field_goals_attempted`.
+
+## nba_player_clutch_stats
+**Grain:** one row per (`person_id`, `season_start_year`, `game_type`) with any
+clutch event, from the play-by-play (1996-97 on). Clutch time is the last five
+minutes of the fourth quarter or overtime with the score within five points.
+Clutch points, shooting splits, true shooting (with the player's all-minutes
+true shooting for the season as a baseline), rebounds, turnovers and go-ahead
+field goals. `clutch_games` counts games with a clutch event of the player's
+own, not every game they were on the floor in the clutch. No assists, steals
+or blocks (the pre-2019-20 play-by-play lacks them).
+
 ## nba_team_season_summary
 **Grain:** one row per (`team_id`, `season_start_year`).
 Regular-season record: `wins`, `losses`, `home_wins`, `away_wins`, `win_pct`, and
