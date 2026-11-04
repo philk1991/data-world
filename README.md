@@ -27,7 +27,7 @@ data-world/
 │   │   ├── staging/
 │   │   │   ├── spotify/       # Cleaned views over raw Spotify tables
 │   │   │   ├── statsbomb/     # Cleaned views over raw StatsBomb tables
-│   │   │   ├── nba/           # Cleaned views over raw NBA box scores
+│   │   │   ├── nba/           # Cleaned views over raw NBA box scores and play-by-play
 │   │   │   ├── openf1/        # Cleaned views over raw F1 timing data
 │   │   │   ├── crypto/        # Cleaned views over raw trade ticks
 │   │   │   └── payments/      # Cleaned views over raw payment/rejection events
@@ -259,6 +259,7 @@ dbt-oss talks to DuckDB through an ADBC driver installed with `task dbt:driver`.
 | `stg_nba_team_histories` | `staging_nba` | Franchise histories tracking relocations and renames, one row per era |
 | `stg_nba_player_statistics_extended` | `staging_nba` | Advanced player box scores (~1996 onward), one row per player per game |
 | `stg_nba_team_statistics_extended` | `staging_nba` | Advanced team box scores (~1996 onward), one row per team per game |
+| `stg_nba_play_by_play` | `staging_nba` | Play-by-play events (1996-97 onward), one row per event; unifies the legacy and live NBA feeds, carries the score forward. A table, not a view (18.8M rows) |
 | `stg_openf1__meetings` | `staging_openf1` | Grand Prix weekends and testing events, one row per meeting |
 | `stg_openf1__sessions` | `staging_openf1` | Practice/qualifying/race/sprint sessions, one row per session |
 | `stg_openf1__drivers` | `staging_openf1` | Driver roster per session |
@@ -386,7 +387,7 @@ All commands run from the root of `data-world/` using [Task](https://taskfile.de
 | `task ingest` | Clear Spotify cache and run the full Spotify ingest (triggers browser auth on first run) |
 | `task ingest:no-cache-clear` | Run Spotify ingest using the existing cached token |
 | `task ingest:statsbomb` | Run the StatsBomb ingest (incremental — skips already-loaded matches) |
-| `task ingest:nba` | Download the Kaggle NBA dataset (core + extended) and full-replace load into the lake |
+| `task ingest:nba` | Download the Kaggle NBA dataset (core + extended box scores, play-by-play) and full-replace load into the lake |
 | `task ingest:openf1` | Run the OpenF1 ingest for 2024 → current season (incremental — skips already-loaded sessions). Set `OPENF1_START_YEAR` / `OPENF1_END_YEAR` to change the range and `OPENF1_SESSION_LIMIT` to cap sessions per run |
 
 ### Crypto streaming

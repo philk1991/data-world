@@ -310,7 +310,7 @@ tasks:
   # ── NBA Ingestion ─────────────────────────────────────────────────────────────
 
   ingest:nba:
-    desc: Download the Kaggle NBA dataset (core + extended) and load into DuckDB
+    desc: Download the Kaggle NBA dataset (core + extended box scores, play-by-play) and load into the lake
     cmds:
       - bash -c "source {{.VENV}} && cd data-ingestion && python ingest_nba.py"
 

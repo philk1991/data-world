@@ -326,3 +326,203 @@ models:
       meta:
         grain: one row per (game_id, team_id)
         purpose: Clean and rename raw advanced team box scores.
+  - name: stg_nba_play_by_play
+    description: >
+      One row per play-by-play event, for every regular-season and playoff game
+      since 1996-97 (preseason from 2013-14). Maps the raw file's two NBA feeds,
+      legacy (to early 2019-20) and live (after), onto one set of columns:
+      a single event_type vocabulary, made/missed and shot value for both, the
+      score carried forward to every event, and game time in seconds. Steals,
+      blocks, possession and assist ids exist only in the live feed; legacy
+      assists and incoming substitutes are names parsed from the description.
+      Materialised as a table (18.8M rows). Reconciles with the box scores:
+      per-player points match in 99.96% of player-games.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - game_id
+              - action_number
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - game_id
+              - event_order
+    columns:
+      - name: game_id
+        description: "{{ doc('nba__game_id') }}"
+        tests:
+          - not_null
+      - name: action_number
+        description: >
+          The feed's event id within the game. Unique per game, but not the game's
+          order: use event_order for that.
+        tests:
+          - not_null
+      - name: event_order
+        description: >
+          Position of the event in the game (1 = first), by period, then game clock
+          counting down, then the feed's own order for events at the same moment.
+        tests:
+          - not_null
+      - name: game_type
+        description: "{{ doc('nba__game_type') }}"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - "Regular Season"
+                  - "Playoffs"
+                  - "Play-in Tournament"
+                  - "Preseason"
+                  - "All-Star Game"
+                  - "NBA Cup Final"
+      - name: season_start_year
+        description: "{{ doc('nba__season_start_year') }}"
+        tests:
+          - not_null
+      - name: game_datetime_est
+        description: "{{ doc('nba__game_datetime_est') }} Null for about 1% of events."
+      - name: feed_format
+        description: >
+          Which NBA feed the event came from: legacy (1996-97 to early 2019-20) or
+          live (2019-20 onward). Decides which of the feed-specific columns are set.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["legacy", "live"]
+      - name: period
+        description: Period of the game. 1-4 are quarters, 5 and up overtimes.
+        tests:
+          - not_null
+      - name: is_overtime
+        description: True for events in an overtime period.
+        tests:
+          - not_null
+      - name: clock_seconds_remaining
+        description: Seconds left on the game clock in the period when the event happened.
+        tests:
+          - not_null
+      - name: game_seconds_elapsed
+        description: >
+          Seconds of game time played before the event, counting 12-minute quarters
+          and 5-minute overtimes (2880 = end of regulation).
+        tests:
+          - not_null
+      - name: event_type
+        description: >
+          What happened, in one vocabulary for both feeds: field_goal (including
+          missed), free_throw, rebound, turnover, steal, block, foul, substitution,
+          timeout, violation, jump_ball, period (start/end), game (end), heave,
+          instant_replay, stoppage, ejection, memo, unknown. Steal and block events
+          exist only in the live feed.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - field_goal
+                  - free_throw
+                  - rebound
+                  - turnover
+                  - steal
+                  - block
+                  - foul
+                  - substitution
+                  - timeout
+                  - violation
+                  - jump_ball
+                  - period
+                  - game
+                  - heave
+                  - instant_replay
+                  - stoppage
+                  - ejection
+                  - memo
+                  - unknown
+      - name: event_sub_type
+        description: >
+          The feed's detail for the event: the shot type for field goals ("Jump
+          Shot", "Layup"), "1 of 2" style for free throws, the rebound, turnover or
+          foul kind, in/out for live substitutions. Wording differs between feeds.
+      - name: event_descriptor
+        description: Extra live-feed shot or play detail (e.g. "driving", "pullup"). Live feed only.
+      - name: description
+        description: The feed's text for the event, as shown in a play-by-play log.
+      - name: person_id
+        description: >
+          {{ doc('nba__person_id') }} The player the event is about (the shooter,
+          rebounder, fouler, the player going out on a legacy substitution). Null
+          for game and team events.
+      - name: feed_player_name
+        description: Name of that player as the feed gives it (full name, or initial and surname).
+      - name: team_id
+        description: >
+          {{ doc('nba__team_id') }} The team the event is credited to. Null for game
+          events.
+      - name: team_tricode
+        description: Three-letter code of that team (e.g. BOS).
+      - name: score_home
+        description: >
+          Home team's score after the event. The legacy feed only records the score
+          on scoring plays, so the last known score is carried forward.
+        tests:
+          - not_null
+      - name: score_away
+        description: Away team's score after the event, carried forward like score_home.
+        tests:
+          - not_null
+      - name: is_shot_made
+        description: For field goals and free throws, whether the shot went in. Null for other events.
+      - name: shot_value
+        description: For field goals and free throws, the points the shot was worth if made (1, 2 or 3).
+      - name: points_scored
+        description: "Points the event scored: shot_value for a made shot, else 0."
+        tests:
+          - not_null
+      - name: shot_distance_ft
+        description: Field goals only. Distance of the shot from the basket in feet.
+      - name: shot_x
+        description: >
+          Field goals only. Horizontal court position in tenths of a foot from the
+          basket (negative = left, from the shooter's view of the basket). Null
+          where the feed recorded no location (about a quarter of field goals
+          before 2010-11).
+      - name: shot_y
+        description: >
+          Field goals only. Distance up the court from the basket, in tenths of a
+          foot. Null where shot_x is.
+      - name: shot_area
+        description: Live feed only. Court area of a field goal (e.g. Restricted Area, Above the Break 3).
+      - name: shot_area_detail
+        description: Live feed only. Finer area and distance band of a field goal (e.g. "0-8 Center").
+      - name: qualifiers
+        description: Live feed only. Tags on the event, e.g. pointsinthepaint, fastbreak, 2ndchance, fromturnover.
+      - name: assist_person_id
+        description: Live feed only. Player credited with the assist on a made field goal.
+      - name: legacy_assist_name
+        description: >
+          Legacy feed only. Surname of the player credited with the assist on a made
+          field goal, parsed from the description; not resolved to a person id.
+      - name: steal_person_id
+        description: Live feed only. Player credited with the steal on a turnover.
+      - name: block_person_id
+        description: Live feed only. Player credited with blocking a missed field goal.
+      - name: foul_drawn_person_id
+        description: Live feed only. Player fouled.
+      - name: legacy_sub_in_name
+        description: >
+          Legacy feed only. Name of the player coming in on a substitution, parsed
+          from "SUB: <in> FOR <out>"; the player going out is person_id.
+      - name: possession_team_id
+        description: Live feed only. Team in possession after the event.
+      - name: ingested_at
+        description: "{{ doc('nba__ingested_at') }}"
+        tests:
+          - not_null
+    config:
+      meta:
+        grain: one row per (game_id, action_number)
+        purpose: Clean and unify the raw play-by-play's legacy and live feeds.

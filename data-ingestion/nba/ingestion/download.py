@@ -4,7 +4,8 @@ Download individual files from the Kaggle NBA dataset.
 Source: https://www.kaggle.com/datasets/eoinamoore/historical-nba-data-and-player-box-scores
 
 Files are fetched one at a time via kagglehub so we pull only the files we load
-(core + extended box scores) and skip the multi-GB PlaybyPlay.parquet entirely.
+(core + extended box scores and the ~0.9 GB PlayByPlay.parquet) and skip the
+League Schedule files.
 
 Authentication: kagglehub reads credentials from the KAGGLE_USERNAME / KAGGLE_KEY
 environment variables (set in the project .env) or from ~/.kaggle/kaggle.json.

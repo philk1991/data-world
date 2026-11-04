@@ -26,7 +26,7 @@ Fetches free open football data (competitions, matches, events, lineups) from th
 
 ### NBA (batch)
 
-Downloads historical NBA box scores (core + extended, 1947–present) from the [Kaggle NBA dataset](https://www.kaggle.com/datasets/eoinamoore/historical-nba-data-and-player-box-scores) via `kagglehub`. Requires Kaggle API credentials (`KAGGLE_USERNAME` / `KAGGLE_KEY` in `.env`). Each file is a full-replace load, so re-running picks up the daily-updated upstream snapshot. The large play-by-play parquet is skipped.
+Downloads historical NBA box scores (core + extended, 1947–present) and play-by-play (1996-97 onward) from the [Kaggle NBA dataset](https://www.kaggle.com/datasets/eoinamoore/historical-nba-data-and-player-box-scores) via `kagglehub`. Requires Kaggle API credentials (`KAGGLE_USERNAME` / `KAGGLE_KEY` in `.env`). Each file is a full-replace load, so re-running picks up the daily-updated upstream snapshot.
 
 | Entry point | Destination | Task command |
 |---|---|---|

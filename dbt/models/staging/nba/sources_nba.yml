@@ -2,6 +2,9 @@ version: 2
 
 sources:
   - name: raw_nba
+    # Qualified with the lake so the source resolves in models materialised as tables
+    # too (stg_nba_play_by_play); views resolve inside the lake catalog either way.
+    database: lake
     schema: raw_nba
     tables:
       - name: raw_nba_games
@@ -24,3 +27,8 @@ sources:
           Raw advanced team box scores (one row per team per game), available for
           most games since 1996. Adds ratings, four-factor and pace metrics on top
           of the traditional team box score.
+      - name: raw_nba_play_by_play
+        description: >
+          Raw play-by-play events (one row per game event) for every regular-season
+          and playoff game since 1996-97. Joins two NBA feeds with different shapes:
+          the legacy stats feed to early 2019-20, the live feed after.

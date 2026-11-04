@@ -2,9 +2,11 @@
 """
 NBA dataset ingestion script.
 
-Downloads the core and extended box-score files from the Kaggle NBA dataset
+Downloads the core and extended box-score files and the play-by-play from the
+Kaggle NBA dataset
 (https://www.kaggle.com/datasets/eoinamoore/historical-nba-data-and-player-box-scores)
-and loads each into DuckDB. The large PlaybyPlay.parquet is intentionally skipped.
+and loads each into DuckDB. PlayByPlay.parquet (~0.9 GB, 18.8M events, 1996-97
+onward) is the largest file and loads last.
 
 Data is written to the shared DuckLake (see lake.py). All NBA tables
 use the raw_nba schema to avoid collisions. Each file is a full-replace load, so
@@ -25,12 +27,12 @@ from dotenv import load_dotenv
 from lake import connect_lake, lake_settings
 
 from nba.ingestion.download import download_file
-from nba.ingestion.load import load_csv
+from nba.ingestion.load import load_file
 
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 
 
-# Kaggle file → raw_nba table. PlaybyPlay.parquet and League Schedules are omitted.
+# Kaggle file → raw_nba table. The League Schedule files are omitted.
 FILE_TABLE_MAP = {
     "Games.csv":                     "raw_nba_games",
     "PlayerStatistics.csv":          "raw_nba_player_statistics",
@@ -39,6 +41,7 @@ FILE_TABLE_MAP = {
     "TeamHistories.csv":             "raw_nba_team_histories",
     "PlayerStatisticsExtended.csv":  "raw_nba_player_statistics_extended",
     "TeamStatisticsExtended.csv":    "raw_nba_team_statistics_extended",
+    "PlayByPlay.parquet":            "raw_nba_play_by_play",
 }
 
 
@@ -53,7 +56,7 @@ def main():
         path = download_file(filename)
         if path is None:
             continue
-        load_csv(conn, path, table)
+        load_file(conn, path, table)
         loaded += 1
 
     conn.close()

@@ -1,6 +1,6 @@
 # NBA ingestion
 
-Batch ingestion of historical NBA box scores from the
+Batch ingestion of historical NBA box scores and play-by-play from the
 [Kaggle NBA dataset (eoinamoore)](https://www.kaggle.com/datasets/eoinamoore/historical-nba-data-and-player-box-scores).
 
 ## Source & auth
@@ -12,9 +12,10 @@ automatically (or falls back to `~/.kaggle/kaggle.json`).
 
 ## What it does
 
-`ingest_nba.py` downloads the **core + extended** box-score files one at a time and loads
-each into DuckDB via `read_csv_auto` as a full-replace table. The multi-GB
-`PlaybyPlay.parquet` and the League Schedule files are intentionally skipped. Re-running
+`ingest_nba.py` downloads the **core + extended** box-score files and the play-by-play one
+at a time and loads each into DuckDB as a full-replace table (`read_csv_auto` for the CSVs,
+`read_parquet` for `PlayByPlay.parquet`, ~0.9 GB and 18.8M events from 1996-97 on). The
+League Schedule files are intentionally skipped. Re-running
 rebuilds every table from the latest daily snapshot, so the script is idempotent.
 
 | Kaggle file | DuckDB table |
@@ -26,6 +27,7 @@ rebuilds every table from the latest daily snapshot, so the script is idempotent
 | `TeamHistories.csv` | `raw_nba.raw_nba_team_histories` |
 | `PlayerStatisticsExtended.csv` | `raw_nba.raw_nba_player_statistics_extended` |
 | `TeamStatisticsExtended.csv` | `raw_nba.raw_nba_team_statistics_extended` |
+| `PlayByPlay.parquet` | `raw_nba.raw_nba_play_by_play` |
 
 | Entry point | Destination | Task command |
 |---|---|---|

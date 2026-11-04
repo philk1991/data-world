@@ -26,6 +26,7 @@ _SOURCE_TO_ASSET: dict[str, AssetKey] = {
     "raw_nba_team_histories": AssetKey(["raw_nba_team_histories"]),
     "raw_nba_player_statistics_extended": AssetKey(["raw_nba_player_statistics_extended"]),
     "raw_nba_team_statistics_extended": AssetKey(["raw_nba_team_statistics_extended"]),
+    "raw_nba_play_by_play": AssetKey(["raw_nba_play_by_play"]),
 }
 
 
