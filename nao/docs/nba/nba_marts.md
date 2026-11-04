@@ -46,6 +46,15 @@ Split by `game_type` so you can compare regular-season vs playoff production —
 **filter `game_type = 'Regular Season'` for league-leader questions.** This is the
 season-grain counterpart to `nba_player_career_stats`.
 
+## nba_player_game_stats
+**Grain:** one row per (`person_id`, `game_id`), games played only (minutes
+recorded). The box score for each game with its context (date, season, game
+type, team, opponent, home/away, result, starter), `is_double_double` /
+`is_triple_double`, and advanced efficiency (usage, TS%, ratings, PIE) from
+1996-97 on. Its rows add up exactly to `nba_player_season_stats`, so use it for
+game logs, single-game highs, streaks and recent form, and the season mart for
+season totals.
+
 ## nba_team_season_summary
 **Grain:** one row per (`team_id`, `season_start_year`).
 Regular-season record: `wins`, `losses`, `home_wins`, `away_wins`, `win_pct`, and

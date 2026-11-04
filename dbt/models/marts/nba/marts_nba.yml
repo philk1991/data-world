@@ -513,7 +513,7 @@ models:
         tests:
           - not_null
       - name: usage_pct
-        description: Minutes-weighted usage rate — share of team plays used, 0-1.
+        description: "{{ doc('nba__usage_pct') }} Minutes-weighted across the career."
       - name: true_shooting_pct
         description: "{{ doc('nba__true_shooting_pct') }} Minutes-weighted across the player's career."
       - name: effective_field_goal_pct
@@ -648,11 +648,11 @@ models:
       - name: assists_per_game
         description: "{{ doc('nba__assists_per_game') }}"
       - name: field_goal_pct
-        description: Season field goal percentage (made / attempted), 0-1.
+        description: "{{ doc('nba__field_goal_pct') }} Over the season, counting made shots only in games where attempts were recorded."
       - name: three_point_pct
-        description: Season three point percentage (made / attempted), 0-1.
+        description: "{{ doc('nba__three_point_pct') }} Over the season, counting made shots only in games where attempts were recorded."
       - name: free_throw_pct
-        description: Season free throw percentage (made / attempted), 0-1.
+        description: "{{ doc('nba__free_throw_pct') }} Over the season, counting made shots only in games where attempts were recorded."
 
     config:
       meta:
@@ -666,6 +666,161 @@ models:
           correlates_with:
             - "nba_player_career_stats: career rollup of these same season rows"
             - "nba_team_dim: join on primary_team_id for the player's main team that season"
+  - name: nba_player_game_stats
+    description: >
+      One row per player per game played (minutes recorded), from 1946-47 to the
+      latest ingest: the traditional box score with game context (season, game
+      type, team, opponent, home/away, result, starter), plus advanced
+      efficiency (usage, true shooting, ratings, PIE) from 1996-97 on, null
+      before. Uses the same played-game filter as nba_player_season_stats, so a
+      player's rows for a season and game type add up to that mart's
+      games_played and totals. The game-grain counterpart to
+      nba_player_season_stats. Ordered by game date descending.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - person_id
+              - game_id
+    columns:
+      - name: person_id
+        description: "{{ doc('nba__person_id') }}"
+        tests:
+          - not_null
+      - name: game_id
+        description: "{{ doc('nba__game_id') }}"
+        tests:
+          - not_null
+      - name: first_name
+        description: "{{ doc('nba__first_name') }} From the bio table, falling back to the box score when the player has no bio record."
+      - name: last_name
+        description: "{{ doc('nba__last_name') }} From the bio table, falling back to the box score when the player has no bio record."
+      - name: game_date
+        description: "{{ doc('nba__game_date') }}"
+        tests:
+          - not_null
+      - name: season_start_year
+        description: "{{ doc('nba__season_start_year') }}"
+        tests:
+          - not_null
+      - name: season_label
+        description: "{{ doc('nba__season_label') }}"
+        tests:
+          - not_null
+      - name: game_type
+        description: "{{ doc('nba__game_type') }}"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - "Regular Season"
+                  - "Playoffs"
+                  - "Play-in Tournament"
+                  - "Preseason"
+                  - "All-Star Game"
+                  - "NBA Cup Final"
+      - name: player_team_id
+        description: "{{ doc('nba__player_team_id') }}"
+      - name: opponent_team_id
+        description: "{{ doc('nba__opponent_team_id') }}"
+      - name: is_home
+        description: "{{ doc('nba__is_home') }}"
+      - name: is_win
+        description: "{{ doc('nba__is_win') }}"
+      - name: is_starter
+        description: True when the player started the game (starting_position is set), false when they came off the bench.
+        tests:
+          - not_null
+      - name: starting_position
+        description: Position the player started at (G, F or C); null when they came off the bench.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["G", "F", "C"]
+      - name: minutes_played
+        description: "{{ doc('nba__minutes_played') }} Zero for some older games, where the box score records an appearance but no minutes."
+        tests:
+          - not_null
+      - name: points
+        description: "{{ doc('nba__points') }}"
+      - name: rebounds_offensive
+        description: Offensive rebounds; null before rebounds were split (1973-74).
+      - name: rebounds_defensive
+        description: Defensive rebounds; null before rebounds were split (1973-74).
+      - name: rebounds_total
+        description: Total rebounds.
+      - name: assists
+        description: Assists.
+      - name: steals
+        description: Steals; null before the league tracked them (1973-74).
+      - name: blocks
+        description: Blocks; null before the league tracked them (1973-74).
+      - name: turnovers
+        description: Turnovers; null before player turnovers were tracked (1977-78).
+      - name: fouls_personal
+        description: Personal fouls.
+      - name: field_goals_made
+        description: Field goals made.
+      - name: field_goals_attempted
+        description: Field goals attempted; null in older games where attempts were not recorded.
+      - name: field_goal_pct
+        description: "{{ doc('nba__field_goal_pct') }} In this game; null when there were no attempts or attempts were not recorded."
+      - name: three_pointers_made
+        description: Three pointers made. nba_player_season_stats only counts these in games where three_pointers_attempted is recorded.
+      - name: three_pointers_attempted
+        description: Three pointers attempted; null before the three-point line (1979-80) and where attempts were not recorded.
+      - name: three_point_pct
+        description: "{{ doc('nba__three_point_pct') }} In this game; null when there were no attempts or attempts were not recorded."
+      - name: free_throws_made
+        description: Free throws made.
+      - name: free_throws_attempted
+        description: Free throws attempted; null in older games where attempts were not recorded.
+      - name: free_throw_pct
+        description: "{{ doc('nba__free_throw_pct') }} In this game; null when there were no attempts or attempts were not recorded."
+      - name: plus_minus_points
+        description: Team points minus opponent points while the player was on the floor; null in older games where it was not recorded.
+      - name: usage_pct
+        description: "{{ doc('nba__usage_pct') }} Null before 1996-97."
+      - name: true_shooting_pct
+        description: "{{ doc('nba__true_shooting_pct') }} Null before 1996-97."
+      - name: effective_field_goal_pct
+        description: "{{ doc('nba__effective_field_goal_pct') }} Null before 1996-97."
+      - name: offensive_rating
+        description: "{{ doc('nba__offensive_rating') }} Null before 1996-97."
+      - name: defensive_rating
+        description: "{{ doc('nba__defensive_rating') }} Null before 1996-97."
+      - name: net_rating
+        description: "{{ doc('nba__net_rating') }} Null before 1996-97."
+      - name: assist_pct
+        description: "{{ doc('nba__assist_pct__player') }} Null before 1996-97."
+      - name: rebound_pct
+        description: "{{ doc('nba__rebound_pct') }} Null before 1996-97."
+      - name: player_impact_estimate
+        description: "{{ doc('nba__player_impact_estimate') }} Null before 1996-97."
+      - name: is_double_double
+        description: True when the player reached double figures in at least two of points, rebounds, assists, steals and blocks. Computed from the box score, so it covers every era (steals and blocks only count from 1973-74).
+        tests:
+          - not_null
+      - name: is_triple_double
+        description: True when the player reached double figures in at least three of points, rebounds, assists, steals and blocks. Computed from the box score, so it covers every era (steals and blocks only count from 1973-74).
+        tests:
+          - not_null
+    config:
+      meta:
+        grain: one row per (person_id, game_id)
+        purpose: Expose every player's box score for each game played, with game context and advanced efficiency, as the game-grain base for game logs, single-game records and streaks.
+        business_question: How did a player perform game by game, what are the best single-game performances, and how does form change across a season?
+        relationships:
+          decomposes_into:
+            - "stg_nba_player_statistics: one box score row per player per game (played games only)"
+            - "stg_nba_player_statistics_extended: advanced efficiency for the same player-game, 1996-97 on"
+            - "stg_nba_players: source of name"
+          correlates_with:
+            - "nba_player_season_stats: season and game-type rollup of these rows"
+            - "nba_game_results: join on game_id for the final score and venue"
+            - "nba_players_dim: join on person_id for age and physical profile"
+            - "nba_team_dim: join on player_team_id or opponent_team_id for readable names"
   - name: nba_team_head_to_head
     description: >
       All-time matchup record, one row per ordered (team_id, opponent_team_id)

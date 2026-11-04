@@ -97,9 +97,9 @@ models:
       - name: is_win
         description: "{{ doc('nba__is_win') }}"
       - name: minutes_played
-        description: Minutes played, parsed to a numeric value; null for DNP.
+        description: "{{ doc('nba__minutes_played') }} Parsed to a numeric value; null for DNP."
       - name: points
-        description: Points scored; null for players who did not play.
+        description: "{{ doc('nba__points') }} Null for players who did not play."
       - name: ingested_at
         description: "{{ doc('nba__ingested_at') }}"
         tests:

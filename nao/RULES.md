@@ -47,6 +47,15 @@ staging tables.
   `game_type`). Use for season-level questions and regular-season-vs-playoff
   splits. **Filter `game_type = 'Regular Season'`** for "led the league"-style
   questions unless playoffs are explicitly requested.
+- `nba_player_game_stats` — one row per (`person_id`, `game_id`) for every game a
+  player played: the box score (points, rebounds, assists, shooting, +/-) with
+  game context (`game_date`, `season_start_year`, `game_type`,
+  `player_team_id`, `opponent_team_id`, `is_home`, `is_win`, `is_starter`),
+  `is_double_double` / `is_triple_double`, and advanced efficiency (usage, TS%,
+  ratings, PIE; null before 1996-97). Use for game logs, single-game highs
+  ("most points in a game"), streaks, last-N-games form and splits by opponent
+  or home/away. Its rows add up exactly to `nba_player_season_stats`, so use the
+  season mart for season totals and averages.
 - `nba_team_season_summary` — one row per (`team_id`, `season_start_year`);
   regular-season record, home/away wins, scoring. Use for standings / best
   record questions.
@@ -114,6 +123,7 @@ for what a column means.
 - `lake.marts.nba_game_results`: game_id, game_date, game_datetime_est, game_type, season_start_year, is_neutral_site, home_team_id, home_team_name, away_team_id, away_team_name, home_score, away_score, point_margin, home_team_won, attendance, arena_name, home_field_goals_made, home_field_goals_attempted, home_three_pointers_made, home_rebounds_total, home_assists, home_turnovers, home_points_in_the_paint, away_field_goals_made, away_field_goals_attempted, away_three_pointers_made, away_rebounds_total, away_assists, away_turnovers, away_points_in_the_paint, ingested_at
 - `lake.marts.nba_player_advanced_career`: person_id, first_name, last_name, is_guard, is_forward, is_center, games_with_advanced, minutes_per_game, double_doubles, triple_doubles, usage_pct, true_shooting_pct, effective_field_goal_pct, offensive_rating, defensive_rating, net_rating, assist_pct, rebound_pct, player_impact_estimate
 - `lake.marts.nba_player_career_stats`: person_id, first_name, last_name, is_guard, is_forward, is_center, draft_year, height_inches, first_game_date, last_game_date, games_played, total_points, total_rebounds, total_assists, total_steals, total_blocks, total_turnovers, points_per_game, rebounds_per_game, assists_per_game, career_field_goal_pct, career_three_point_pct, career_free_throw_pct
+- `lake.marts.nba_player_game_stats`: person_id, game_id, first_name, last_name, game_date, season_start_year, season_label, game_type, player_team_id, opponent_team_id, is_home, is_win, is_starter, starting_position, minutes_played, points, rebounds_offensive, rebounds_defensive, rebounds_total, assists, steals, blocks, turnovers, fouls_personal, field_goals_made, field_goals_attempted, field_goal_pct, three_pointers_made, three_pointers_attempted, three_point_pct, free_throws_made, free_throws_attempted, free_throw_pct, plus_minus_points, usage_pct, true_shooting_pct, effective_field_goal_pct, offensive_rating, defensive_rating, net_rating, assist_pct, rebound_pct, player_impact_estimate, is_double_double, is_triple_double
 - `lake.marts.nba_player_season_stats`: person_id, first_name, last_name, season_start_year, season_label, game_type, primary_team_id, games_played, team_games_played, is_qualified, total_points, total_rebounds, total_assists, total_steals, total_blocks, total_turnovers, total_field_goals_made, total_field_goals_attempted, total_three_pointers_made, total_three_pointers_attempted, total_free_throws_made, total_free_throws_attempted, points_per_game, rebounds_per_game, assists_per_game, field_goal_pct, three_point_pct, free_throw_pct
 - `lake.marts.nba_players_dim`: person_id, first_name, last_name, player_name, has_bio_record, birth_date, height_inches, height_cm, height_feet_inches, body_weight_lbs, body_weight_kg, is_guard, is_forward, is_center, position, school, country, is_undrafted, draft_year, draft_round, draft_number, first_game_date, last_game_date, first_season_start_year, last_season_start_year, seasons_played, played_in_last_two_seasons, age_at_first_game, age_at_last_game
 - `lake.marts.nba_team_advanced_profile`: team_id, season_start_year, season_label, games_played, offensive_rating, defensive_rating, net_rating, pace, effective_field_goal_pct, true_shooting_pct, assist_pct, rebound_pct, turnover_pct, three_point_attempt_rate, points_in_paint_share, fast_break_points_share

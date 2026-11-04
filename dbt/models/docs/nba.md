@@ -212,6 +212,28 @@ Rebounds per game played.
 Assists per game played.
 {% enddocs %}
 
+{# ── Per-game box score values and shooting splits ─────────────────────── #}
+
+{% docs nba__minutes_played %}
+Minutes played in the game.
+{% enddocs %}
+
+{% docs nba__points %}
+Points scored in the game.
+{% enddocs %}
+
+{% docs nba__field_goal_pct %}
+Field goal percentage (made / attempted), 0-1.
+{% enddocs %}
+
+{% docs nba__three_point_pct %}
+Three point percentage (made / attempted), 0-1.
+{% enddocs %}
+
+{% docs nba__free_throw_pct %}
+Free throw percentage (made / attempted), 0-1.
+{% enddocs %}
+
 {# ── Advanced metrics (box scores from 1996-97) ────────────────────────── #}
 
 {% docs nba__offensive_rating %}
@@ -248,6 +270,10 @@ Share of available rebounds secured (for a player, while on the floor), 0-1.
 
 {% docs nba__assist_pct__player %}
 Share of teammates' made field goals the player assisted while on the floor, 0-1.
+{% enddocs %}
+
+{% docs nba__usage_pct %}
+Usage rate: share of the team's plays the player used while on the floor, 0-1.
 {% enddocs %}
 
 {% docs nba__assist_pct__team %}

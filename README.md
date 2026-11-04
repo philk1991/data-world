@@ -281,6 +281,8 @@ dbt-oss talks to DuckDB through an ADBC driver installed with `task dbt:driver`.
 | `nba_game_results` | `marts` | One row per game with both teams' box scores pivoted onto a home/away axis |
 | `nba_player_career_stats` | `marts` | One row per player, career-level box score totals and shooting splits |
 | `nba_player_season_stats` | `marts` | One row per (player, season, game_type) box score totals |
+| `nba_player_game_stats` | `marts` | One row per (player, game) played: box score, game context and advanced efficiency (~1996 on); adds up to the season mart |
+| `nba_players_dim` | `marts` | Conformed player dimension, one row per `person_id` with bio and span of games played |
 | `nba_player_advanced_career` | `marts` | One row per player, minutes-weighted advanced career efficiency (~1996 on) |
 | `nba_team_dim` | `marts` | Conformed franchise dimension, one row per `team_id` with relocation/rename history |
 | `nba_team_season_summary` | `marts` | One row per (team, season) win/loss record and scoring averages |
