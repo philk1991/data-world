@@ -38,6 +38,12 @@ models:
         +materialized: view
         +schema: staging_openf1
     marts:
+      # Write model and column descriptions into the lake as table/column comments,
+      # so readers that don't see dbt's manifest (nao's context, DBeaver) get them.
+      # Marts only: DuckLake can't comment on a view's columns, so staging can't.
+      +persist_docs:
+        relation: true
+        columns: true
       spotify:
         +materialized: table
         +schema: marts
