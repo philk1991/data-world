@@ -178,85 +178,92 @@ unit_tests:
         - {person_id: 3, game_type: Regular Season, primary_team_id: 30, games_played: 7, team_games_played: 10, is_qualified: true}
         - {person_id: 1, game_type: Playoffs, primary_team_id: 10, games_played: 2, team_games_played: 4, is_qualified: null}
 
-  - name: nba_player_advanced_career_weights_by_minutes
+  - name: nba_player_advanced_career_sums_before_dividing
     model: nba_player_advanced_career
     description: >
-      Asserts rate metrics are minutes-weighted (sum(metric * minutes) /
-      sum(minutes)), not a simple mean of games: 30 minutes at a 120 offensive
-      rating plus 10 at 80 is 110.0, where a simple mean would be 100.0. Also
-      covers regular season and playoff games combining, games dropped for zero
-      or null minutes, a null offensive_rating, or being preseason or All-Star
-      (none of their stats or double-doubles count), a null person_id, a player
-      whose only game is dropped getting no row, double/triple-double counts,
-      minutes_per_game, and a player missing from stg_nba_players keeping a row
-      with null bio.
+      Asserts box-score career rates re-divide summed numerators and
+      opportunities across stints (usage 30 + 10 plays over 100 + 100
+      opportunities is 0.2, not the 0.2 mean by luck: the stints differ in
+      size), that usage before 1977-78 is left out, that individual offensive
+      rating is total points produced over total individual possessions, and
+      that the NBA's on-court ratings are weighted by on-court possessions
+      (120 over 30 possessions and 80 over 10 is 110.0) with preseason games
+      excluded. A player missing from stg_nba_players keeps a row with null bio.
     given:
+      - input: ref('int_nba_player_stints')
+        rows:
+          - {person_id: 1, team_id: 10, season_start_year: 2010, game_type: Regular Season, games_played: 50, minutes_played: 1500,
+             usage_opportunity_numerator: 30, usage_opportunity: 100, assist_opportunity_numerator: 20, assist_opportunity: 100,
+             rebound_opportunity_numerator: 10, rebound_opportunity: 100, ts_points: 100, ts_field_goals_attempted: 80,
+             ts_free_throws_attempted: 25, field_goals_made: 40, field_goals_attempted: 80, three_pointers_made: 10,
+             points_produced: 200, individual_possessions: 160, individual_defensive_rating: 100, rating_player_possessions: 300}
+          - {person_id: 1, team_id: 20, season_start_year: 2011, game_type: Playoffs, games_played: 10, minutes_played: 500,
+             usage_opportunity_numerator: 10, usage_opportunity: 100, assist_opportunity_numerator: 10, assist_opportunity: 100,
+             rebound_opportunity_numerator: 30, rebound_opportunity: 100, ts_points: 0, ts_field_goals_attempted: 0,
+             ts_free_throws_attempted: 0, field_goals_made: 0, field_goals_attempted: 0, three_pointers_made: 0,
+             points_produced: 40, individual_possessions: 40, individual_defensive_rating: 110, rating_player_possessions: 100}
+          # 1975-76: usage opportunity predates the 1977-78 coverage start -> excluded from usage
+          - {person_id: 1, team_id: 10, season_start_year: 1975, game_type: Regular Season, games_played: 5, minutes_played: 100,
+             usage_opportunity_numerator: 99, usage_opportunity: 100}
+          - {person_id: 2, team_id: 30, season_start_year: 2010, game_type: Regular Season, games_played: 1, minutes_played: 30}
+      - input: ref('stg_nba_player_statistics_extended')
+        rows:
+          - {game_id: 1, person_id: 1, game_type: Regular Season, minutes_played: 30, possessions: 30, offensive_rating: 120,
+             defensive_rating: 100, player_impact_estimate: 0.15, is_double_double: true, is_triple_double: false}
+          - {game_id: 2, person_id: 1, game_type: Playoffs, minutes_played: 10, possessions: 10, offensive_rating: 80,
+             defensive_rating: 110, player_impact_estimate: 0.05, is_double_double: false, is_triple_double: false}
+          - {game_id: 3, person_id: 1, game_type: Preseason, minutes_played: 30, possessions: 30, offensive_rating: 200,
+             defensive_rating: 200, player_impact_estimate: 0.99, is_double_double: true, is_triple_double: true}
       - input: ref('stg_nba_players')
         rows:
           - {person_id: 1, first_name: Test, last_name: Player, is_guard: true, is_forward: false, is_center: false}
-      - input: ref('stg_nba_player_statistics_extended')
-        rows:
-          # player 1: two counted games, 30 and 10 minutes
-          - {game_id: 1, person_id: 1, game_type: Regular Season, minutes_played: 30, is_double_double: true, is_triple_double: false,
-             offensive_rating: 120, defensive_rating: 100, net_rating: 20, usage_percentage: 0.30, true_shooting_percentage: 0.60,
-             effective_field_goal_percentage: 0.55, assist_percentage: 0.25, rebound_percentage: 0.10, player_impact_estimate: 0.15}
-          - {game_id: 2, person_id: 1, game_type: Playoffs, minutes_played: 10, is_double_double: false, is_triple_double: false,
-             offensive_rating: 80, defensive_rating: 110, net_rating: -30, usage_percentage: 0.10, true_shooting_percentage: 0.40,
-             effective_field_goal_percentage: 0.35, assist_percentage: 0.05, rebound_percentage: 0.20, player_impact_estimate: 0.05}
-          # dropped: zero minutes, null minutes, null offensive_rating
-          - {game_id: 3, person_id: 1, game_type: Regular Season, minutes_played: 0, is_double_double: true, is_triple_double: true,
-             offensive_rating: 200, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
-             effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
-          - {game_id: 4, person_id: 1, game_type: Regular Season, minutes_played: null, is_double_double: true, is_triple_double: true,
-             offensive_rating: 200, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
-             effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
-          - {game_id: 5, person_id: 1, game_type: Regular Season, minutes_played: 20, is_double_double: true, is_triple_double: true,
-             offensive_rating: null, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
-             effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
-          # dropped: preseason and All-Star games
-          - {game_id: 6, person_id: 1, game_type: Preseason, minutes_played: 30, is_double_double: true, is_triple_double: true,
-             offensive_rating: 200, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
-             effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
-          - {game_id: 7, person_id: 1, game_type: All-Star Game, minutes_played: 30, is_double_double: true, is_triple_double: true,
-             offensive_rating: 200, defensive_rating: 200, net_rating: 200, usage_percentage: 0.99, true_shooting_percentage: 0.99,
-             effective_field_goal_percentage: 0.99, assist_percentage: 0.99, rebound_percentage: 0.99, player_impact_estimate: 0.99}
-          # player 2: not in stg_nba_players; one triple-double game
-          - {game_id: 1, person_id: 2, game_type: Regular Season, minutes_played: 36, is_double_double: true, is_triple_double: true,
-             offensive_rating: 115, defensive_rating: 105, net_rating: 10, usage_percentage: 0.25, true_shooting_percentage: 0.58,
-             effective_field_goal_percentage: 0.52, assist_percentage: 0.40, rebound_percentage: 0.15, player_impact_estimate: 0.20}
-          # player 3: only game has zero minutes -> no row
-          - {game_id: 2, person_id: 3, game_type: Regular Season, minutes_played: 0, is_double_double: false, is_triple_double: false, offensive_rating: 100}
-          # null person_id -> no row
-          - {game_id: 1, person_id: null, game_type: Regular Season, minutes_played: 30, is_double_double: false, is_triple_double: false, offensive_rating: 100}
     expect:
       rows:
-        # 40 minutes over 2 games
-        - {person_id: 1, first_name: Test, last_name: Player, is_guard: true, is_forward: false, is_center: false,
-           games_with_advanced: 2, minutes_per_game: 20.0, double_doubles: 1, triple_doubles: 0,
-           offensive_rating: 110.0, defensive_rating: 102.5, net_rating: 7.5, usage_pct: 0.25, true_shooting_pct: 0.55,
-           effective_field_goal_pct: 0.5, assist_pct: 0.2, rebound_pct: 0.125, player_impact_estimate: 0.125}
-        - {person_id: 2, first_name: null, last_name: null, is_guard: null, is_forward: null, is_center: null,
-           games_with_advanced: 1, minutes_per_game: 36.0, double_doubles: 1, triple_doubles: 1,
-           offensive_rating: 115.0, defensive_rating: 105.0, net_rating: 10.0, usage_pct: 0.25, true_shooting_pct: 0.58,
-           effective_field_goal_pct: 0.52, assist_pct: 0.4, rebound_pct: 0.15, player_impact_estimate: 0.2}
+        - {person_id: 1, first_name: Test, games_played: 65, games_with_advanced: 2, minutes_per_game: 32.3,
+           double_doubles: 1, triple_doubles: 0, usage_pct: 0.2, assist_pct: 0.15, rebound_pct: 0.2,
+           true_shooting_pct: 0.476, effective_field_goal_pct: 0.563,
+           offensive_rating: 110.0, defensive_rating: 102.5, net_rating: 7.5, player_impact_estimate: 0.125,
+           individual_offensive_rating: 120.0, individual_defensive_rating: 102.5}
+        - {person_id: 2, first_name: null, games_played: 1, games_with_advanced: 0, minutes_per_game: 30.0,
+           double_doubles: 0, triple_doubles: 0, offensive_rating: null}
 
-  - name: nba_player_advanced_career_skips_null_metric_minutes
-    model: nba_player_advanced_career
+  - name: nba_player_season_advanced_combines_stints
+    model: nba_player_season_advanced
     description: >
-      Asserts a metric missing from a game is weighted only over the minutes
-      where it was recorded. usage_percentage is null for some player-games
-      whose other advanced stats are present; those minutes must not dilute
-      usage_pct (0.30 over 30 recorded minutes stays 0.30, not 9 / 40 = 0.225).
+      A player traded mid-season has two stints. The season row adds their
+      sums and re-divides: usage (30 + 10) / (100 + 100) = 0.2, steal % 2 / 200
+      = 0.01, per-100 points 100 × 300 / 600 = 50.0; individual offensive
+      rating is 100 × (240) / (200) = 120.0; individual defensive rating
+      weights the stints by possessions ((100 × 300 + 110 × 100) / 400 = 102.5).
+      team_count, is_multi_team and primary_team_id (most games) are set, and
+      usage is null before 1977-78.
     given:
+      - input: ref('int_nba_player_stints')
+        rows:
+          - {person_id: 1, team_id: 10, season_start_year: 2010, game_type: Regular Season, games_played: 50, minutes_played: 1500,
+             points: 250, usage_opportunity_numerator: 30, usage_opportunity: 100, steal_opportunity_numerator: 1,
+             steal_opportunity: 100, player_possessions: 400, per_100_points: 200, per_100_points_possessions: 400,
+             points_produced: 200, individual_possessions: 160, individual_defensive_rating: 100,
+             rating_player_possessions: 300}
+          - {person_id: 1, team_id: 20, season_start_year: 2010, game_type: Regular Season, games_played: 20, minutes_played: 500,
+             points: 50, usage_opportunity_numerator: 10, usage_opportunity: 100, steal_opportunity_numerator: 1,
+             steal_opportunity: 100, player_possessions: 200, per_100_points: 100, per_100_points_possessions: 200,
+             points_produced: 40, individual_possessions: 40, individual_defensive_rating: 110,
+             rating_player_possessions: 100}
+          - {person_id: 2, team_id: 10, season_start_year: 1975, game_type: Regular Season, games_played: 10, minutes_played: 300,
+             usage_opportunity_numerator: 30, usage_opportunity: 100}
+      - input: ref('int_nba_team_games')
+        rows: []
       - input: ref('stg_nba_players')
         rows: []
-      - input: ref('stg_nba_player_statistics_extended')
-        rows:
-          - {game_id: 1, person_id: 1, game_type: Regular Season, minutes_played: 30, offensive_rating: 120, usage_percentage: 0.30}
-          - {game_id: 2, person_id: 1, game_type: Regular Season, minutes_played: 10, offensive_rating: 80, usage_percentage: null}
     expect:
       rows:
-        - {person_id: 1, games_with_advanced: 2, offensive_rating: 110.0, usage_pct: 0.30}
+        - {person_id: 1, season_start_year: 2010, primary_team_id: 10, team_count: 2, is_multi_team: true, games_played: 70,
+           total_minutes: 2000.0, total_points: 300, usage_pct: 0.2, steal_pct: 0.01, points_per_100: 50.0,
+           player_possessions: 600.0, individual_offensive_rating: 120.0, individual_defensive_rating: 102.5}
+        - {person_id: 2, season_start_year: 1975, primary_team_id: 10, team_count: 1, is_multi_team: false, games_played: 10,
+           total_minutes: 300.0, total_points: null, usage_pct: null, steal_pct: null, player_possessions: null,
+           points_per_100: null, individual_offensive_rating: null, individual_defensive_rating: null}
 
   - name: nba_team_head_to_head_records_each_side
     model: nba_team_head_to_head
@@ -433,3 +440,104 @@ unit_tests:
            total_points: 4, total_rebounds: 1, total_assists: 0, total_steals: null, total_blocks: null, total_turnovers: null,
            points_per_game: 4.0, rebounds_per_game: 1.0, assists_per_game: 0.0,
            career_field_goal_pct: 0.4, career_three_point_pct: null, career_free_throw_pct: null}
+
+  - name: nba_team_game_stats_four_factors_match_bbref_fixture
+    model: nba_team_game_stats
+    description: >
+      Brief section 10 fixture: the 2004-05 Phoenix Suns' season totals, loaded
+      as one row, reproduce Basketball-Reference's Four Factors on both ends
+      (eFG .534, TOV .124, ORB .275, FT rate .222; opponent eFG .478, TOV .120,
+      DRB .683, FT rate .176). Tests the formulas in macros/nba_metrics.sql,
+      not the pipeline.
+    given:
+      - input: ref('int_nba_team_games')
+        rows:
+          - {game_id: 1, team_id: 1, opponent_team_id: 2, season_start_year: 2004, game_type: Regular Season,
+             points: 9054, opp_points: 8471, team_minutes: 19780,
+             field_goals_made: 3351, field_goals_attempted: 7018, three_pointers_made: 796, free_throws_made: 1556,
+             free_throws_attempted: 2080, rebounds_offensive: 967, rebounds_defensive: 2652, turnovers: 1125,
+             opp_field_goals_made: 3328, opp_field_goals_attempted: 7485, opp_three_pointers_made: 494,
+             opp_free_throws_made: 1320, opp_free_throws_attempted: 1775, opp_rebounds_offensive: 1233,
+             opp_rebounds_defensive: 2550, opp_turnovers: 1131,
+             counts_source: team_box, has_full_box: true}
+    expect:
+      rows:
+        - {team_id: 1, effective_field_goal_pct: 0.534, turnover_pct: 0.124, offensive_rebound_pct: 0.275,
+           free_throw_rate: 0.222, opp_effective_field_goal_pct: 0.478, opp_turnover_pct: 0.120,
+           defensive_rebound_pct: 0.683, opp_free_throw_rate: 0.176}
+
+  - name: nba_team_game_stats_gates_coverage
+    model: nba_team_game_stats
+    description: >
+      Asserts possession metrics are null before 1973-74 even when the inputs
+      exist, the three-point attempt rate is null before 1979-80, and a missing
+      input nulls a metric rather than zero-filling it.
+    given:
+      - input: ref('int_nba_team_games')
+        rows:
+          # 1972-73: possessions exist upstream but predate the coverage start
+          - {game_id: 1, team_id: 1, season_start_year: 1972, game_type: Regular Season, points: 100, opp_points: 90,
+             team_minutes: 240, possessions: 100, field_goals_attempted: 90, three_pointers_attempted: 0,
+             counts_source: player_sum, has_full_box: true}
+          # 1985-86: turnovers missing -> turnover_pct null
+          - {game_id: 2, team_id: 1, season_start_year: 1985, game_type: Regular Season, points: 100, opp_points: 90,
+             team_minutes: 240, possessions: 100, field_goals_attempted: 90, free_throws_attempted: 20,
+             three_pointers_attempted: 9, turnovers: null, counts_source: team_box, has_full_box: false}
+    expect:
+      rows:
+        - {game_id: 1, possessions: null, offensive_rating: null, pace: null, three_point_attempt_rate: null}
+        - {game_id: 2, possessions: 100.0, offensive_rating: 100.0, pace: 100.0, three_point_attempt_rate: 0.1,
+           turnover_pct: null}
+
+  - name: int_nba_team_season_srs_solves_toy_league
+    model: int_nba_team_season_srs
+    description: >
+      Three teams whose margins are exactly consistent with ratings +10, 0 and
+      -10 (A beats B by 10, B beats C by 10, A beats C by 20): SRS must converge
+      to those ratings, MOV is 15 / 0 / -15 and SOS = SRS - MOV. Only
+      Regular Season games count.
+    given:
+      - input: ref('int_nba_team_games')
+        rows:
+          - {game_id: 1, team_id: 1, opponent_team_id: 2, season_start_year: 2020, game_type: Regular Season, points: 110, opp_points: 100}
+          - {game_id: 1, team_id: 2, opponent_team_id: 1, season_start_year: 2020, game_type: Regular Season, points: 100, opp_points: 110}
+          - {game_id: 2, team_id: 2, opponent_team_id: 3, season_start_year: 2020, game_type: Regular Season, points: 105, opp_points: 95}
+          - {game_id: 2, team_id: 3, opponent_team_id: 2, season_start_year: 2020, game_type: Regular Season, points: 95, opp_points: 105}
+          - {game_id: 3, team_id: 1, opponent_team_id: 3, season_start_year: 2020, game_type: Regular Season, points: 120, opp_points: 100}
+          - {game_id: 3, team_id: 3, opponent_team_id: 1, season_start_year: 2020, game_type: Regular Season, points: 100, opp_points: 120}
+          # playoff game -> ignored
+          - {game_id: 4, team_id: 3, opponent_team_id: 1, season_start_year: 2020, game_type: Playoffs, points: 150, opp_points: 50}
+          - {game_id: 4, team_id: 1, opponent_team_id: 3, season_start_year: 2020, game_type: Playoffs, points: 50, opp_points: 150}
+    expect:
+      rows:
+        - {season_start_year: 2020, team_id: 1, mov: 15.0, srs: 10.0, sos: -5.0, is_srs_converged: true}
+        - {season_start_year: 2020, team_id: 2, mov: 0.0, srs: 0.0, sos: 0.0, is_srs_converged: true}
+        - {season_start_year: 2020, team_id: 3, mov: -15.0, srs: -10.0, sos: 5.0, is_srs_converged: true}
+
+  - name: int_nba_team_games_falls_back_to_complete_player_sums
+    model: int_nba_team_games
+    description: >
+      Before 1983-84 the team box has scores only. Team 1's players are all
+      recorded and add up to its score, so its counts come from the player sum;
+      team 2 has a player with no field goal attempts recorded, so its FGA stays
+      null (never zero-filled) and counts_source is none. Three-pointers are 0
+      before 1979-80. The opponent columns pair the two sides.
+    given:
+      - input: ref('stg_nba_team_statistics')
+        rows:
+          - {game_id: 1, team_id: 1, opponent_team_id: 2, season_start_year: 1975, game_type: Regular Season,
+             team_score: 30, opponent_score: 20, minutes_played: 240}
+          - {game_id: 1, team_id: 2, opponent_team_id: 1, season_start_year: 1975, game_type: Regular Season,
+             team_score: 20, opponent_score: 30, minutes_played: 240}
+      - input: ref('int_nba_player_games')
+        rows:
+          - {game_id: 1, team_id: 1, person_id: 10, points: 20, minutes_played: 120, field_goals_made: 8, field_goals_attempted: 15}
+          - {game_id: 1, team_id: 1, person_id: 11, points: 10, minutes_played: 120, field_goals_made: 4, field_goals_attempted: 10}
+          - {game_id: 1, team_id: 2, person_id: 20, points: 12, minutes_played: 120, field_goals_made: 5, field_goals_attempted: 12}
+          - {game_id: 1, team_id: 2, person_id: 21, points: 8, minutes_played: 120, field_goals_made: 3, field_goals_attempted: null}
+    expect:
+      rows:
+        - {team_id: 1, counts_source: player_sum, field_goals_made: 12, field_goals_attempted: 25,
+           three_pointers_made: 0, opp_field_goals_attempted: null, team_minutes: 240, overtime_periods: 0}
+        - {team_id: 2, counts_source: none, field_goals_made: 8, field_goals_attempted: null,
+           three_pointers_made: 0, opp_field_goals_attempted: 25, team_minutes: 240, overtime_periods: 0}

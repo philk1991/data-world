@@ -1,6 +1,7 @@
 -- Staged traditional player box scores. One row per player per game.
 -- game_type and season_start_year are decoded from the game id (see macros/nba_game_id.sql).
--- numMinutes is stored as text in the raw data and cast to a numeric value here.
+-- numMinutes is text in the raw data, written as mm.ss in most games from
+-- 2024-25; nba_minutes parses it to decimal minutes (see macros/nba_minutes.sql).
 -- Box score stats the league did not record yet are zero-filled in the raw data;
 -- null_if_unrecorded turns them back into nulls (see the macro).
 WITH source AS (
@@ -31,7 +32,7 @@ SELECT
     win = 1 AS is_win,
     startingPosition AS starting_position,
     comment,
-    TRY_CAST(numMinutes AS DOUBLE) AS minutes_played,
+    {{ nba_minutes('numMinutes', 'gameId, home') }} AS minutes_played,
     points,
     {{ null_if_unrecorded('assists') }} AS assists,
     {{ null_if_unrecorded('blocks') }} AS blocks,

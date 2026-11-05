@@ -1,7 +1,8 @@
 -- Staged advanced player box scores (since ~1996). One row per player per game.
 -- game_type and season_start_year are decoded from the game id (see macros/nba_game_id.sql).
 -- Renames every raw metric to snake_case and casts flags to booleans; metric
--- values are passed through as-is.
+-- values are passed through as-is. numMinutes is parsed by nba_minutes (mm.ss
+-- from 2024-25; see macros/nba_minutes.sql).
 WITH source AS (
     SELECT *
     FROM
@@ -29,7 +30,7 @@ SELECT
     win = 1 AS is_win,
     startingPosition AS starting_position,
     comment,
-    TRY_CAST(numMinutes AS DOUBLE) AS minutes_played,
+    {{ nba_minutes('numMinutes', 'gameId, home') }} AS minutes_played,
     points,
     assists,
     reboundsTotal AS rebounds_total,

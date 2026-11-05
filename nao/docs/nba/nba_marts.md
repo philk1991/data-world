@@ -27,14 +27,38 @@ count. `first_game_date` / `last_game_date` bound the player's coverage.
 Career figures cover only games present in the dataset.
 
 ## nba_player_advanced_career
-**Grain:** one row per `person_id`.
-Minutes-weighted advanced career efficiency (`usage_pct`, `true_shooting_pct`,
-`offensive/defensive/net_rating`, `assist_pct`, `rebound_pct`,
-`player_impact_estimate`) plus `double_doubles` / `triple_doubles`. Sourced from
-the advanced box scores (~1996 onward), so earlier careers are absent. Counts
-competitive games only (Regular Season, Playoffs, Play-in Tournament, NBA Cup
-Final; preseason and All-Star games excluded). Rate metrics weight high-minute
-games more than cameos.
+**Grain:** one row per `person_id`, every era.
+Career efficiency over competitive games (Regular Season, Playoffs, Play-in
+Tournament, NBA Cup Final combined). Box-score rates recomputed from career
+totals: `usage_pct` (from 1977-78), `true_shooting_pct`,
+`effective_field_goal_pct`, `assist_pct` and `rebound_pct` (from 1964-65),
+`individual_offensive_rating` / `individual_defensive_rating` (Dean Oliver's,
+as on Basketball-Reference). The NBA's on-court `offensive_rating`,
+`defensive_rating`, `net_rating` and `player_impact_estimate` plus
+`double_doubles` / `triple_doubles` exist only from 1996-97
+(`games_with_advanced`), so they are null for older careers.
+
+## nba_player_season_advanced
+**Grain:** one row per (`person_id`, `season_start_year`, `game_type`).
+Box-score advanced metrics for a player's season, all rates 0-1: `true_shooting_pct`,
+`effective_field_goal_pct`, `three_point_attempt_rate`, `free_throw_rate`,
+`true_shooting_points_added`, `usage_pct`, `turnover_pct`, `assist_pct`,
+`offensive_rebound_pct`, `defensive_rebound_pct`, `rebound_pct`, `steal_pct`,
+`block_pct`; per-100 production (`points_per_100`, `rebounds_total_per_100`,
+`assists_per_100`, `steals_per_100`, `blocks_per_100`, `turnovers_per_100`);
+`game_score_per_game`; and `individual_offensive_rating` /
+`individual_defensive_rating`. A traded player's teams are combined into one row
+(`is_multi_team`, `team_count`, `primary_team_id`). **Filter `game_type =
+'Regular Season'` and set a `total_minutes` minimum** (500 for a full season)
+before ranking rates. Coverage: usage, turnover % and offensive rating from
+1977-78; steal/block/offensive-rebound %, per-100 and defensive rating from
+1973-74; assist and rebound % from 1964-65. Individual defensive rating mostly
+reflects the team's defence.
+
+## nba_player_stint_advanced
+**Grain:** one row per (`person_id`, `team_id`, `season_start_year`,
+`game_type`). The same metrics as `nba_player_season_advanced`, split by team
+for players traded mid-season. Use it for "how did X play for team Y".
 
 ## nba_player_season_stats
 **Grain:** one row per (`person_id`, `season_start_year`, `game_type`).
@@ -84,13 +108,49 @@ scoring (`points_for_per_game`, `points_against_per_game`,
 the readable season (e.g. "2023-24"). Best-record / standings questions live here.
 
 ## nba_team_advanced_profile
-**Grain:** one row per (`team_id`, `season_start_year`).
-Season advanced efficiency: `offensive_rating`, `defensive_rating`, `net_rating`,
-`pace`, four-factor (`effective_field_goal_pct`, `true_shooting_pct`,
-`assist_pct`, `rebound_pct`, `turnover_pct`) and shot profile
-(`three_point_attempt_rate`, `points_in_paint_share`, `fast_break_points_share`).
-Coverage starts ~1996. Same grain as `nba_team_season_summary` — pair them to
-explain *how* a team achieved its record.
+**Grain:** one row per (`team_id`, `season_start_year`, `game_type`) — game_type
+is Regular Season, Play-in Tournament, Playoffs or NBA Cup Final, so **filter
+`game_type = 'Regular Season'`** for normal season questions.
+Season efficiency computed from summed season counts: `offensive_rating`,
+`defensive_rating`, `net_rating`, `pace`, `possessions`; the Four Factors on
+offence (`effective_field_goal_pct`, `turnover_pct`, `offensive_rebound_pct`,
+`free_throw_rate`) and defence (`opp_effective_field_goal_pct`,
+`opp_turnover_pct`, `defensive_rebound_pct`, `opp_free_throw_rate`);
+`true_shooting_pct`, `assist_pct`, `rebound_pct`; shot profile
+(`three_point_attempt_rate`, `points_in_paint_share`, `fast_break_points_share`);
+record quality (`wins`, `losses`, `margin_of_victory`, `pythagorean_wins`,
+`luck_wins`); schedule-adjusted strength (`simple_rating_system`,
+`strength_of_schedule`, Regular Season only); and gaps to the league average
+(`relative_offensive_rating`, `relative_defensive_rating`, `relative_pace`,
+`relative_effective_field_goal_pct`, `relative_true_shooting_pct`).
+Covers every season from 1946-47, but ratings, pace and turnover/rebound shares
+start in 1973-74 (complete from 1983-84) and the three-point rate in 1979-80;
+`coverage_flag` ('full', 'partial', 'shooting_only', 'scores_only') says how
+complete a season is. Pair with `nba_team_season_summary` to explain *how* a
+team achieved its record. "Best team by SRS" / "luckiest team" live here.
+
+## nba_team_game_stats
+**Grain:** one row per (`game_id`, `team_id`), competitive games only.
+Both teams' box counts (opponent columns prefixed `opp_`), `possessions`,
+`pace`, `offensive_rating`, `defensive_rating`, `net_rating`, the eight Four
+Factors and style rates for a single game. Ratings from 1973-74. For a period,
+sum the counts and recompute — never average these rows' rates.
+
+## nba_league_season_baselines
+**Grain:** one row per (`season_start_year`, `game_type`).
+League totals (`lg_points`, `lg_field_goals_attempted`, ...) and league averages
+(`lg_pace`, `lg_offensive_rating`, `lg_points_per_possession`,
+`lg_true_shooting_pct`, `lg_effective_field_goal_pct`,
+`lg_three_point_attempt_rate`, `lg_free_throw_rate`, `lg_turnover_pct`,
+`lg_offensive_rebound_pct`, `lg_points_per_game`). Use for league-wide trends
+("how has pace changed since 1980").
+
+## nba_team_form
+**Grain:** one row per (`game_id`, `team_id`), 1973-74 on.
+A team's form going into a game, from earlier games only:
+`last_10_net_rating`, `last_20_net_rating`, `season_to_date_net_rating` (with
+`*_games` sample sizes) and the league's `league_to_date_offensive_rating` and
+`league_to_date_pace`. For "current form", take each team's latest `game_date`.
 
 ## nba_team_dim
 **Grain:** one row per `team_id`.

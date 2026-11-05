@@ -3,7 +3,8 @@
 -- null before). Uses the same played-game filter as nba_player_season_stats
 -- (minutes_played not null), so summing a player's rows for a season and game
 -- type gives that mart's games_played and totals. Shooting percentages are only
--- set when attempts were recorded.
+-- set when attempts were recorded. game_score is Hollinger's Game Score
+-- (macros/nba_metrics.sql), null where any of its inputs was not recorded.
 WITH box_scores AS (
     SELECT *
     FROM
@@ -71,6 +72,15 @@ enriched AS (
         b.free_throws_attempted,
         ROUND(b.free_throws_made / NULLIF(b.free_throws_attempted, 0), 3) AS free_throw_pct,
         b.plus_minus_points,
+        ROUND(
+            {{
+                nba_game_score(
+                    'b.points', 'b.field_goals_made', 'b.field_goals_attempted', 'b.free_throws_made',
+                    'b.free_throws_attempted', 'b.rebounds_offensive', 'b.rebounds_defensive', 'b.steals',
+                    'b.assists', 'b.blocks', 'b.fouls_personal', 'b.turnovers'
+                )
+            }}, 1
+        ) AS game_score,
         -- Categories in double figures among points, rebounds, assists, steals and blocks.
         (b.points >= 10)::INTEGER
         + (b.rebounds_total >= 10)::INTEGER

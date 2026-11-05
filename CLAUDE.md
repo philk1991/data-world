@@ -66,7 +66,7 @@ dbt runs on **dbt-oss 2.0.8** (dbt v2, Apache-2.0 — not Fusion, and not dbt-co
 - Marts have `+persist_docs` (relation and columns), so model and column descriptions are written into the lake as table/column comments, which nao and DBeaver read. Staging can't: DuckLake rejects column comments on views, and a project-wide setting failed every staging model.
 - There's no static analysis, so unit-test fixtures for `TIMESTAMPTZ` columns must be `format: sql` with explicit `::timestamptz` casts (see `models/marts/payments/unit_tests_payments.yml`).
 
-Models follow a two-layer structure: `staging/` (views, light cleaning) → `marts/` (tables, analysis-ready). Each data source gets its own subdirectory under both layers.
+Models follow a two-layer structure: `staging/` (views, light cleaning) → `marts/` (tables, analysis-ready). Each data source gets its own subdirectory under both layers. NBA also has `intermediate/nba/` (tables in `intermediate_nba`): `int_nba_team_games` pairs each team-game with its opponent and fills pre-1983-84 counts from player sums, the base for every team metric. NBA metric formulas are defined once in `dbt/macros/nba_metrics.sql` (versioned by the `nba_metrics_version` var); decisions and coverage are in `plans/nba-advanced-metrics-decision-log.md`.
 
 `dbt/macros/generate_schema_name.sql` overrides the default dbt behaviour so `+schema` values in `dbt_project.yml` are used verbatim — schemas land exactly as named, without a `dev_` or target prefix.
 

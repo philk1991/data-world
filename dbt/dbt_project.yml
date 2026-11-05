@@ -37,6 +37,12 @@ models:
       openf1:
         +materialized: view
         +schema: staging_openf1
+    intermediate:
+      # Tables, not views: the team-game opponent self-join and player sums are
+      # read by several marts.
+      nba:
+        +materialized: table
+        +schema: intermediate_nba
     marts:
       # Write model and column descriptions into the lake as table/column comments,
       # so readers that don't see dbt's manifest (nao's context, DBeaver) get them.
@@ -64,6 +70,9 @@ vars:
   # Bucket size (minutes) for payments_by_minute. 1 = finest/realtime, 5 = coarser
   # + faster dashboard. Run payments_by_minute with --full-refresh after changing.
   payments_bucket_minutes: 1
+  # Version of the NBA metric formulas in macros/nba_metrics.sql, surfaced as
+  # formula_version on every NBA metric mart. Bump it when a formula changes.
+  nba_metrics_version: v1
 flags:
   require_generic_test_arguments_property: true
   use_catalogs_v2: true

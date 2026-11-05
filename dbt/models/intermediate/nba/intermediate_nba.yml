@@ -1,0 +1,199 @@
+version: 2
+
+models:
+  - name: int_nba_player_games
+    description: >
+      One row per player per competitive game played (Regular Season, Play-in
+      Tournament, Playoffs, NBA Cup Final), with the player's team resolved:
+      player_team_id is null in the raw data for all of 2021-22 and a few
+      thousand rows a season since 2003, so the team falls back to the game's
+      home or away team by is_home. Minutes are null for games whose minutes
+      sum to 0 (most games before 1964-65).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - game_id
+              - person_id
+    columns:
+      - name: game_id
+        description: "{{ doc('nba__game_id') }}"
+        tests:
+          - not_null
+      - name: person_id
+        description: "{{ doc('nba__person_id') }}"
+        tests:
+          - not_null
+      - name: team_id
+        description: "{{ doc('nba__team_id') }} The player's team, from player_team_id or else the game's home/away team."
+        tests:
+          - not_null
+      - name: is_team_inferred
+        description: True when the raw player_team_id was null and team_id came from the game's home/away team.
+        tests:
+          - not_null
+      - name: minutes_played
+        description: "{{ doc('nba__minutes_played') }} Null where the game's minutes sum to 0 (not recorded)."
+
+  - name: int_nba_team_games
+    description: >
+      One row per team per competitive game with the team's and the opponent's
+      box counts side by side (opponent columns prefixed opp_), overtime
+      periods and box-estimated possessions; the foundation for every team
+      metric. Counts come from the team box score, falling back before 1983-84
+      to the sum of the team's player rows when that sum is complete (player
+      points add up to the team score and no player who played lacks the
+      count); otherwise null, never zero-filled. Three-pointers are 0 before
+      1979-80.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - game_id
+              - team_id
+    columns:
+      - name: game_id
+        description: "{{ doc('nba__game_id') }}"
+        tests:
+          - not_null
+      - name: team_id
+        description: "{{ doc('nba__team_id') }}"
+        tests:
+          - not_null
+      - name: opponent_team_id
+        description: "{{ doc('nba__opponent_team_id') }}"
+        tests:
+          - not_null
+      - name: season_start_year
+        description: "{{ doc('nba__season_start_year') }}"
+        tests:
+          - not_null
+      - name: game_type
+        description: "{{ doc('nba__game_type') }}"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["Regular Season", "Play-in Tournament", "Playoffs", "NBA Cup Final"]
+      - name: team_minutes
+        description: "{{ doc('nba__team_minutes') }}"
+      - name: counts_source
+        description: "{{ doc('nba__counts_source') }}"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["team_box", "player_sum", "none"]
+      - name: has_full_box
+        description: "{{ doc('nba__has_full_box') }}"
+        tests:
+          - not_null
+      - name: possessions
+        description: "{{ doc('nba__possessions') }} Not gated by season here; marts null it before 1973-74."
+
+  - name: int_nba_team_season_srs
+    description: >
+      One row per team per regular season: Simple Rating System (SRS) and
+      strength of schedule (SOS), Basketball-Reference's definition, solved by
+      iteration from SRS = MOV until no team moves by 1e-6 (or 500 iterations),
+      re-centring on a games-weighted league mean of 0 each step. Regular season
+      only: playoff and play-in schedules don't converge.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - season_start_year
+              - team_id
+    columns:
+      - name: season_start_year
+        description: "{{ doc('nba__season_start_year') }}"
+        tests:
+          - not_null
+      - name: team_id
+        description: "{{ doc('nba__team_id') }}"
+        tests:
+          - not_null
+      - name: mov
+        description: Average margin of victory, points per game.
+        tests:
+          - not_null
+      - name: srs
+        description: Simple Rating System, points per game above an average team on a neutral schedule.
+        tests:
+          - not_null
+      - name: sos
+        description: Strength of schedule, SRS minus MOV.
+      - name: srs_iterations
+        description: Iterations the season's solve took.
+      - name: is_srs_converged
+        description: True when the largest change in the final iteration was below 1e-6.
+        tests:
+          - accepted_values:
+              arguments:
+                values: [true]
+
+  - name: int_nba_player_game_context
+    description: >
+      One row per player per competitive game with the team's and opponent's
+      counts for that game and the per-game opportunity denominators every
+      team-context player rate is built from (usage, assist, rebound, steal and
+      block opportunities, on-floor possessions). A rate over any period is
+      SUM(numerator) / SUM(opportunity). team_player_minutes is the team's
+      summed player minutes, so on-court shares sum to 5 even where minutes are
+      truncated.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - game_id
+              - person_id
+    columns:
+      - name: game_id
+        description: "{{ doc('nba__game_id') }}"
+        tests:
+          - not_null
+      - name: person_id
+        description: "{{ doc('nba__person_id') }}"
+        tests:
+          - not_null
+      - name: on_court_share
+        description: MP / (team player-minutes / 5), the share of the team's five floor spots the player filled.
+      - name: player_possessions
+        description: "{{ doc('nba__player_possessions') }}"
+      - name: game_score
+        description: "{{ doc('nba__game_score') }}"
+
+  - name: int_nba_player_stints
+    description: >
+      One row per player per team per season per game type, holding the sums
+      the player metric marts divide (numerators and opportunities summed over
+      the same games), and Dean Oliver's points produced, individual
+      possessions and individual defensive rating computed from stint totals:
+      the player's, team's and opponent's totals (p_, t_, o_) over the games
+      the player played that have every input (rating_games).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - person_id
+              - team_id
+              - season_start_year
+              - game_type
+    columns:
+      - name: person_id
+        description: "{{ doc('nba__person_id') }}"
+        tests:
+          - not_null
+      - name: team_id
+        description: "{{ doc('nba__team_id') }}"
+        tests:
+          - not_null
+      - name: rating_games
+        description: "{{ doc('nba__rating_games') }}"
+      - name: points_produced
+        description: "{{ doc('nba__points_produced') }}"
+      - name: individual_possessions
+        description: "{{ doc('nba__individual_possessions') }}"
+      - name: individual_defensive_rating
+        description: "{{ doc('nba__individual_defensive_rating') }}"
+
