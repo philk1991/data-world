@@ -23,6 +23,13 @@ staging tables.
   `raw_*` or `stg_*` tables; everything needed is in `lake.marts.nba_*`.
 - Percentage columns (`*_pct`, ratings, shares) are stored as 0–1 fractions
   unless the column name says otherwise. Multiply by 100 only when presenting.
+  Columns ending `_vs_league` are differences of two fractions: 0.057 means
+  5.7 percentage points better than the league, not 57% better.
+- **Charts: call the `display_chart` tool** with the `query_id` that
+  `execute_sql` returned. Never write chart markup such as `<chart ... />` or
+  `<display_chart ... />` in your answer text: those tags only work inside
+  stories, and in a chat answer they render as nothing. Chart a result with one
+  row per x-axis value, so filter the query first (e.g. one `game_type`).
 - Many advanced/box-score columns are `NULL` for older games (stats were not
   recorded pre-modern era, and advanced metrics only start ~1996). Filter out
   NULLs when ranking, and mention the coverage caveat when it matters.
@@ -65,7 +72,9 @@ staging tables.
   "best corner-three shooter", "who shoots the most mid-range" and league
   shot-mix trends (for those, select DISTINCT `season_label`, `shot_zone`,
   `league_share_of_attempts`). **Set a minimum `field_goals_attempted`** (e.g.
-  100 for a regular season) before ranking by percentage.
+  100 for a regular season) before ranking by percentage. **Filter
+  `game_type = 'Regular Season'`** unless playoffs are asked for: without it a
+  player-season returns one row per zone for every game type.
 - `nba_player_clutch_stats` — one row per (`person_id`, `season_start_year`,
   `game_type`), 1996-97 on. Clutch time = the last 5 minutes of the 4th quarter
   or overtime with the score within 5. Clutch points, shooting splits,
@@ -73,7 +82,8 @@ staging tables.
   `true_shooting_pct`, rebounds, turnovers and `clutch_go_ahead_field_goals`.
   Use for "best clutch scorer", "most go-ahead shots", "who shoots better in
   the clutch". No assists, steals or blocks. **Set a minimum
-  `clutch_field_goals_attempted`** (e.g. 30) before ranking by percentage.
+  `clutch_field_goals_attempted`** (e.g. 30) before ranking by percentage, and
+  **filter `game_type = 'Regular Season'`** unless playoffs are asked for.
 - `nba_team_season_summary` — one row per (`team_id`, `season_start_year`);
   regular-season record, home/away wins, scoring. Use for standings / best
   record questions.
