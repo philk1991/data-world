@@ -6,7 +6,10 @@
 -- numerator or any input is null, so the two sums always cover the same games.
 -- team_player_minutes is the team's summed player minutes for the game: player
 -- minutes are truncated to whole minutes before 2024-25, so using the same
--- source on both sides keeps the five floor shares summing to 5.
+-- source on both sides keeps the five floor shares summing to 5. Shares (and
+-- every opportunity built on them) are null where the recorded player minutes
+-- cover less than 95% of the game (team_minutes), as in some 1951-84 games that
+-- record minutes for only part of the roster.
 WITH player_games AS (
     SELECT *
     FROM
@@ -83,7 +86,12 @@ joined AS (
         t.opp_rebounds_total,
         t.opp_turnovers,
         CASE WHEN t.has_full_box AND t.season_start_year >= 1973 THEN t.possessions END AS team_possessions,
-        {{ nba_on_court_share('p.minutes_played', 'p.team_player_minutes') }} AS on_court_share
+        -- Only where the players' recorded minutes cover the game: some 1951-84 box
+        -- scores record minutes for part of the roster, which would inflate shares.
+        CASE
+            WHEN p.team_player_minutes >= 0.95 * t.team_minutes
+                THEN {{ nba_on_court_share('p.minutes_played', 'p.team_player_minutes') }}
+        END AS on_court_share
     FROM
         with_team_minutes p
     LEFT JOIN

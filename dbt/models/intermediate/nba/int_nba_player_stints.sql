@@ -49,6 +49,7 @@ flagged AS (
         season_start_year >= 1973
         AND team_possessions IS NOT NULL
         AND COALESCE(minutes_played, 0) > 0
+        AND on_court_share IS NOT NULL
         {% for stat, cols in oliver.items() %}
         {% for col in cols %}
         {% if col %}

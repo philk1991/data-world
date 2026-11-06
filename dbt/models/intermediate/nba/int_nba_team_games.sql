@@ -3,6 +3,21 @@
     'free_throws_made', 'free_throws_attempted', 'rebounds_offensive', 'rebounds_defensive',
     'rebounds_total', 'assists', 'steals', 'blocks', 'turnovers', 'fouls_personal'
 ] %}
+{# Shooting pairs with more makes than attempts are impossible: null both. #}
+{% macro consistent_shooting() -%}
+* REPLACE (
+    CASE WHEN field_goals_made > field_goals_attempted THEN NULL ELSE field_goals_made END AS field_goals_made,
+    CASE WHEN field_goals_made > field_goals_attempted THEN NULL ELSE field_goals_attempted END
+        AS field_goals_attempted,
+    CASE WHEN three_pointers_made > three_pointers_attempted THEN NULL ELSE three_pointers_made END
+        AS three_pointers_made,
+    CASE WHEN three_pointers_made > three_pointers_attempted THEN NULL ELSE three_pointers_attempted END
+        AS three_pointers_attempted,
+    CASE WHEN free_throws_made > free_throws_attempted THEN NULL ELSE free_throws_made END AS free_throws_made,
+    CASE WHEN free_throws_made > free_throws_attempted THEN NULL ELSE free_throws_attempted END
+        AS free_throws_attempted
+)
+{%- endmacro %}
 {# A count summed from the team's player rows, kept only when the sum is complete. #}
 {% macro player_sum(c) -%}
 CASE WHEN p.{{ c }}_rows = p.players AND p.points = t.team_score THEN p.{{ c }} END
@@ -22,12 +37,17 @@ CASE WHEN p.{{ c }}_rows = p.players AND p.points = t.team_score THEN p.{{ c }} 
 -- Total rebounds are offensive + defensive wherever both resolve (from either
 -- source): the 1984-85 team box has totals but no split, and its totals add ~6
 -- team rebounds a game that the player-summed split leaves out.
+-- A shooting pair with more makes than attempts is impossible and is nulled:
+-- first in the team box (a few 1959-62 box scores record only part of the
+-- attempts), so it can fall back to the player sum, then again after the
+-- fallback (some early player rows are inconsistent too). counts_source becomes
+-- none when the field goal pair is dropped.
 -- team_minutes is the team box's player-minutes (240 a regulation game, +25 per
 -- overtime). Where the team box records 0 (before 1964-65, and a few current
 -- games) it falls back to the players' summed minutes rounded to 240 + 25 per
 -- overtime (player minutes are truncated to whole minutes, so they sum to ~235);
 -- null when neither exists.
-WITH team_box AS (
+WITH team_box_source AS (
     SELECT *
     FROM
         {{ ref('stg_nba_team_statistics') }}
@@ -40,6 +60,13 @@ player_games AS (
 ),
 
 -- Transform
+team_box AS (
+    SELECT
+        {{ consistent_shooting() }}
+    FROM
+        team_box_source
+),
+
 player_sums AS (
     SELECT
         game_id,
@@ -106,6 +133,24 @@ team_side AS (
         t.game_type IN ('Regular Season', 'Play-in Tournament', 'Playoffs', 'NBA Cup Final')
 ),
 
+checked AS (
+    SELECT
+        {{ consistent_shooting() }}
+    FROM
+        team_side
+),
+
+resolved AS (
+    SELECT
+        * REPLACE (
+            CASE WHEN field_goals_attempted IS NULL THEN 'none' ELSE counts_source END AS counts_source,
+            -- A handful of 1953-83 games record more assists than made field goals.
+            CASE WHEN assists > field_goals_made THEN NULL ELSE assists END AS assists
+        )
+    FROM
+        checked
+),
+
 paired AS (
     SELECT
         t.*,
@@ -115,16 +160,17 @@ paired AS (
         o.team_minutes AS opp_team_minutes,
         o.counts_source AS opp_counts_source
     FROM
-        team_side t
+        resolved t
     LEFT JOIN
-        team_side o
+        resolved o
         ON
             t.game_id = o.game_id
             AND t.opponent_team_id = o.team_id
 )
 
+-- AM04 is suppressed: SQLFluff can't count columns through the * REPLACE stages.
 SELECT
-    *,
+    *,  -- noqa: AM04
     -- GREATEST skips nulls, so guard the null explicitly.
     CASE WHEN team_minutes IS NOT NULL THEN ROUND(GREATEST(team_minutes - 240, 0) / 25) END AS overtime_periods,
     team_minutes IS NOT NULL

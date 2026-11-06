@@ -541,3 +541,32 @@ unit_tests:
            three_pointers_made: 0, opp_field_goals_attempted: null, team_minutes: 240, overtime_periods: 0}
         - {team_id: 2, counts_source: none, field_goals_made: 8, field_goals_attempted: null,
            three_pointers_made: 0, opp_field_goals_attempted: 25, team_minutes: 240, overtime_periods: 0}
+
+  - name: int_nba_team_games_drops_impossible_team_shooting
+    model: int_nba_team_games
+    description: >
+      A team box score with more field goals made than attempted (as in a few
+      1959-62 games that record only part of the attempts) is treated as
+      unrecorded: team 1's pair falls back to its complete player sum, while
+      team 2, whose player rows are incomplete, stays null. Free throws, which
+      are consistent, are kept from the team box.
+    given:
+      - input: ref('stg_nba_team_statistics')
+        rows:
+          - {game_id: 1, team_id: 1, opponent_team_id: 2, season_start_year: 1960, game_type: Regular Season,
+             team_score: 30, opponent_score: 20, minutes_played: 240, field_goals_made: 12, field_goals_attempted: 8,
+             free_throws_made: 6, free_throws_attempted: 9}
+          - {game_id: 1, team_id: 2, opponent_team_id: 1, season_start_year: 1960, game_type: Regular Season,
+             team_score: 20, opponent_score: 30, minutes_played: 240, field_goals_made: 9, field_goals_attempted: 4}
+      - input: ref('int_nba_player_games')
+        rows:
+          - {game_id: 1, team_id: 1, person_id: 10, points: 30, minutes_played: 240, field_goals_made: 12, field_goals_attempted: 25}
+          - {game_id: 1, team_id: 2, person_id: 20, points: 12, minutes_played: 120, field_goals_made: 5, field_goals_attempted: 12}
+          - {game_id: 1, team_id: 2, person_id: 21, points: 8, minutes_played: 120, field_goals_made: 4, field_goals_attempted: null}
+    expect:
+      rows:
+        - {team_id: 1, counts_source: player_sum, field_goals_made: 12, field_goals_attempted: 25,
+           free_throws_made: 6, free_throws_attempted: 9}
+        - {team_id: 2, counts_source: none, field_goals_made: 9, field_goals_attempted: null,
+           free_throws_made: null, free_throws_attempted: null}
+
