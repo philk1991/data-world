@@ -1,0 +1,1121 @@
+<title>NBA Metrics Field Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a scorebook-style reference — sticky contents rail on wide screens, one reading column, wide
+   diagrams and tables scroll inside their own frames. Team things are court-blue, player things are hardwood-amber. */
+:root {
+  --paper: #f4f6f9;
+  --surface: #ffffff;
+  --sunk: #eaeef4;
+  --ink: #131a25;
+  --muted: #586374;
+  --line: #d6dce5;
+  --accent: #2b49d2;      /* team / league */
+  --accent-soft: #e3e8fb;
+  --amber: #a7600d;       /* player */
+  --amber-soft: #f7ead8;
+  --good: #1d7548;
+  --good-soft: #def2e6;
+  --warn: #9a5800;
+  --warn-soft: #fbecd2;
+  --bad: #b02236;
+  --bad-soft: #f9e0e4;
+  --hatch: #b8c2d2;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e131a; --surface: #151c26; --sunk: #1b2431; --ink: #e5e9f0; --muted: #97a2b2; --line: #2a3442;
+    --accent: #8098ff; --accent-soft: #1e2850; --amber: #e3a250; --amber-soft: #3a2a14;
+    --good: #52c58d; --good-soft: #15301f; --warn: #eaa846; --warn-soft: #36270f; --bad: #f27888; --bad-soft: #3a1a20;
+    --hatch: #3d4a5e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e131a; --surface: #151c26; --sunk: #1b2431; --ink: #e5e9f0; --muted: #97a2b2; --line: #2a3442;
+  --accent: #8098ff; --accent-soft: #1e2850; --amber: #e3a250; --amber-soft: #3a2a14;
+  --good: #52c58d; --good-soft: #15301f; --warn: #eaa846; --warn-soft: #36270f; --bad: #f27888; --bad-soft: #3a1a20;
+  --hatch: #3d4a5e; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.shell { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 48px; padding-block: 40px 96px; }
+@media (max-width: 960px) { .shell { grid-template-columns: minmax(0, 1fr); gap: 0; padding-block: 24px 64px; } .rail { display: none; } }
+
+.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 14px; }
+.rail .label { font-family: var(--display); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: s; }
+.rail a { display: block; padding: 4px 10px; border-left: 2px solid var(--line); color: var(--muted); text-decoration: none; }
+.rail a:hover, .rail a:focus-visible { color: var(--ink); border-left-color: var(--accent); outline: none; }
+
+main { min-width: 0; }
+section { padding-block: 36px; border-top: 1px solid var(--line); }
+section:first-of-type { border-top: 0; padding-top: 0; }
+
+h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: .01em; text-wrap: balance; line-height: 1.05; margin: 0; }
+h1 { font-size: clamp(44px, 7vw, 76px); text-transform: uppercase; font-weight: 700; letter-spacing: .005em; }
+h2 { font-size: clamp(30px, 4vw, 40px); text-transform: uppercase; margin-bottom: 8px; }
+h3 { font-size: 23px; margin-bottom: 6px; }
+.kicker { font-family: var(--display); text-transform: uppercase; letter-spacing: .12em; font-size: 14px; font-weight: 600; color: var(--accent); }
+p { margin: 0 0 14px; max-width: 68ch; }
+.lede { font-size: 18px; color: var(--ink); max-width: 64ch; }
+.muted { color: var(--muted); }
+a { color: var(--accent); }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+:not(pre) > code { background: var(--sunk); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+strong { font-weight: 600; }
+
+/* Header */
+.masthead { display: grid; gap: 18px; padding-bottom: 28px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 18px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.meta span b { color: var(--ink); font-weight: 500; }
+.tally { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-top: 8px; }
+.tally div { background: var(--surface); padding: 14px 16px; }
+.tally b { display: block; font-family: var(--display); font-size: 34px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.tally span { font-size: 13px; color: var(--muted); }
+@media (max-width: 640px) { .tally { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Chips */
+.chip { display: inline-flex; align-items: center; gap: 4px; font-family: var(--display); text-transform: uppercase; letter-spacing: .06em; font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 99px; white-space: nowrap; }
+.c-new { background: var(--good-soft); color: var(--good); }
+.c-rebuilt { background: var(--warn-soft); color: var(--warn); }
+.c-mod { background: var(--accent-soft); color: var(--accent); }
+.c-exist { background: var(--sunk); color: var(--muted); }
+.c-team { background: var(--accent-soft); color: var(--accent); }
+.c-player { background: var(--amber-soft); color: var(--amber); }
+.c-league { background: var(--sunk); color: var(--ink); }
+.c-bad { background: var(--bad-soft); color: var(--bad); }
+
+/* Lineage */
+.frame { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.lineage { position: relative; min-width: 1040px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 30px; padding: 18px 20px 22px; }
+.lineage svg.edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.lane { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
+.lane h4 { margin: 0 0 4px; font-family: var(--display); text-transform: uppercase; letter-spacing: .1em; font-size: 13px; font-weight: 600; color: var(--muted); }
+.lane h4 small { display: block; font-family: var(--mono); text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 11px; }
+.node { text-align: left; font: inherit; font-family: var(--mono); font-size: 12px; line-height: 1.3; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 5px; padding: 7px 8px; cursor: pointer; display: grid; gap: 4px; overflow-wrap: anywhere; transition: opacity .15s, border-color .15s; }
+.node:hover { border-color: var(--muted); }
+.node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.node .chip { justify-self: start; font-size: 11px; padding: 0 6px; }
+.node.reader { font-family: var(--body); cursor: default; }
+.node[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: var(--surface); }
+.lineage.focus .node:not(.lit) { opacity: .32; }
+.edges path { fill: none; stroke: var(--hatch); stroke-width: 1.2; transition: stroke .15s, opacity .15s; }
+.lineage.focus .edges path { opacity: .18; }
+.lineage.focus .edges path.lit { opacity: 1; stroke: var(--accent); stroke-width: 1.8; }
+
+.detail { margin-top: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 18px 20px; display: grid; gap: 14px; }
+.detail header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.detail header h3 { font-family: var(--mono); font-size: 18px; font-weight: 500; margin: 0; overflow-wrap: anywhere; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px 20px; margin: 0; }
+.facts dt { font-family: var(--display); text-transform: uppercase; letter-spacing: .08em; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.facts dd { margin: 0; font-size: 14px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.detail ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; max-width: 80ch; }
+.links { display: flex; flex-wrap: wrap; gap: 6px; }
+.links button { font: inherit; font-family: var(--mono); font-size: 12px; background: var(--sunk); color: var(--ink); border: 0; border-radius: 4px; padding: 2px 7px; cursor: pointer; }
+.links button:hover, .links button:focus-visible { background: var(--accent-soft); color: var(--accent); outline: none; }
+
+/* Concepts */
+.ideas { display: grid; gap: 28px; margin-top: 18px; }
+.idea { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 820px) { .idea { grid-template-columns: minmax(0, 1fr); } }
+.idea .why { border-left: 3px solid var(--accent); padding-left: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; font-size: 14px; min-width: 0; }
+.panel h5 { margin: 0 0 8px; font-family: var(--display); text-transform: uppercase; letter-spacing: .08em; font-size: 13px; color: var(--muted); font-weight: 600; }
+.formula { font-family: var(--mono); font-size: 13px; background: var(--sunk); padding: 10px 12px; border-radius: 5px; overflow-x: auto; white-space: pre; line-height: 1.55; }
+
+/* Tables */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--display); text-transform: uppercase; letter-spacing: .07em; font-size: 13px; font-weight: 600; color: var(--muted); background: var(--surface); position: sticky; top: 0; }
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td code { white-space: nowrap; }
+.ok { color: var(--good); font-weight: 600; }
+.off { color: var(--warn); font-weight: 600; }
+
+/* Dictionary */
+.dict-tools { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 14px 0 12px; }
+.dict-tools input { font: inherit; font-size: 15px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); min-width: 0; flex: 1 1 260px; max-width: 420px; }
+.dict-tools input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; flex-wrap: wrap; }
+.seg button { font: inherit; font-family: var(--display); text-transform: uppercase; letter-spacing: .06em; font-size: 14px; font-weight: 600; padding: 6px 12px; border: 0; background: var(--surface); color: var(--muted); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+#dict td:nth-child(3) { font-family: var(--mono); font-size: 12.5px; min-width: 260px; }
+#dict td:first-child code { font-size: 13px; }
+#dict td.where { font-size: 13px; color: var(--muted); }
+.count { font-size: 13px; color: var(--muted); }
+
+/* Coverage */
+.cov svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.cov text { font-family: var(--body); fill: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); margin-top: 10px; }
+.legend i { display: inline-block; width: 22px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
+
+/* Quirks */
+.quirks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+@media (max-width: 820px) { .quirks { grid-template-columns: minmax(0, 1fr); } }
+.quirk { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 6px; align-content: start; font-size: 14.5px; min-width: 0; }
+.quirk h3 { font-size: 20px; }
+.quirk p { margin: 0; }
+.quirk .fix { color: var(--muted); }
+.quirk .fix b { color: var(--ink); }
+
+/* Recipes & queries */
+.steps { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 8px; max-width: 78ch; }
+.steps li::marker { font-family: var(--display); font-weight: 600; color: var(--accent); }
+.qcard { margin-top: 22px; display: grid; gap: 10px; }
+.qhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.qhead h3 { font-size: 21px; }
+pre.sql { margin: 0; font-family: var(--mono); font-size: 13px; line-height: 1.55; background: var(--sunk); border-radius: var(--radius); padding: 12px 14px; overflow-x: auto; }
+.copy { font: inherit; font-family: var(--display); text-transform: uppercase; letter-spacing: .07em; font-size: 13px; font-weight: 600; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 5px; padding: 4px 10px; cursor: pointer; }
+.copy:hover, .copy:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.note { font-size: 14px; color: var(--muted); max-width: 78ch; }
+.callout { border: 1px solid var(--warn); background: var(--warn-soft); border-radius: var(--radius); padding: 12px 16px; font-size: 14.5px; margin-top: 12px; max-width: 86ch; }
+.callout p { margin: 0; max-width: none; }
+
+.rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; margin-top: 14px; }
+@media (max-width: 820px) { .rules { grid-template-columns: minmax(0, 1fr); } }
+.rules div { border-top: 2px solid var(--ink); padding-top: 8px; font-size: 14.5px; }
+.rules b { font-family: var(--display); text-transform: uppercase; letter-spacing: .05em; font-size: 17px; display: block; margin-bottom: 2px; }
+
+.next { display: grid; gap: 10px; margin-top: 12px; }
+.next div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.next div:last-child { border-bottom: 0; }
+@media (max-width: 640px) { .next div { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+
+
+/* Last season + profiles */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 12px; }
+.tabs button { font: inherit; font-family: var(--mono); font-size: 12.5px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--muted); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.caption { font-size: 14.5px; max-width: 80ch; margin: 0 0 10px; }
+.sample td, .sample th { white-space: nowrap; font-size: 13px; padding: 6px 10px; }
+.sample th { font-family: var(--mono); text-transform: none; letter-spacing: 0; font-size: 11.5px; font-weight: 500; }
+.sample td.num { font-family: var(--mono); font-size: 12.5px; }
+.sample tbody tr:hover td { background: var(--sunk); }
+.scatter-wrap { position: relative; margin-bottom: 14px; }
+.scatter svg { display: block; width: 100%; min-width: 560px; height: auto; }
+.scatter text { font-family: var(--body); }
+.scatter circle { cursor: pointer; }
+.scatter circle:focus-visible { outline: none; stroke: var(--ink); stroke-width: 2.5; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--paper); font-size: 12.5px; line-height: 1.45; padding: 7px 10px; border-radius: 5px; white-space: nowrap; z-index: 5; font-variant-numeric: tabular-nums; }
+.prof-head { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 16px 0 10px; }
+.prof-head select { font: inherit; font-family: var(--mono); font-size: 14px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); max-width: 100%; }
+.prof-head select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.prof-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
+.prof-stats b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+.prof td, .prof th { white-space: nowrap; font-size: 12.5px; padding: 5px 10px; }
+.prof th { font-size: 12px; }
+.prof td.num { font-family: var(--mono); font-size: 12px; }
+.prof td:first-child { font-family: var(--mono); font-size: 12.5px; }
+.prof td.type { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.nn { display: inline-flex; align-items: center; gap: 6px; }
+.nn i { display: inline-block; width: 46px; height: 6px; border-radius: 3px; background: var(--sunk); overflow: hidden; position: relative; }
+.nn i b { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 3px; }
+.flag { font-family: var(--display); text-transform: uppercase; letter-spacing: .05em; font-size: 11px; font-weight: 600; padding: 0 6px; border-radius: 99px; margin-left: 6px; }
+.flag.sparse { background: var(--warn-soft); color: var(--warn); }
+.flag.extreme { background: var(--bad-soft); color: var(--bad); }
+.findings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 4px 0 14px; }
+@media (max-width: 820px) { .findings { grid-template-columns: minmax(0, 1fr); } }
+.findings div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; font-size: 14px; min-width: 0; }
+.findings b { display: block; font-family: var(--display); font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.prof-filter { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="shell">
+  <nav class="rail" aria-label="Contents">
+    <div class="label">Contents</div>
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#pipeline">Pipeline</a></li>
+      <li><a href="#ideas">Design ideas</a></li>
+      <li><a href="#coverage">Coverage by era</a></li>
+      <li><a href="#season">Last season</a></li>
+      <li><a href="#profiles">Dataset profiles</a></li>
+      <li><a href="#metrics">Metric dictionary</a></li>
+      <li><a href="#quirks">Data quirks</a></li>
+      <li><a href="#validation">Validation</a></li>
+      <li><a href="#analyse">Analysing the data</a></li>
+      <li><a href="#change">Making changes</a></li>
+      <li><a href="#next">What's next</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="overview" class="masthead">
+      <div class="kicker">data-world · NBA advanced metrics · phases 1–2</div>
+      <h1>NBA Metrics Field Guide</h1>
+      <p class="lede">How the advanced-metrics build is put together: the dbt layers it adds, the ideas that keep every formula consistent, what each metric means and from which season you can trust it, what the data looks like (2025-26 samples and a profile of every column), and how to query or extend it.</p>
+      <div class="meta">
+        <span>commit <b>af085f2</b></span>
+        <span>branch <b>nba-players-dim</b></span>
+        <span>formula_version <b>v1</b></span>
+        <span>data to <b>31 Oct 2026</b></span>
+        <span>decision log <b>plans/nba-advanced-metrics-decision-log.md</b></span>
+      </div>
+      <div class="tally">
+        <div><b>5</b><span>new intermediate models</span></div>
+        <div><b>5 + 3</b><span>new marts, plus 3 rebuilt or extended</span></div>
+        <div><b>1.45M</b><span>player-games feed the player metrics</span></div>
+        <div><b>314</b><span>checks in a full NBA build (269 data tests, 15 unit tests, 30 models)</span></div>
+      </div>
+    </section>
+
+    <section id="pipeline">
+      <div class="kicker">Architecture</div>
+      <h2>The pipeline, model by model</h2>
+      <p>Kaggle files land in the DuckLake as <code>raw_nba</code> tables. Staging renames and cleans them. The new <strong>intermediate layer</strong> does the heavy joins once (team ↔ opponent, player ↔ team context), and the marts turn those into metrics. Select a model to see its grain, what it does and what it feeds; its lineage lights up.</p>
+      <div class="frame" id="lineage-frame">
+        <div class="lineage" id="lineage" role="group" aria-label="Model lineage"></div>
+      </div>
+      <div class="detail" id="detail" aria-live="polite"></div>
+    </section>
+
+    <section id="ideas">
+      <div class="kicker">Concepts</div>
+      <h2>Five ideas that hold it together</h2>
+      <p>Almost every design choice in the SQL follows from one of these. If you change a model, keep them true.</p>
+      <div class="ideas">
+
+        <div class="idea">
+          <div class="why">
+            <h3>1. Sum the counts, then divide</h3>
+            <p>A rate over a period is always <em>total numerator ÷ total denominator</em>. Averaging per-game rates gives a quiet blowout game the same weight as a close one. The old <code>nba_team_advanced_profile</code> used <code>AVG(offensive_rating)</code>; it now sums points and possessions for the season and divides once.</p>
+            <p class="muted">Practical consequence: never <code>AVG()</code> a rate column across rows. Sum the counts and recompute.</p>
+          </div>
+          <div class="panel">
+            <h5>Two games, one team</h5>
+            <div class="tbl"><table>
+              <thead><tr><th>Game</th><th class="num">Points</th><th class="num">Poss</th><th class="num">ORtg</th></tr></thead>
+              <tbody>
+                <tr><td>A (blowout, slow)</td><td class="num">90</td><td class="num">80</td><td class="num">112.5</td></tr>
+                <tr><td>B (shootout)</td><td class="num">120</td><td class="num">110</td><td class="num">109.1</td></tr>
+                <tr><td><b>Average of rates</b></td><td class="num">—</td><td class="num">—</td><td class="num off">110.8</td></tr>
+                <tr><td><b>Sum, then divide</b></td><td class="num">210</td><td class="num">190</td><td class="num ok">110.5</td></tr>
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <div class="idea">
+          <div class="why">
+            <h3>2. Each formula lives in one place</h3>
+            <p>Every formula is a Jinja macro that takes <em>expressions</em>, not column names, in <code>dbt/macros/nba_metrics.sql</code>. A game row passes raw counts; a season passes <code>SUM(...)</code>s; the result is the same definition at every grain. Player marts share one more macro, <code>nba_player_metric_columns</code>, so the stint and season marts can't drift apart.</p>
+            <p>Every metric mart carries <code>formula_version</code> (the dbt var <code>nba_metrics_version</code>, now <code>v1</code>). Bump it when a formula changes, so anyone holding old numbers can tell.</p>
+          </div>
+          <div class="panel">
+            <h5>Same macro, two grains</h5>
+<div class="formula">-- per game (nba_team_game_stats)
+{{ nba_rating('points', 'rated_possessions') }}
+
+-- per season (nba_team_advanced_profile)
+{{ nba_rating('r.f_points', 'r.possessions') }}
+
+-- expands to
+(100 * points / NULLIF(possessions, 0))</div>
+          </div>
+        </div>
+
+        <div class="idea">
+          <div class="why">
+            <h3>3. Missing is null, never zero</h3>
+            <p>The source zero-fills stats the league didn't record yet. Staging's <code>null_if_unrecorded</code> turns those back into nulls, and every metric is gated to the season its inputs start (possessions 1973-74, usage 1977-78, three-point rate 1979-80…). Divisions go through <code>NULLIF</code>, so one missing input nulls the result instead of inventing a value.</p>
+            <p>Each metric is also computed over a <em>consistent sample</em>: a numerator is summed only over the games where its denominator exists. Sample sizes ride along (<code>games_with_full_box</code>, <code>rating_games</code>, <code>coverage_flag</code>) so you can see how much data a number stands on.</p>
+          </div>
+          <div class="panel">
+            <h5>Where team counts come from (counts_source)</h5>
+            <div class="tbl"><table>
+              <thead><tr><th>Value</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td><code>team_box</code></td><td>The team box score recorded it (complete from 1983-84).</td></tr>
+                <tr><td><code>player_sum</code></td><td>Earlier games: summed from the player rows, used only when the players' points add up to the team score and no player is missing the stat.</td></tr>
+                <tr><td><code>none</code></td><td>Not recoverable. The counts stay null.</td></tr>
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <div class="idea">
+          <div class="why">
+            <h3>4. Player rates are numerator ÷ opportunity</h3>
+            <p>Usage, assist %, rebound %, steal % and block % compare what a player did with what was available <em>while they were on the floor</em>. For each game, <code>int_nba_player_game_context</code> works out the player's floor share and multiplies it by the team's chances. That product is the game's <strong>opportunity</strong>.</p>
+            <p>Summing numerators and opportunities over any set of games gives the rate for a stint, a season, a career or a hot streak. It is the same formula each time, and it matches Basketball-Reference's season-total version to three decimals on the same data.</p>
+          </div>
+          <div class="panel">
+            <h5>Usage, written as numerator and opportunity</h5>
+<div class="formula">share       = MP / (Tm_MP / 5)        -- 0–1 of the 5 floor spots
+plays       = FGA + 0.44·FTA + TOV
+opportunity = share · (Tm_FGA + 0.44·Tm_FTA + Tm_TOV)
+
+usage_pct   = Σ plays / Σ opportunity  -- any period</div>
+            <p class="note" style="margin-top:10px">Tm_MP is the team's summed player minutes for that game. Player minutes before 2024-25 are truncated to whole minutes, so using the same source on both sides keeps the five shares adding to 5.</p>
+          </div>
+        </div>
+
+        <div class="idea">
+          <div class="why">
+            <h3>5. Grains: game → stint → season → career</h3>
+            <p>A <strong>stint</strong> is a player's time with one team in one season and game type. Team context (team totals, possessions) is only meaningful within a stint, so the player marts compute there first. <code>nba_player_season_advanced</code> then adds stints together: traded players get one combined row, flagged with <code>is_multi_team</code>.</p>
+            <p>Every season-level mart is split by <code>game_type</code> (Regular Season, Play-in, Playoffs, NBA Cup Final). Preseason and All-Star games are excluded everywhere. The Cup Final never counts toward the regular season.</p>
+          </div>
+          <div class="panel">
+            <h5>Where each grain lives</h5>
+            <div class="tbl"><table>
+              <thead><tr><th>Grain</th><th>Team</th><th>Player</th></tr></thead>
+              <tbody>
+                <tr><td>Game</td><td><code>nba_team_game_stats</code></td><td><code>nba_player_game_stats</code></td></tr>
+                <tr><td>As-of game</td><td><code>nba_team_form</code></td><td class="muted">not yet</td></tr>
+                <tr><td>Stint</td><td class="muted">—</td><td><code>nba_player_stint_advanced</code></td></tr>
+                <tr><td>Season</td><td><code>nba_team_advanced_profile</code></td><td><code>nba_player_season_advanced</code></td></tr>
+                <tr><td>League season</td><td colspan="2"><code>nba_league_season_baselines</code></td></tr>
+                <tr><td>Career</td><td class="muted">—</td><td><code>nba_player_advanced_career</code></td></tr>
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="coverage">
+      <div class="kicker">Coverage</div>
+      <h2>What you can trust, by era</h2>
+      <p>The NBA recorded more over time, and the feed reflects that. Hatched bars are partial: some games have the data, so check the sample columns. Solid bars are complete. Metrics are null outside their bars.</p>
+      <div class="frame cov" id="cov"></div>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>Complete</span>
+        <span><i id="lg-partial"></i>Partial (some games)</span>
+        <span><i style="background:var(--muted);opacity:.45"></i>Present but not used for metrics yet</span>
+      </div>
+    </section>
+
+
+    <section id="season">
+      <div class="kicker">Sample data · 2025-26</div>
+      <h2>Last season, through the new marts</h2>
+      <p>Real rows from the 2025-26 season (<code>season_start_year = 2025</code>), the last completed one, so you can see what each mart looks like before you query it. Column headers are the real column names. Rates are 0–1 and ratings are per 100 possessions.</p>
+      <div class="tabs" role="tablist" aria-label="Sample dataset" id="season-tabs"></div>
+      <div id="season-panel" role="tabpanel"></div>
+    </section>
+
+    <section id="profiles">
+      <div class="kicker">Profiling</div>
+      <h2>Dataset profiles</h2>
+      <p>Descriptive statistics for every column of the twelve new or rebuilt datasets, across all seasons, from DuckDB's <code>SUMMARIZE</code>. Use it to see each column's range, typical values and missing share before analysing it. Quartiles and distinct counts are DuckDB's approximations.</p>
+      <div class="callout"><p><b>Reading the flags.</b> <span class="flag sparse">Sparse</span> marks columns that are null in over half the rows, almost always because the stat wasn't recorded in early eras (see <a href="#coverage">coverage</a>). <span class="flag extreme">Above 1</span> marks rate columns whose maximum exceeds 1. In the player marts they come from tiny samples, such as a player with seconds on the floor or one free-throw attempt, which is why you rank only above a minutes or attempts floor.</p></div>
+      <div class="callout" style="border-color: var(--good); background: var(--good-soft)"><p><b>Defects this profile found, now fixed.</b> (1) A few 1959–62 team box scores (and some early player sums) recorded more makes than attempts, giving team-game eFG up to 5.1. Nine 1953–83 team-games recorded more assists than made field goals. <code>int_nba_team_games</code> now nulls those pairs. (2) Some 1951–84 games recorded minutes for only part of the roster, pushing <code>on_court_share</code> to 5.0. Floor shares are now null unless recorded minutes cover 95% of the game. The data test <code>assert_nba_shooting_and_shares_are_possible</code> guards both. The values above 1 that remain are small samples (player assist % of 20 from a 7-minute stint) or rare but possible games.</p></div>
+      <div class="prof-head">
+        <label for="prof-select" class="muted" style="font-size:14px">Dataset</label>
+        <select id="prof-select"></select>
+        <label class="prof-filter"><input type="checkbox" id="prof-flagged"> Only flagged columns</label>
+      </div>
+      <div class="findings" id="prof-findings"></div>
+      <div class="tbl" style="max-height: 620px; overflow: auto;">
+        <table class="prof" id="prof-table">
+          <thead><tr><th>Column</th><th>Type</th><th>Non-null</th><th class="num">≈ Distinct</th><th class="num">Min</th><th class="num">Q25</th><th class="num">Median</th><th class="num">Mean</th><th class="num">Q75</th><th class="num">Max</th><th class="num">Std dev</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="metrics">
+      <div class="kicker">Reference</div>
+      <h2>Metric dictionary</h2>
+      <p>Every metric column the build added or recomputed. Rates are on a 0–1 scale (0.25 means 25%). Ratings are points per 100 possessions. The "Lives in" column names the marts that carry the column.</p>
+      <div class="dict-tools">
+        <input id="q" type="search" placeholder="Search metrics, e.g. usage, rebound, srs" aria-label="Search metrics">
+        <div class="seg" role="group" aria-label="Filter by subject">
+          <button type="button" data-f="all" aria-pressed="true">All</button>
+          <button type="button" data-f="team" aria-pressed="false">Team</button>
+          <button type="button" data-f="league" aria-pressed="false">League</button>
+          <button type="button" data-f="player" aria-pressed="false">Player</button>
+        </div>
+        <span class="count" id="count"></span>
+      </div>
+      <div class="tbl" style="max-height: 640px; overflow: auto;">
+        <table id="dict">
+          <thead><tr><th>Column</th><th>What it tells you</th><th>Formula</th><th>From</th><th>Lives in</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quirks">
+      <div class="kicker">Source data</div>
+      <h2>Data quirks found, and what the models do about them</h2>
+      <p>The Kaggle feed is good but uneven. These are the problems the build ran into. Each is handled in a specific model, so you know where to look if a number seems off.</p>
+      <div class="quirks" id="quirk-list"></div>
+    </section>
+
+    <section id="validation">
+      <div class="kicker">Validation</div>
+      <h2>How we know the numbers are right</h2>
+      <p>Three kinds of check: fixtures from the brief, comparisons with published Basketball-Reference figures, and structural tests that must hold whatever the data.</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Check</th><th class="num">This build</th><th class="num">Reference</th><th>Source</th></tr></thead>
+          <tbody>
+            <tr><td>2004-05 Suns: all 8 Four Factors (eFG .534, TOV .124, ORB .275 …)</td><td class="num ok">match to 3 dp</td><td class="num">brief fixture</td><td>unit test</td></tr>
+            <tr><td>2004-05 Suns: offensive / defensive rating</td><td class="num">114.5 / 107.1</td><td class="num">114.5 / 107.1</td><td>BBRef</td></tr>
+            <tr><td>2004-05 Suns: pace / SRS</td><td class="num">95.9 / 7.08</td><td class="num">95.9 / 7.08</td><td>BBRef</td></tr>
+            <tr><td>2015-16 Warriors: ORtg / DRtg / pace / SRS</td><td class="num">114.5 / 103.8 / 99.3 / 10.38</td><td class="num">same</td><td>BBRef</td></tr>
+            <tr><td>1985-86 Celtics: SRS</td><td class="num">9.06</td><td class="num">9.06</td><td>BBRef</td></tr>
+            <tr><td>1985-86 Celtics: ORtg / DRtg</td><td class="num off">112.2 / 103.0</td><td class="num">≈ 0.4 lower</td><td>BBRef</td></tr>
+            <tr><td>LeBron 2008-09: individual ORtg / DRtg</td><td class="num">121.6 / 99.0</td><td class="num">121.7 / 99.1</td><td>brief fixture, data test ±0.3</td></tr>
+            <tr><td>LeBron 2008-09: points produced / individual possessions</td><td class="num">2347.1 / 1929.5</td><td class="num">2345.9 / 1928.1</td><td>brief fixture</td></tr>
+            <tr><td>League usage and rebound share, every season from 1983-84</td><td class="num ok">0.200 / 0.100</td><td class="num">must be 0.2 / 0.1</td><td>data test</td></tr>
+            <tr><td>League net rating and SRS centre on 0, every season</td><td class="num ok">|mean| &lt; 0.05</td><td class="num">0</td><td>data test</td></tr>
+            <tr><td>Pythagorean wins vs actual wins, 1983-84 on</td><td class="num ok">RMSE &lt; 4</td><td class="num">≈ 3.14 published</td><td>data test</td></tr>
+            <tr><td>Toy 3-team league solves to SRS +10 / 0 / −10</td><td class="num ok">exact</td><td class="num">by construction</td><td>unit test</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin-top:12px">Basketball-Reference blocks automated fetches, so the BBRef figures above are published values recalled during the build, not pulled live. The brief fixtures are the authoritative checks. Remaining gaps are small and expected: player minutes run about 1% low because the source truncates them, and pre-1983-84 counts leave out team rebounds and team turnovers.</p>
+      <p class="note">Structural tests also guard the plumbing: two rows per game whose points mirror each other; team minutes = 240 + 25 × overtime; player points add up to the team score (≥ 97% before 1983-84, ≥ 99% after); no metric before its coverage start; rates within 0–1; and as-of form never peeking at the current or later games.</p>
+    </section>
+
+    <section id="analyse">
+      <div class="kicker">Using it</div>
+      <h2>Analysing the data</h2>
+      <p>Run any of these read-only from the repo root with <code>task lake:sql SQL="…"</code>, or in DBeaver against the lake. nao picks up all the new marts and its rules already tell it about the filters below.</p>
+
+      <div class="rules">
+        <div><b>Filter game_type</b><code>nba_team_advanced_profile</code> and the player season marts have a row per game type. Add <code>game_type = 'Regular Season'</code> unless you want playoffs.</div>
+        <div><b>Set a minimum sample</b>Rank player rates only above a minutes floor (500 for a full season; scale it for 1998-99, 2011-12, 2019-20, 2020-21) and team rates only for completed seasons.</div>
+        <div><b>Never average rate columns</b>To combine rows, sum the underlying counts and recompute. The marts already do this for stints, seasons and careers.</div>
+        <div><b>Two different "offensive ratings"</b><code>offensive_rating</code> on player rows is the NBA's on-court team rating (1996-97 on). <code>individual_offensive_rating</code> is Dean Oliver's points produced per 100 individual possessions.</div>
+        <div><b>Read coverage before old seasons</b>Check <code>coverage_flag</code>, <code>games_with_full_box</code> or <code>rating_games</code>; a 1976 rating may rest on a third of the games.</div>
+        <div><b>Defensive rating is mostly team</b><code>individual_defensive_rating</code> moves the team's rating only 20% toward the player's stops. Don't treat it as a defensive grade.</div>
+      </div>
+
+      <div class="qcard">
+        <div class="qhead"><h3>Best teams by SRS, completed seasons</h3><button class="copy" type="button" data-copy="q1">Copy SQL</button></div>
+<pre class="sql" id="q1">SELECT p.season_label, d.current_full_name AS team, p.wins, p.losses,
+       p.net_rating, p.simple_rating_system AS srs, p.luck_wins
+FROM marts.nba_team_advanced_profile p
+JOIN marts.nba_team_dim d USING (team_id)
+WHERE p.game_type = 'Regular Season'
+  AND p.season_start_year &lt; 2026          -- leave out the season in progress
+ORDER BY srs DESC
+LIMIT 5</pre>
+        <div class="tbl"><table>
+          <thead><tr><th>Season</th><th>Team</th><th class="num">W–L</th><th class="num">Net rtg</th><th class="num">SRS</th><th class="num">Luck wins</th></tr></thead>
+          <tbody>
+            <tr><td>2024-25</td><td>Oklahoma City Thunder</td><td class="num">68–14</td><td class="num">12.9</td><td class="num">12.69</td><td class="num">0.0</td></tr>
+            <tr><td>1970-71</td><td>Milwaukee Bucks</td><td class="num">66–16</td><td class="num muted">null</td><td class="num">11.91</td><td class="num">−1.4</td></tr>
+            <tr><td>1995-96</td><td>Chicago Bulls</td><td class="num">72–10</td><td class="num">13.5</td><td class="num">11.80</td><td class="num">2.3</td></tr>
+            <tr><td>1971-72</td><td>Los Angeles Lakers</td><td class="num">69–13</td><td class="num muted">null</td><td class="num">11.65</td><td class="num">2.0</td></tr>
+            <tr><td>2016-17</td><td>Golden State Warriors</td><td class="num">67–15</td><td class="num">11.6</td><td class="num">11.35</td><td class="num">0.2</td></tr>
+          </tbody>
+        </table></div>
+        <p class="note">SRS needs only scores, so it covers every season; net rating needs possessions, so it is null before 1973-74.</p>
+        <div class="callout"><p><b>Small-sample trap.</b> Drop the season filter and the top five are all 2026-27 teams six games in. Memphis shows an SRS of 17.15 after a 6–0 start. Rates and ratings early in a season are noisy; check <code>games_played</code>.</p></div>
+      </div>
+
+      <div class="qcard">
+        <div class="qhead"><h3>Most efficient high-usage scorers</h3><button class="copy" type="button" data-copy="q2">Copy SQL</button></div>
+<pre class="sql" id="q2">SELECT first_name || ' ' || last_name AS player, season_label, total_minutes,
+       usage_pct, true_shooting_pct, individual_offensive_rating
+FROM marts.nba_player_season_advanced
+WHERE game_type = 'Regular Season'
+  AND total_minutes &gt;= 1500
+  AND usage_pct &gt;= 0.30
+ORDER BY true_shooting_pct DESC
+LIMIT 5</pre>
+        <div class="tbl"><table>
+          <thead><tr><th>Player</th><th>Season</th><th class="num">Min</th><th class="num">USG</th><th class="num">TS</th><th class="num">Ind. ORtg</th></tr></thead>
+          <tbody>
+            <tr><td>Kevin Durant</td><td>2022-23</td><td class="num">1,645</td><td class="num">0.310</td><td class="num">0.677</td><td class="num">123.3</td></tr>
+            <tr><td>Stephen Curry</td><td>2017-18</td><td class="num">1,603</td><td class="num">0.303</td><td class="num">0.675</td><td class="num">125.4</td></tr>
+            <tr><td>Nikola Jokic</td><td>2025-26</td><td class="num">2,265</td><td class="num">0.302</td><td class="num">0.670</td><td class="num">134.5</td></tr>
+            <tr><td>Stephen Curry</td><td>2015-16</td><td class="num">2,658</td><td class="num">0.323</td><td class="num">0.669</td><td class="num">124.7</td></tr>
+            <tr><td>Shai Gilgeous-Alexander</td><td>2025-26</td><td class="num">2,259</td><td class="num">0.337</td><td class="num">0.665</td><td class="num">133.4</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="qcard">
+        <div class="qhead"><h3>How the league has changed</h3><button class="copy" type="button" data-copy="q3">Copy SQL</button></div>
+<pre class="sql" id="q3">SELECT season_label, lg_pace, lg_offensive_rating,
+       lg_three_point_attempt_rate, lg_true_shooting_pct
+FROM marts.nba_league_season_baselines
+WHERE game_type = 'Regular Season'
+  AND season_start_year IN (1983, 1995, 2005, 2015, 2025)
+ORDER BY season_start_year</pre>
+        <div class="tbl"><table>
+          <thead><tr><th>Season</th><th class="num">Pace</th><th class="num">ORtg</th><th class="num">3PA rate</th><th class="num">TS</th></tr></thead>
+          <tbody>
+            <tr><td>1983-84</td><td class="num">101.2</td><td class="num">107.9</td><td class="num">0.027</td><td class="num">0.543</td></tr>
+            <tr><td>1995-96</td><td class="num">91.3</td><td class="num">108.3</td><td class="num">0.200</td><td class="num">0.542</td></tr>
+            <tr><td>2005-06</td><td class="num">90.5</td><td class="num">106.2</td><td class="num">0.202</td><td class="num">0.536</td></tr>
+            <tr><td>2015-16</td><td class="num">95.8</td><td class="num">106.4</td><td class="num">0.285</td><td class="num">0.541</td></tr>
+            <tr><td>2025-26</td><td class="num">98.7</td><td class="num">116.6</td><td class="num">0.415</td><td class="num">0.581</td></tr>
+          </tbody>
+        </table></div>
+        <p class="note">Use these baselines to put any team or player number in context. The profile's <code>relative_*</code> columns already subtract them.</p>
+      </div>
+
+      <div class="qcard">
+        <div class="qhead"><h3>Combining rows the right way</h3><button class="copy" type="button" data-copy="q4">Copy SQL</button></div>
+<pre class="sql" id="q4">-- A player's regular-season career TS%, recomputed from summed counts
+SELECT SUM(total_points)
+       / (2 * (SUM(total_field_goals_attempted) + 0.44 * SUM(total_free_throws_attempted))) AS career_ts
+FROM marts.nba_player_season_stats
+WHERE person_id = 2544                 -- LeBron James
+  AND game_type = 'Regular Season'
+-- not: AVG(true_shooting_pct) over nba_player_season_advanced</pre>
+      </div>
+
+      <div class="qcard">
+        <div class="qhead"><h3>Who is in form right now</h3><button class="copy" type="button" data-copy="q5">Copy SQL</button></div>
+<pre class="sql" id="q5">SELECT d.current_full_name AS team, f.game_date, f.last_10_games,
+       f.last_10_net_rating, f.season_to_date_net_rating, f.league_to_date_pace
+FROM marts.nba_team_form f
+JOIN marts.nba_team_dim d USING (team_id)
+WHERE f.game_type = 'Regular Season'
+QUALIFY ROW_NUMBER() OVER (PARTITION BY f.team_id ORDER BY f.game_date DESC) = 1
+ORDER BY f.last_10_net_rating DESC NULLS LAST</pre>
+        <p class="note">Each row is the form <em>going into</em> that game, so the latest row excludes the latest result. Early in a season <code>last_10_games</code> is below 10; it tells you how many games the window really holds.</p>
+      </div>
+    </section>
+
+    <section id="change">
+      <div class="kicker">Extending it</div>
+      <h2>Making changes</h2>
+
+      <h3 style="margin-top:8px">Change an existing formula</h3>
+      <ol class="steps">
+        <li>Edit the macro in <code>dbt/macros/nba_metrics.sql</code> (team and Oliver formulas) or <code>dbt/macros/nba_player_metric_columns.sql</code> (how player rates are rendered and gated).</li>
+        <li>Bump <code>nba_metrics_version</code> in <code>dbt/dbt_project.yml</code>.</li>
+        <li>Update the column's doc block in <code>dbt/models/docs/nba.md</code>. Descriptions are persisted into the lake, and nao reads them.</li>
+        <li>Rebuild from the intermediate layer and run the tests (command below), then <code>task dbt:docs:check</code> and <code>task dbt:lint</code>.</li>
+        <li>Note the change and the reason in <code>plans/nba-advanced-metrics-decision-log.md</code>, then <code>task nao:sync</code>.</li>
+      </ol>
+
+      <h3 style="margin-top:26px">Add a team metric</h3>
+      <ol class="steps">
+        <li>Write the formula as a macro taking count expressions.</li>
+        <li>Make sure its inputs exist in <code>int_nba_team_games</code> for both sides (team and <code>opp_</code>). Add a count to the <code>counts</code> list there if needed; the player-sum fallback and opponent pairing pick it up automatically.</li>
+        <li>Call the macro in <code>nba_team_game_stats</code> on per-game counts and in <code>nba_team_advanced_profile</code> on season sums. Put the sum in the right sample: <code>s_</code> for shooting, <code>f_</code> for possession-based.</li>
+        <li>Gate it to its first season with <code>CASE WHEN season_start_year &gt;= …</code> and document it in <code>marts_nba.yml</code> through a doc block.</li>
+      </ol>
+
+      <h3 style="margin-top:26px">Add a player rate</h3>
+      <ol class="steps">
+        <li>In <code>int_nba_player_game_context</code>, add the per-game numerator (if new) and its <code>…_opportunity</code>, null when the numerator is null.</li>
+        <li>Add the pair to <code>rate_pairs</code> in <code>int_nba_player_stints</code>; it then emits <code>&lt;opportunity&gt;_numerator</code> and <code>&lt;opportunity&gt;</code> sums.</li>
+        <li>Add both sum columns to the <code>sums</code> list at the top of <code>nba_player_season_advanced</code>. This step is easy to miss: without it the season mart can't re-divide.</li>
+        <li>Render the rate in the <code>rates</code> list inside <code>nba_player_metric_columns</code> with its coverage start. Both player marts get it.</li>
+        <li>Add a doc block, list it in both marts' YAML, and extend the unit test <code>nba_player_season_advanced_combines_stints</code>.</li>
+      </ol>
+
+      <h3 style="margin-top:26px">Commands</h3>
+      <div class="qcard" style="margin-top:8px">
+        <div class="qhead"><span class="note">Rebuild and test the metrics, skipping the slow play-by-play marts (about 30 seconds instead of about 12 minutes)</span><button class="copy" type="button" data-copy="c1">Copy</button></div>
+<pre class="sql" id="c1">cd dbt
+export LAKE_DATA_PATH=$PWD/../data/lake/
+dbt build -s int_nba_player_games+ --exclude nba_player_shot_zones nba_player_clutch_stats</pre>
+      </div>
+      <div class="qcard">
+        <div class="qhead"><span class="note">Checks after any change, from the repo root</span><button class="copy" type="button" data-copy="c2">Copy</button></div>
+<pre class="sql" id="c2">task dbt:docs:check
+task dbt:lint MODELS=models/marts/nba
+task nao:sync</pre>
+      </div>
+      <p class="note" style="margin-top:14px">A full <code>dbt build</code> rebuilds <code>stg_nba_play_by_play</code> (18.8M rows) and the shot-zone and clutch marts, which is where the 12 minutes go. Changing staging minutes or player rows does need the full run, because <code>nba_player_game_stats</code> and the play-by-play reconciliation test read them.</p>
+    </section>
+
+    <section id="next">
+      <div class="kicker">Roadmap</div>
+      <h2>What's next</h2>
+      <p>The brief has more to build. These are the open items, roughly in dependency order.</p>
+      <div class="next">
+        <div><span class="chip c-player">Phase 3</span><span><strong>BPM, OBPM, DBPM, VORP, Win Shares.</strong> All the inputs now exist: league baselines, team pace, PProd, TotPoss, individual DRtg. The BPM team adjustment and position/role clamp loop are iterative, which strains "dbt only". Without published season BPM in the project to calibrate against, BPM would be labelled <code>bpm_2_0_approx</code>.</span></div>
+        <div><span class="chip c-league">Phase 3</span><span><strong>Era comparison.</strong> z-scores, percentiles and indexes within each season among qualifiers, weighted by each stat's denominator. This fits in SQL on top of the season marts and baselines.</span></div>
+        <div><span class="chip c-player">Phase 3</span><span><strong>Player current form.</strong> Shrunk and decay-weighted rates as of each date, with priors built only from earlier games. The opportunity sums make this straightforward.</span></div>
+        <div><span class="chip c-team">Deferred</span><span><strong>Elo, Adjusted Net Rating, Four Factors regression.</strong> Set aside by your choice to keep phase 1 in dbt. They need a sequential pass (Elo) or least-squares fits.</span></div>
+        <div><span class="chip c-bad">Gate</span><span><strong>Play-by-play metrics (on/off, lineups, RAPM).</strong> The gate check hasn't run. Main risk: the 1996–2019 feed names substituted-in players only in free text, so lineups need name matching.</span></div>
+        <div><span class="chip c-league">Data</span><span><strong>Reference data.</strong> Adding Basketball-Reference season tables to the project would allow a proper error-by-season comparison and BPM calibration.</span></div>
+        <div><span class="chip c-exist">Last</span><span><strong>PER.</strong> Low priority in the brief; the baselines it needs are in place.</span></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script type="application/json" id="guide-data">{"season":"2025-26","samples":{"nba_team_advanced_profile":{"columns":["team","wins","losses","offensive_rating","defensive_rating","net_rating","pace","effective_field_goal_pct","turnover_pct","offensive_rebound_pct","free_throw_rate","opp_effective_field_goal_pct","pythagorean_wins","luck_wins","simple_rating_system","strength_of_schedule","relative_offensive_rating","three_point_attempt_rate","coverage_flag"],"rows":[["OKC  ",64,18,119.7,108.5,11.2,98.6,0.561,0.108,0.223,0.213,0.519,65.5,-1.5,11.04,-0.11,3.1,0.426,"full"],["SAN  ",62,20,120.5,112.1,8.3,99.2,0.559,0.112,0.262,0.215,0.522,60.0,2.0,8.28,-0.03,3.9,0.422,"full"],["DET  ",60,22,119.0,110.8,8.2,98.3,0.546,0.123,0.309,0.223,0.517,60.0,-0.0,7.53,-0.63,2.4,0.345,"full"],["BOS  ",56,26,121.7,113.6,8.2,94.1,0.553,0.105,0.292,0.167,0.523,59.5,-3.5,7.37,-0.33,5.1,0.467,"full"],["NYK  ",53,29,120.7,114.1,6.6,96.1,0.557,0.115,0.293,0.188,0.541,56.3,-3.3,6.05,-0.28,4.1,0.428,"full"],["HOU  ",52,30,119.6,114.1,5.4,95.3,0.542,0.126,0.348,0.199,0.53,53.9,-1.9,4.87,-0.35,3.0,0.35,"full"],["DEN  ",54,28,123.3,118.1,5.2,97.7,0.577,0.109,0.236,0.237,0.543,53.0,1.0,4.97,-0.17,6.7,0.408,"full"],["CHA  ",44,38,120.3,115.3,5.0,96.1,0.552,0.128,0.305,0.2,0.54,52.9,-8.9,4.48,-0.35,3.7,0.487,"full"],["CLE  ",52,30,120.1,116.0,4.1,99.1,0.561,0.117,0.269,0.206,0.543,50.8,1.2,3.77,-0.33,3.5,0.442,"full"],["MIN  ",49,33,117.6,114.3,3.3,99.8,0.559,0.124,0.257,0.215,0.529,49.2,-0.2,3.07,-0.28,1.0,0.42,"full"],["TOR  ",46,36,117.0,114.1,2.9,97.5,0.546,0.115,0.255,0.204,0.54,48.1,-2.1,2.75,-0.08,0.4,0.363,"full"],["ATL  ",46,36,117.1,114.7,2.4,100.8,0.554,0.117,0.244,0.181,0.546,46.9,-0.9,2.38,-0.03,0.5,0.429,"full"],["MIA  ",43,39,117.5,115.2,2.3,102.8,0.542,0.112,0.254,0.212,0.54,46.6,-3.6,2.35,0.02,0.9,0.406,"full"],["LAL  ",53,29,119.0,117.2,1.8,97.7,0.573,0.126,0.239,0.244,0.555,45.3,7.7,1.68,-0.07,2.4,0.394,"full"],["PHX  ",45,37,116.5,115.0,1.5,96.3,0.537,0.12,0.289,0.176,0.541,44.7,0.3,1.74,0.28,-0.1,0.453,"full"],["LAC  ",42,40,118.2,117.0,1.2,95.8,0.559,0.125,0.237,0.243,0.545,43.9,-1.9,0.96,-0.17,1.6,0.404,"full"],["ORL  ",45,37,115.6,114.9,0.6,99.4,0.531,0.12,0.25,0.249,0.545,42.6,2.4,0.81,0.17,-1.0,0.386,"full"],["PHI  ",45,37,116.1,116.3,-0.2,98.8,0.53,0.114,0.262,0.222,0.541,40.5,4.5,-0.27,-0.09,-0.5,0.391,"full"],["POR  ",42,40,115.3,115.6,-0.3,99.8,0.534,0.14,0.313,0.214,0.541,40.3,1.7,-0.28,0.01,-1.3,0.469,"full"],["GSW  ",37,45,115.8,116.3,-0.6,98.4,0.549,0.133,0.258,0.192,0.553,39.6,-2.6,-0.34,0.22,-0.8,0.497,"full"],["NOP  ",26,56,115.3,119.8,-4.5,99.6,0.527,0.117,0.27,0.222,0.555,30.3,-4.3,-4.26,0.24,-1.3,0.355,"full"],["CHI  ",31,51,113.7,118.8,-5.1,101.9,0.547,0.127,0.231,0.191,0.553,28.8,2.2,-5.09,0.12,-2.9,0.443,"full"],["DAL  ",26,56,111.9,117.3,-5.4,101.1,0.527,0.121,0.232,0.217,0.546,27.9,-1.9,-5.33,0.18,-4.7,0.355,"full"],["MEM  ",25,57,113.5,119.4,-5.9,100.8,0.533,0.127,0.247,0.199,0.562,26.9,-1.9,-5.83,0.18,-3.1,0.436,"full"],["MIL  ",32,50,113.8,120.2,-6.4,96.8,0.565,0.133,0.211,0.163,0.558,26.1,5.9,-6.12,0.09,-2.8,0.457,"full"],["IND  ",19,63,111.6,119.6,-7.9,100.3,0.533,0.123,0.217,0.196,0.556,22.7,-3.7,-7.64,0.35,-5.0,0.422,"full"],["UTA  ",22,60,114.7,122.9,-8.2,101.7,0.536,0.128,0.262,0.218,0.578,22.6,-0.6,-8.04,0.38,-1.9,0.402,"full"],["SAC  ",22,60,112.1,122.3,-10.1,98.6,0.525,0.122,0.259,0.198,0.572,18.9,3.1,-9.58,0.42,-4.5,0.339,"full"],["BKN  ",20,62,109.7,120.0,-10.3,96.2,0.52,0.137,0.236,0.212,0.571,18.1,1.9,-9.7,0.29,-6.9,0.455,"full"],["WAS  ",17,65,111.6,123.5,-11.8,100.8,0.535,0.132,0.241,0.18,0.563,16.1,0.9,-11.62,0.36,-5.0,0.403,"full"]]},"nba_league_season_baselines":{"columns":["game_type","team_games","lg_points_per_game","lg_pace","lg_offensive_rating","lg_points_per_possession","lg_true_shooting_pct","lg_effective_field_goal_pct","lg_three_point_attempt_rate","lg_free_throw_rate","lg_turnover_pct","lg_offensive_rebound_pct"],"rows":[["Regular Season",2460,115.6,98.7,116.6,1.1658,0.581,0.546,0.415,0.206,0.122,0.26],["Playoffs",170,107.9,94.8,113.1,1.1306,0.562,0.522,0.404,0.224,0.123,0.263],["Play-in Tournament",12,112.3,95.2,115.9,1.1594,0.581,0.542,0.443,0.213,0.125,0.254],["NBA Cup Final",2,118.5,93.6,126.5,1.2655,0.538,0.512,0.387,0.137,0.076,0.406]]},"nba_player_season_advanced":{"columns":["player","team","games_played","total_minutes","total_points","true_shooting_pct","usage_pct","assist_pct","rebound_pct","steal_pct","block_pct","turnover_pct","points_per_100","game_score_per_game","true_shooting_points_added","individual_offensive_rating","individual_defensive_rating","is_multi_team"],"rows":[["Nikola Jokic","DEN  ",65,2264.5,1799.0,0.67,0.302,0.486,0.208,0.02,0.022,0.153,38.6,28.7,237.1,134.5,112.9,false],["Shai Gilgeous-Alexander","OKC  ",68,2258.5,2117.0,0.665,0.337,0.351,0.07,0.02,0.023,0.087,45.7,26.4,266.8,133.4,108.5,false],["Luka Doncic","LAL  ",65,2288.0,2143.0,0.616,0.384,0.404,0.126,0.023,0.014,0.128,46.0,26.2,118.8,120.8,114.2,false],["Kawhi Leonard","LAC  ",65,2084.7,1813.0,0.629,0.338,0.206,0.115,0.029,0.012,0.084,43.6,22.5,137.4,124.7,113.5,false],["Victor Wembanyama","SAN  ",64,1865.2,1600.0,0.626,0.327,0.177,0.213,0.017,0.096,0.108,41.7,22.4,113.9,122.3,100.2,false],["Tyrese Maxey","PHI  ",71,2660.5,1980.0,0.588,0.297,0.291,0.06,0.024,0.019,0.092,36.3,21.8,21.3,120.5,116.2,false],["Donovan Mitchell","CLE  ",70,2342.0,1952.0,0.613,0.324,0.279,0.074,0.022,0.008,0.111,40.4,20.9,100.6,121.0,116.4,false],["Anthony Edwards","MIN  ",61,2136.2,1757.0,0.617,0.318,0.175,0.078,0.019,0.02,0.109,39.6,20.7,102.0,118.1,115.9,false],["Jamal Murray","DEN  ",75,2651.5,1905.0,0.622,0.28,0.309,0.07,0.012,0.01,0.1,35.2,20.6,124.0,125.7,120.6,false],["Cade Cunningham","DET  ",64,2170.9,1531.0,0.564,0.305,0.454,0.09,0.021,0.025,0.148,34.3,20.0,-47.0,118.1,111.9,false],["Jalen Johnson","ATL  ",72,2531.6,1621.0,0.581,0.273,0.333,0.159,0.017,0.011,0.149,30.5,19.9,-2.4,115.6,112.1,false],["Jaylen Brown","BOS  ",71,2442.1,2038.0,0.573,0.364,0.259,0.111,0.015,0.011,0.127,42.3,19.7,-30.4,113.7,114.4,false],["Kevin Durant","HOU  ",78,2839.8,2026.0,0.641,0.274,0.208,0.083,0.011,0.023,0.135,36.0,19.7,187.0,124.4,116.2,false],["James Harden","LAC  ",70,2438.3,1652.0,0.61,0.292,0.356,0.08,0.016,0.011,0.153,34.0,19.2,78.1,120.7,119.2,true],["Jalen Brunson","NYK  ",74,2588.7,1927.0,0.58,0.308,0.316,0.053,0.011,0.003,0.095,37.2,18.9,-3.5,121.4,117.4,false],["Deni Avdija","POR  ",66,2199.2,1598.0,0.6,0.295,0.325,0.111,0.011,0.016,0.16,35.0,18.7,48.7,118.9,115.8,false],["Devin Booker","PHX  ",64,2145.9,1668.0,0.585,0.322,0.296,0.064,0.012,0.008,0.123,38.4,18.4,8.9,119.2,118.1,false],["Jalen Duren","DET  ",70,1974.9,1365.0,0.688,0.238,0.111,0.208,0.014,0.03,0.116,33.7,18.3,211.3,134.3,109.3,false],["Austin Reaves","LAL  ",52,1761.1,1187.0,0.641,0.27,0.238,0.08,0.016,0.011,0.14,33.1,18.2,111.1,123.1,118.3,false],["LeBron James","LAL  ",60,1988.4,1256.0,0.594,0.274,0.336,0.108,0.018,0.016,0.145,31.1,17.9,25.7,117.4,116.6,false],["Alperen Sengun","HOU  ",72,2397.7,1466.0,0.569,0.268,0.29,0.148,0.018,0.03,0.15,30.8,17.7,-32.2,118.2,112.7,false],["Keyonte George","UTA  ",55,1786.1,1275.0,0.609,0.282,0.289,0.061,0.015,0.008,0.137,33.9,17.4,57.2,118.0,125.7,false],["Amen Thompson","HOU  ",79,2953.2,1443.0,0.594,0.202,0.205,0.115,0.02,0.015,0.135,24.7,17.3,29.5,125.1,114.8,false],["Zion Williamson","NOP  ",62,1841.0,1302.0,0.644,0.26,0.179,0.102,0.016,0.017,0.111,34.3,17.3,125.7,125.9,119.5,false],["Pascal Siakam","IND  ",62,2055.7,1485.0,0.562,0.303,0.197,0.109,0.016,0.01,0.095,34.6,17.2,-51.4,110.6,118.9,false],["Karl-Anthony Towns","NYK  ",75,2320.8,1504.0,0.619,0.26,0.146,0.215,0.014,0.018,0.133,32.3,17.1,91.1,123.0,110.7,false],["Trey Murphy III","NOP  ",66,2340.2,1420.0,0.613,0.231,0.163,0.087,0.021,0.01,0.094,29.5,17.1,73.2,122.1,119.7,false],["Paolo Banchero","ORL  ",72,2500.4,1599.0,0.566,0.278,0.238,0.135,0.01,0.015,0.136,31.0,17.0,-42.4,111.6,115.4,false],["Bam Adebayo","MIA  ",73,2364.6,1468.0,0.551,0.253,0.143,0.162,0.017,0.018,0.083,29.2,16.8,-79.8,115.3,112.1,false],["Scottie Barnes","TOR  ",80,2679.9,1448.0,0.577,0.236,0.264,0.127,0.021,0.042,0.143,26.6,16.8,-9.8,115.8,110.8,false]]},"nba_player_stint_advanced":{"columns":["player","team","games_played","total_minutes","true_shooting_pct","usage_pct","assist_pct","rebound_pct","points_per_100","individual_offensive_rating","individual_defensive_rating"],"rows":[["James Harden","LAC  ",44,1559.3,0.598,0.317,0.375,0.08,36.3,119.6,119.4],["James Harden","CLE  ",26,879.0,0.639,0.249,0.326,0.079,30.0,123.2,118.8],["CJ McCollum","ATL  ",41,1181.6,0.56,0.269,0.213,0.058,31.1,113.1,115.0],["CJ McCollum","WAS  ",35,1081.3,0.573,0.245,0.179,0.06,29.0,114.7,126.0],["Ayo Dosunmu","CHI  ",45,1186.8,0.636,0.212,0.207,0.061,27.1,123.8,121.0],["Ayo Dosunmu","MIN  ",24,693.8,0.619,0.193,0.18,0.079,24.0,121.5,114.5],["Nikola Vucevic","CHI  ",48,1480.1,0.585,0.219,0.184,0.155,26.1,119.6,117.1],["Nikola Vucevic","BOS  ",16,337.8,0.526,0.215,0.139,0.172,24.0,114.4,107.9],["Dennis Schroder","SAC  ",40,1055.2,0.531,0.228,0.295,0.065,23.4,109.2,124.4],["Dennis Schroder","CLE  ",30,640.5,0.515,0.193,0.267,0.059,19.0,111.1,119.0],["Luke Kennard","ATL  ",46,943.5,0.713,0.128,0.133,0.056,18.2,133.2,118.8],["Luke Kennard","LAL  ",32,736.7,0.661,0.149,0.144,0.066,19.3,127.3,118.0],["Bennedict Mathurin","IND  ",28,890.6,0.589,0.236,0.107,0.091,26.9,109.5,120.3],["Bennedict Mathurin","LAC  ",26,729.1,0.561,0.275,0.132,0.111,30.6,112.9,116.2],["Collin Sexton","CHA  ",42,937.5,0.619,0.259,0.263,0.048,31.6,119.7,118.4],["Collin Sexton","CHI  ",26,675.7,0.609,0.258,0.156,0.058,31.0,113.6,119.3]]},"nba_team_game_stats":{"columns":["game_date","team","is_home","points","opp_points","possessions","pace","offensive_rating","defensive_rating","effective_field_goal_pct","turnover_pct","offensive_rebound_pct","free_throw_rate","three_point_attempt_rate","counts_source"],"rows":[["2026-06-13","SAN  ",true,90,94,90.3,90.3,99.6,104.1,0.453,0.113,0.286,0.14,0.43,"team_box"],["2026-06-13","NYK  ",false,94,90,90.3,90.3,104.1,99.6,0.425,0.091,0.283,0.23,0.425,"team_box"]]},"nba_team_form":{"columns":["team","game_date","last_10_games","last_10_net_rating","last_20_net_rating","season_to_date_games","season_to_date_net_rating","league_to_date_offensive_rating","league_to_date_pace"],"rows":[["SAN  ","2026-04-12",10,17.1,14.2,81,8.6,116.6,98.6],["OKC  ","2026-04-12",10,15.6,13.1,81,11.7,116.6,98.6],["ATL  ","2026-04-12",10,12.9,12.9,81,2.7,116.6,98.6],["BOS  ","2026-04-12",10,12.5,7.6,81,8.2,116.6,98.6],["HOU  ","2026-04-12",10,12.4,4.2,81,5.1,116.6,98.6],["DEN  ","2026-04-12",10,11.0,7.2,81,5.1,116.6,98.6],["DET  ","2026-04-12",10,10.6,10.7,81,8.2,116.6,98.6],["POR  ","2026-04-12",10,10.5,6.2,81,-0.4,116.6,98.6],["CHA  ","2026-04-12",10,10.0,10.5,81,4.9,116.6,98.6],["NYK  ","2026-04-12",10,8.2,8.7,81,6.8,116.6,98.6],["TOR  ","2026-04-12",10,6.4,4.9,81,2.5,116.6,98.6],["LAC  ","2026-04-12",10,5.1,3.3,81,1.1,116.6,98.6],["PHX  ","2026-04-12",10,2.1,1.6,81,1.1,116.6,98.6],["CLE  ","2026-04-12",10,2.0,3.3,81,4.0,116.6,98.6],["LAL  ","2026-04-12",10,1.3,4.3,81,1.5,116.6,98.6],["MIN  ","2026-04-12",10,0.1,-0.5,81,3.3,116.6,98.6],["IND  ","2026-04-12",10,-0.2,-7.2,81,-7.9,116.6,98.6],["PHI  ","2026-04-12",10,-0.8,-1.2,81,-0.4,116.6,98.6],["ORL  ","2026-04-12",10,-1.1,1.5,81,0.7,116.6,98.6],["GSW  ","2026-04-12",10,-4.9,-6.0,81,-0.5,116.6,98.6],["MIA  ","2026-04-12",10,-5.4,-0.4,81,2.0,116.6,98.6],["SAC  ","2026-04-12",10,-9.1,-7.9,81,-10.1,116.6,98.6],["MIL  ","2026-04-12",10,-9.4,-11.4,81,-6.2,116.6,98.6],["DAL  ","2026-04-12",10,-9.9,-10.8,81,-5.7,116.6,98.6],["CHI  ","2026-04-12",10,-9.9,-7.0,81,-4.9,116.6,98.6],["NOP  ","2026-04-12",10,-10.2,-2.8,81,-4.5,116.6,98.6],["UTA  ","2026-04-12",10,-12.5,-9.0,81,-8.0,116.6,98.6],["BKN  ","2026-04-12",10,-14.0,-12.8,81,-10.0,116.6,98.6],["WAS  ","2026-04-12",10,-14.1,-15.0,81,-11.8,116.6,98.6],["MEM  ","2026-04-12",10,-19.5,-16.4,81,-5.6,116.6,98.6]]}},"profiles":{"int_nba_player_games":{"schema":"intermediate_nba","row_count":1451357,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["game_id","BIGINT","20000001","62500001",57918,"26089679.338392276","6022833.929068144","21428435","26229304","28712847",1451357,0.0],["person_id","BIGINT","2","1643813",6628,"254903.7548756095","508140.55013250955","1708","77014","201291",1451357,0.0],["season_start_year","BIGINT","1946","2026",79,"1996.2610439747077","19.01679796179063","1982","1998","2012",1451357,0.0],["game_type","VARCHAR","NBA Cup Final","Regular Season",4,null,null,null,null,null,1451357,0.0],["game_date","DATE","1946-11-26","2026-10-31",14280,"1997-05-01 23:27:37.698554",null,"1983-05-24","1999-04-06","2013-05-31",1451357,0.0],["team_id","BIGINT","1610612737","1610612766",33,"1610612751.1245394","8.66709472645025","1610612744","1610612751","1610612758",1451357,0.0],["opponent_team_id","BIGINT","1610612737","1610612766",33,"1610612751.1185765","8.660429990775837","1610612744","1610612751","1610612758",1451357,0.0],["is_team_inferred","BOOLEAN","false","true",2,null,null,null,null,null,1451357,0.0],["is_home","BOOLEAN","false","true",2,null,null,null,null,null,1451357,0.0],["is_win","BOOLEAN","false","true",2,null,null,null,null,null,1451357,0.0],["is_starter","BOOLEAN","false","true",2,null,null,null,null,null,1451357,0.0],["minutes_played","DOUBLE","0.0","69.0",4507,"23.092186207277074","12.099001082962449","13.959001059644564","23.680797891264866","32.844421976181295",1451357,5.09],["points","DOUBLE","0.0","100.0",96,"10.283268692678645","8.440961159476215","3.9531170365791364","8.600538921278595","15.242764716695957",1451357,0.0],["field_goals_made","DOUBLE","0.0","36.0",34,"3.9074693545419907","3.285628276461216","1.0","3.0","6.0",1451357,0.0],["field_goals_attempted","DOUBLE","0.0","63.0",67,"8.495977264511234","6.136219393312124","3.995284620454219","7.43356962413922","12.0",1451357,3.75],["three_pointers_made","DOUBLE","0.0","14.0",16,"0.6062223360186011","1.1270252777648777","0.0","0.0","1.0",1451357,20.35],["three_pointers_attempted","DOUBLE","0.0","24.0",28,"1.7210054346881227","2.4288671666353343","0.0","0.9945035569500086","3.0",1451357,20.74],["free_throws_made","DOUBLE","0.0","36.0",32,"1.9854678723603632","2.515910503908924","0.0","1.0","3.0",1451357,0.0],["free_throws_attempted","DOUBLE","0.0","43.0",39,"2.6342639121533593","3.1182654137188033","0.0","2.0","4.0",1451357,0.04],["rebounds_offensive","DOUBLE","0.0","21.0",23,"1.1738955884779543","1.5129256303699135","0.0","1.0","2.0",1451357,18.99],["rebounds_defensive","DOUBLE","0.0","29.0",30,"2.974836060571126","2.740725798021577","1.0","2.0","4.0",1451357,18.72],["rebounds_total","DOUBLE","0.0","55.0",52,"4.307058271497778","3.9436170966886395","1.0","3.0","6.0",1451357,2.2],["assists","DOUBLE","0.0","30.0",30,"2.2747755083382617","2.6215804059856733","0.0","1.1116221931334598","3.0",1451357,3.53],["steals","DOUBLE","0.0","11.0",13,"0.7725797306292166","1.0385611981425382","0.0","0.0","1.0",1451357,16.15],["blocks","DOUBLE","0.0","17.0",18,"0.48568141494788203","0.9274524634400756","0.0","0.0","1.0",1451357,15.5],["turnovers","DOUBLE","0.0","14.0",16,"1.4205258542734223","1.4718359321985381","0.0","1.0","2.0",1451357,19.54],["fouls_personal","DOUBLE","0.0","23.0",22,"2.2170377141139936","1.5959986213989277","1.0","2.0","3.0",1451357,0.95],["plus_minus_points","DOUBLE","-60.0","57.0",124,"-0.00013986910181299294","7.902681411074312","-1.2909413542359494","0.0","0.5144954359808842",1451357,0.0]]},"int_nba_team_games":{"schema":"intermediate_nba","row_count":142976,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["game_id","BIGINT","20000001","62500001",57918,"26158586.655718442","6052969.756372347","21427421","26397268","28735360",142976,0.0],["team_id","BIGINT","1610612737","1610612766",33,"1610612751.0982614","8.666994065937903","1610612744","1610612751","1610612758",142976,0.0],["opponent_team_id","BIGINT","1610612737","1610612766",33,"1610612751.0982614","8.66699408553132","1610612744","1610612751","1610612758",142976,0.0],["season_start_year","BIGINT","1946","2026",79,"1995.6551309310653","19.135033760620864","1981","1997","2012",142976,0.0],["game_type","VARCHAR","NBA Cup Final","Regular Season",4,null,null,null,null,null,142976,0.0],["game_date","DATE","1946-11-26","2026-10-31",14280,"1996-09-23 00:48:13.375112",null,"1982-07-24","1998-08-08","2012-10-29",142976,0.0],["is_home","BOOLEAN","false","true",2,null,null,null,null,null,142976,0.0],["is_win","BOOLEAN","false","true",2,null,null,null,null,null,142976,0.0],["points","BIGINT","0","186",149,"104.36662796553267","14.246161685676423","95","104","114",142976,0.0],["opp_points","BIGINT","0","186",149,"104.36662796553267","14.246161685676437","95","104","114",142976,0.0],["team_minutes","DOUBLE","239.0","365.0",9,"241.54930897493284","6.992458841891459","240.0","240.0","240.0",142976,0.0],["points_in_the_paint","BIGINT","6","98",52,"42.46548579639659","10.659687127274951","35","42","50",142976,49.38],["points_fast_break","BIGINT","0","56",47,"13.113260737383229","6.530230952803482","8","12","17",142976,49.39],["field_goals_made","DOUBLE","0.0","74.0",68,"39.655718212529635","6.387162989839564","35.099187791238684","39.58178368892833","43.996945245665714",142976,0.0],["field_goals_attempted","DOUBLE","0.0","240.0",127,"86.46147707221355","10.146416960621426","79.57008713620861","85.85939357151189","92.2641036636449",142976,4.47],["three_pointers_made","DOUBLE","0.0","29.0",30,"4.93076912255033","4.973687017719978","0.0","3.9957467046526385","8.0",142976,0.57],["three_pointers_attempted","DOUBLE","0.0","70.0",83,"13.999879778792979","12.738619081176052","1.37115323562796","12.081531540272598","22.44755744758184",142976,1.1],["free_throws_made","DOUBLE","0.0","61.0",67,"20.14852066867175","7.022483913855492","15.0","19.800194619791895","24.72887244507663",142976,0.0],["free_throws_attempted","DOUBLE","0.0","91.0",95,"26.72927693298608","8.897505242256372","20.237014420253562","26.0","32.13824276944479",142976,0.1],["rebounds_offensive","DOUBLE","0.0","38.0",39,"12.07097067993134","4.495471134156153","9.0","11.989172010011876","14.99846677332828",142976,20.13],["rebounds_defensive","DOUBLE","0.0","60.0",64,"30.59994062587315","6.166283485850565","27.0","30.95850143360989","34.51870384023533",142976,19.9],["rebounds_total","DOUBLE","0.0","109.0",146,"43.63045540115252","9.771102554346218","38.18885984788698","43.09755235786901","48.994415107058366",142976,2.66],["assists","DOUBLE","0.0","53.0",56,"23.15305638804425","6.184862906970313","19.027676480110486","23.0","27.0",142976,4.08],["steals","DOUBLE","0.0","27.0",28,"7.9412939533702875","3.1733933695279894","6.0","8.0","10.0",142976,17.35],["blocks","DOUBLE","0.0","23.0",27,"4.989091550360256","2.6906567558961485","3.0","5.0","6.866609924687095",142976,16.71],["turnovers","DOUBLE","0.0","40.0",44,"15.020819187866497","4.386451887258189","12.0","14.99824387267956","17.99907161900521",142976,20.68],["fouls_personal","DOUBLE","0.0","122.0",79,"22.632134711232506","5.1720691953847","19.0","22.050163471473724","26.0",142976,0.65],["counts_source","VARCHAR","none","team_box",3,null,null,null,null,null,142976,0.0],["opp_field_goals_made","DOUBLE","0.0","74.0",68,"39.655718212529635","6.387162989839533","35.066349786954724","39.44518976947445","43.994174391364595",142976,0.0],["opp_field_goals_attempted","DOUBLE","0.0","240.0",127,"86.46147707221355","10.146416960621464","79.54491826179421","85.87808938138564","92.26000097543185",142976,4.47],["opp_three_pointers_made","DOUBLE","0.0","29.0",30,"4.93076912255033","4.9736870177199775","0.0","3.9943200602281466","8.0",142976,0.57],["opp_three_pointers_attempted","DOUBLE","0.0","70.0",83,"13.999879778792979","12.738619081176084","1.388799902707704","12.07137172956662","22.319566423927704",142976,1.1],["opp_free_throws_made","DOUBLE","0.0","61.0",67,"20.14852066867175","7.022483913855519","15.0","19.800808064224906","24.688763465091675",142976,0.0],["opp_free_throws_attempted","DOUBLE","0.0","91.0",95,"26.72927693298608","8.897505242256361","20.094621208851486","25.999544230399017","32.1004021479912",142976,0.1],["opp_rebounds_offensive","DOUBLE","0.0","38.0",39,"12.07097067993134","4.495471134156154","9.0","11.995361555165815","15.0",142976,20.13],["opp_rebounds_defensive","DOUBLE","0.0","60.0",64,"30.59994062587315","6.16628348585056","27.0","30.962267636486036","34.37593995375601",142976,19.9],["opp_rebounds_total","DOUBLE","0.0","109.0",146,"43.63045540115252","9.771102554346168","38.17540780786556","43.04945499176777","48.955238548952906",142976,2.66],["opp_assists","DOUBLE","0.0","53.0",56,"23.15305638804425","6.1848629069703165","19.0","23.0","27.0",142976,4.08],["opp_steals","DOUBLE","0.0","27.0",28,"7.9412939533702875","3.1733933695279917","6.0","8.0","10.0",142976,17.35],["opp_blocks","DOUBLE","0.0","23.0",27,"4.989091550360256","2.6906567558961303","3.0","4.999306875691213","6.984103720405861",142976,16.71],["opp_turnovers","DOUBLE","0.0","40.0",44,"15.020819187866497","4.38645188725821","12.0","14.998731580815683","17.993334806419657",142976,20.68],["opp_fouls_personal","DOUBLE","0.0","122.0",79,"22.632134711232506","5.17206919538468","19.0","22.033820839429243","26.0",142976,0.65],["opp_team_minutes","DOUBLE","239.0","365.0",9,"241.54930897493284","6.992458841891487","240.0","240.0","240.0",142976,0.0],["opp_counts_source","VARCHAR","none","team_box",3,null,null,null,null,null,142976,0.0],["overtime_periods","DOUBLE","0.0","5.0",6,"0.06196844225604297","0.27969658080676546","0.0","0.0","0.0",142976,0.0],["has_full_box","BOOLEAN","false","true",2,null,null,null,null,null,142976,0.0],["possessions","DOUBLE","64.94999999999999","147.26891900510205",48818,"95.89309595099041","7.300814651401465","90.81064860161553","95.43637596042562","100.41438309309243",142976,22.41]]},"int_nba_team_season_srs":{"schema":"intermediate_nba","row_count":1717,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["season_start_year","BIGINT","1946","2026",79,"1995.4898078043097","20.056985710193306","1981","1998","2012",1717,0.0],["team_id","BIGINT","1610612737","1610612766",33,"1610612751.1281304","8.68517650216155","1610612744","1610612751","1610612758",1717,0.0],["mov","DOUBLE","-19.0","15.1667",1214,"-0.00630029120559114","4.707720838018331","-3.102303382663848","0.23026087278106508","3.2781104515050163",1717,0.0],["srs","DOUBLE","-22.3409","17.15",2075,"-0.004862259755387323","4.57130450523322","-2.9600388164251203","0.17265880177514792","3.06315",1717,0.0],["sos","DOUBLE","-13.7428","12.3364",1412,"0.0014363424577751873","0.9750076063394142","-0.26905881422924904","0.004500611785874944","0.2808522619047619",1717,0.0],["srs_iterations","INTEGER","6","129",13,"13.782178217821782","16.212504430673466","10","11","12",1717,0.0],["is_srs_converged","BOOLEAN","true","true",1,null,null,null,null,null,1717,0.0]]},"int_nba_player_game_context":{"schema":"intermediate_nba","row_count":1451357,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["game_id","BIGINT","20000001","62500001",57918,"26089679.338392276","6022833.929068139","21418596","26230736","28726180",1451357,0.0],["person_id","BIGINT","2","1643813",6628,"254903.7548756095","508140.5501325097","1719","77021","201299",1451357,0.0],["team_id","BIGINT","1610612737","1610612766",33,"1610612751.1245394","8.667094802162682","1610612744","1610612751","1610612758",1451357,0.0],["opponent_team_id","BIGINT","1610612737","1610612766",33,"1610612751.1185765","8.660430077070338","1610612744","1610612751","1610612758",1451357,0.0],["season_start_year","BIGINT","1946","2026",79,"1996.2610439747077","19.01679796179072","1982","1998","2012",1451357,0.0],["game_type","VARCHAR","NBA Cup Final","Regular Season",4,null,null,null,null,null,1451357,0.0],["game_date","DATE","1946-11-26","2026-10-31",14280,"1997-05-01 23:27:37.698554",null,"1983-05-02","1999-04-06","2013-06-11",1451357,0.0],["is_home","BOOLEAN","false","true",2,null,null,null,null,null,1451357,0.0],["is_win","BOOLEAN","false","true",2,null,null,null,null,null,1451357,0.0],["is_starter","BOOLEAN","false","true",2,null,null,null,null,null,1451357,0.0],["minutes_played","DOUBLE","0.0","69.0",4507,"23.09218620727707","12.099001082962445","13.860732294736641","23.730081718008346","32.92408101212053",1451357,5.09],["team_player_minutes","DOUBLE","0.0","365.0",475,"235.36367354376517","27.820713503966047","235.0","236.78272573534184","240.0",1451357,5.09],["points","DOUBLE","0.0","100.0",96,"10.283268692678645","8.440961159476217","3.902278436900396","8.557041293874741","14.9999877478876",1451357,0.0],["field_goals_made","DOUBLE","0.0","36.0",34,"3.9074693545419907","3.2856282764612166","1.0","3.0","5.99967233296985",1451357,0.0],["field_goals_attempted","DOUBLE","0.0","63.0",67,"8.495977264511234","6.1362193933121265","3.9460108544837196","7.35235924246426","12.0",1451357,3.75],["three_pointers_made","DOUBLE","0.0","14.0",16,"0.4853463935417343","1.0371053466055669","0.0","0.0","0.7783956242224208",1451357,0.51],["three_pointers_attempted","DOUBLE","0.0","24.0",28,"1.3764970736407969","2.2787447272586254","0.0","0.0","2.0",1451357,0.9],["free_throws_made","DOUBLE","0.0","36.0",32,"1.9854678723603632","2.515910503908923","0.0","1.0","3.0",1451357,0.0],["free_throws_attempted","DOUBLE","0.0","43.0",39,"2.6342639121533593","3.1182654137188033","0.0","2.0","4.0",1451357,0.04],["rebounds_offensive","DOUBLE","0.0","21.0",23,"1.1738955884779543","1.512925630369914","0.0","1.0","2.0",1451357,18.99],["rebounds_defensive","DOUBLE","0.0","29.0",30,"2.974836060571126","2.7407257980215776","1.0","2.0","4.0",1451357,18.72],["rebounds_total","DOUBLE","0.0","55.0",52,"4.307058271497778","3.943617096688644","1.0","3.0","6.0",1451357,2.2],["assists","DOUBLE","0.0","30.0",30,"2.2747755083382617","2.621580405985671","0.0","1.1966287082357339","3.0",1451357,3.53],["steals","DOUBLE","0.0","11.0",13,"0.7725797306292166","1.0385611981425384","0.0","0.0","1.0",1451357,16.15],["blocks","DOUBLE","0.0","17.0",18,"0.48568141494788203","0.9274524634400758","0.0","0.0","1.0",1451357,15.5],["turnovers","DOUBLE","0.0","14.0",16,"1.4205258542734223","1.4718359321985375","0.0","1.0","2.0",1451357,19.54],["fouls_personal","DOUBLE","0.0","23.0",22,"2.2170377141139936","1.5959986213989297","1.0","2.0","3.0",1451357,0.95],["has_full_box","BOOLEAN","false","true",2,null,null,null,null,null,1451357,0.0],["team_points","BIGINT","18","186",148,"104.45417219884563","14.341139447343442","95","104","114",1451357,0.0],["team_field_goals_made","DOUBLE","0.0","74.0",68,"39.67864835329898","6.413775917286673","35.0","39.64361990483138","43.999272340967295",1451357,0.0],["team_field_goals_attempted","DOUBLE","0.0","240.0",127,"86.4309464047153","10.074929741412623","79.64993813909864","85.75951200760723","92.03687997952201",1451357,4.23],["team_three_pointers_made","DOUBLE","0.0","29.0",30,"5.0560247576071715","5.021932423557642","0.0","3.9999896387333127","8.0",1451357,0.57],["team_free_throws_made","DOUBLE","0.0","61.0",67,"20.062185840921384","7.003298924642617","15.0","19.60634484608142","24.469897439013668",1451357,0.0],["team_free_throws_attempted","DOUBLE","0.0","91.0",95,"26.61148011875985","8.868358883541573","20.120555007593914","25.998843671765446","32.13672986535033",1451357,0.09],["team_rebounds_offensive","DOUBLE","0.0","38.0",39,"12.053874210600735","4.492528895893958","9.0","11.998103085907395","14.99887714257267",1451357,19.11],["team_rebounds_defensive","DOUBLE","0.0","60.0",64,"30.65214226686971","6.187476699367089","27.0","30.964875147143875","34.77813366752109",1451357,18.87],["team_rebounds_total","DOUBLE","0.0","109.0",146,"43.61218618840217","9.645807875126753","38.320139960097464","43.257777676629416","48.86972521903877",1451357,2.52],["team_assists","DOUBLE","0.0","53.0",56,"23.22413705381872","6.198017502116957","19.02590347752897","23.0","27.0",1451357,3.85],["team_steals","DOUBLE","0.0","27.0",28,"7.964316666721588","3.182066216450252","6.0","8.0","10.0",1451357,16.36],["team_blocks","DOUBLE","0.0","23.0",27,"4.9958783221827225","2.6917061361897443","3.0","4.999676622455294","6.9019389950244125",1451357,15.75],["team_turnovers","DOUBLE","0.0","40.0",44,"15.033195906515472","4.390939410821314","12.0","15.0","17.99898638894956",1451357,19.63],["team_fouls_personal","DOUBLE","0.0","122.0",79,"22.618453344943482","5.185269401926891","19.0","22.0","26.0",1451357,0.62],["opp_points","BIGINT","18","186",148,"104.42356153585919","14.316029905047426","95","104","114",1451357,0.0],["opp_field_goals_made","DOUBLE","0.0","74.0",68,"39.63765111191498","6.400319137733509","35.06506772530923","39.46666374501194","43.99856126018211",1451357,0.0],["opp_field_goals_attempted","DOUBLE","0.0","240.0",127,"86.37082510672118","10.065078042633985","79.60376044637916","85.68625209551762","92.20805231518463",1451357,4.21],["opp_three_pointers_attempted","DOUBLE","0.0","70.0",83,"14.328123606900856","12.814572302537625","1.8890751854203351","12.564631933849514","22.866539008373383",1451357,1.08],["opp_free_throws_made","DOUBLE","0.0","61.0",67,"20.121654192741097","7.028981802347504","15.0","19.61706032560608","24.73458607409009",1451357,0.0],["opp_free_throws_attempted","DOUBLE","0.0","91.0",95,"26.69056911387726","8.901766095202403","20.0","25.999163583385638","32.259822817064276",1451357,0.09],["opp_rebounds_offensive","DOUBLE","0.0","38.0",39,"12.047839195979899","4.488820503382057","9.0","11.998506948501596","14.999097704578766",1451357,19.1],["opp_rebounds_defensive","DOUBLE","0.0","60.0",64,"30.64635380839554","6.1792376943254625","27.0","30.95491471097973","34.732823255385966",1451357,18.87],["opp_rebounds_total","DOUBLE","0.0","109.0",146,"43.604713416396535","9.636895357972135","38.326914649254945","43.18727264425462","48.95798425609503",1451357,2.5],["opp_turnovers","DOUBLE","0.0","40.0",44,"15.04769427930959","4.39654177588847","12.0","14.999974011135354","17.999261866370617",1451357,19.62],["team_possessions","DOUBLE","64.94999999999999","147.26891900510205",48818,"95.97844301345276","7.284444866135034","90.90353660653275","95.53762326034015","100.50135422507711",1451357,21.35],["on_court_share","DOUBLE","0.0","1.0480349344978166",21582,"0.49015933144665585","0.24635849861977335","0.3011610015159893","0.5030563450831396","0.6904331212697822",1451357,6.8],["usage_plays","DOUBLE","0.0","66.92",956,"10.724972185367049","7.4816700832338","4.943398071084518","9.463549447375277","15.329576081046616",1451357,19.55],["usage_opportunity","DOUBLE","0.0","159.2470588235294",391875,"53.803549882533645","27.187297965664293","33.17726922593161","55.02549033254974","75.33922878101619",1451357,19.91],["assist_opportunity","DOUBLE","-15.0","62.0",128166,"15.567263019926928","8.129256847742903","9.480321168968176","15.651589101380065","21.396684620526514",1451357,6.95],["offensive_rebound_opportunity","DOUBLE","0.0","70.48275862068965",72284,"20.808959701634326","11.050621331430195","12.420874030275511","20.879054213831946","28.981639533797125",1451357,19.53],["defensive_rebound_opportunity","DOUBLE","0.0","72.47058823529412",64490,"20.808993814344593","11.086639263890481","12.348987057653622","20.858503192228664","29.024908922889193",1451357,19.52],["rebound_opportunity","DOUBLE","0.0","170.0",76210,"42.99923690352393","22.923247303482253","25.595491118621297","43.199489992073765","59.70853747166332",1451357,7.36],["steal_opportunity","DOUBLE","0.0","133.1968",913643,"46.57955839185094","23.454403901588904","28.742254033860885","47.78275856516503","65.38599813090123",1451357,21.6],["block_opportunity","DOUBLE","0.0","132.7058823529412",83605,"33.11648942237596","18.577608348649257","19.137062267754196","32.07422671138752","45.60246622322477",1451357,16.64],["player_possessions","DOUBLE","0.0","133.1968",913643,"46.57944600036357","23.454105138990137","28.73087762694721","47.783559070233295","65.4501253010872",1451357,21.52],["game_score","DOUBLE","-11.7","64.60000000000001",3496,"7.749773211072108","7.419931761821347","1.8939925070743477","6.297142746681506","12.162260886516616",1451357,21.28]]},"int_nba_player_stints":{"schema":"intermediate_nba","row_count":40766,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["person_id","BIGINT","2","1643813",6628,"314170.2795221508","567684.5716006765","1892","77263","202150",40766,0.0],["team_id","BIGINT","1610612737","1610612766",33,"1610612751.0226414","8.667738848511718","1610612744","1610612751","1610612758",40766,0.0],["season_start_year","BIGINT","1946","2026",79,"1997.629200804592","19.926478995926008","1984","2000","2015",40766,0.0],["game_type","VARCHAR","NBA Cup Final","Regular Season",4,null,null,null,null,null,40766,0.0],["games_played","BIGINT","1","82",80,"35.60214394348231","29.445653996002303","7","26","66",40766,0.0],["minutes_played","DOUBLE","0.0","3882.0",7899,"795.2517766332488","866.0914737434825","101.43052184062826","405.9136678564591","1338.7789056854067",40766,1.89],["points","DOUBLE","0.0","4029.0",2761,"366.1064122062503","457.0705701588462","36.67327353587718","164.53483321970566","547.4486618691461",40766,0.0],["ts_points","DOUBLE","0.0","4029.0",2781,"354.51319981231325","447.93332733377713","34.71802435053724","156.85836762748244","524.6931670893399",40766,0.67],["ts_field_goals_attempted","DOUBLE","0.0","3159.0",1961,"293.09241103400586","358.16571010006373","31.807331874241118","135.96193815519214","439.8535636269895",40766,0.67],["ts_free_throws_attempted","DOUBLE","0.0","1361.0",759,"89.45975847677376","124.36612943982485","7.973426498826541","37.2945377224128","121.4562277175106",40766,0.67],["field_goals_made","DOUBLE","0.0","1597.0",955,"134.8306829966912","170.03349286329944","13.001514225837516","59.045879441084935","200.37602699267575",40766,0.66],["field_goals_attempted","DOUBLE","0.0","3159.0",1961,"293.0596078818707","358.16132838922096","31.786234016337207","135.90746893287616","439.8110325861354",40766,0.66],["three_pointers_made","DOUBLE","0.0","402.0",312,"17.304417611181076","36.63996707652549","0.0","0.9985531256196549","13.994840886101167",40766,0.66],["three_pointers_attempted","DOUBLE","0.0","1028.0",707,"48.892401155755316","97.85007267806081","0.0","3.9922579795164106","43.61734198279138",40766,0.67],["ft_rate_free_throws_made","DOUBLE","0.0","835.0",685,"67.50785223961677","96.60609676039368","5.667710676620273","26.945697965447945","89.89178948355404",40766,0.66],["ft_rate_field_goals_attempted","DOUBLE","0.0","3159.0",1961,"293.05800286433896","358.15911984247606","31.786234016337207","135.90746893287616","439.79417141605484",40766,0.66],["tov_pct_turnovers","DOUBLE","0.0","464.0",350,"48.796117076040595","59.593957581121025","5.13272921108742","23.143293746898234","72.83306165474202",40766,16.61],["tov_pct_plays","DOUBLE","0.0","2978.6800000000003",15732,"368.3468745403804","448.12393610683847","40.61367807880496","173.7788669227952","553.2941768903977",40766,16.61],["usage_opportunity_numerator","DOUBLE","0.0","2978.6800000000003",15939,"366.7401730327889","446.7240109829616","40.48952784553101","172.7737030036731","550.0982643431714",40766,16.64],["usage_opportunity","DOUBLE","0.0","8503.874858490568",33923,"1840.5193455358663","1982.245553854316","237.58511546324596","972.3402112104194","3098.0160590988385",40766,16.64],["assist_opportunity_numerator","DOUBLE","0.0","1164.0",787,"78.21572631472797","118.23914143697561","5.986718320201274","28.607800440627546","100.35236679917507",40766,2.7],["assist_opportunity","DOUBLE","-197.0","2978.258369526808",37415,"529.9878737457809","572.1756489920675","67.55692604310921","275.4088039156639","904.3527733545313",40766,2.7],["offensive_rebound_opportunity_numerator","DOUBLE","0.0","523.0",388,"38.92821444797819","55.232518588638854","3.826036866359446","16.090481766583178","50.46913801326358",40766,13.61],["offensive_rebound_opportunity","DOUBLE","0.0","3469.904510672164",35437,"690.1435427078578","755.1318098575712","90.25010287901021","357.18982491627423","1140.3789315522288",40766,13.61],["defensive_rebound_opportunity_numerator","DOUBLE","0.0","1007.0",789,"99.11063153112222","127.02884649821897","10.59578089539921","45.18481507573572","145.07581024376114",40766,13.61],["defensive_rebound_opportunity","DOUBLE","0.0","3313.179245283018",28922,"690.1813096319918","759.4120488232375","87.61587973187343","355.15699847224386","1140.142154436697",40766,13.61],["rebound_opportunity_numerator","DOUBLE","0.0","1874.0",1003,"146.4411920563224","188.26062530767254","16.064688596784006","67.76749178926937","212.60821411763135",40766,2.79],["rebound_opportunity","DOUBLE","0.0","9272.606807123975",40452,"1458.866486663811","1579.6768145643643","189.25688811509013","761.3992704979794","2454.258869122765",40766,2.79],["steal_opportunity_numerator","DOUBLE","0.0","300.0",251,"25.990623521060105","32.77823600459611","2.8712387412431877","12.090470526610789","39.038986087223854",40766,17.07],["steal_opportunity","DOUBLE","0.0","7236.371897983332",38374,"1567.6719067319007","1703.213193208215","201.42725288805894","816.4129925716966","2622.0796584170803",40766,17.07],["block_opportunity_numerator","DOUBLE","0.0","435.0",291,"16.57266041085468","29.592867776370458","1.0","5.316748804992119","18.66012619351736",40766,12.95],["block_opportunity","DOUBLE","0.0","6476.238921512001",32369,"1129.0028742919899","1258.459976124024","138.01807661667823","581.736497677042","1850.204933345317",40766,12.95],["player_possessions","DOUBLE","0.0","7236.371897983332",41535,"1568.7310682751643","1703.7872779375816","201.36874029024","818.3016027600705","2621.1205429847046",40766,17.03],["per_100_points","DOUBLE","0.0","3041.0",2424,"338.9141091597185","431.684711950895","33.16191562143673","149.35470688763084","495.7000028093329",40766,17.03],["per_100_points_possessions","DOUBLE","0.0","7236.371897983332",41535,"1568.7310682751643","1703.7872779375816","201.36874029024","818.3016027600705","2621.1205429847046",40766,17.03],["per_100_rebounds_total","DOUBLE","0.0","1530.0",889,"140.28496245047603","178.6619822069132","15.314796486148449","65.46855322025326","204.7038274901657",40766,17.03],["per_100_rebounds_total_possessions","DOUBLE","0.0","7236.371897983332",41535,"1568.7310682751643","1703.7872779375816","201.36874029024","818.3016027600705","2621.1205429847046",40766,17.03],["per_100_assists","DOUBLE","0.0","1164.0",762,"76.39719709065106","117.20241701324728","5.80185546037232","28.027982488939518","96.74270261276324",40766,17.03],["per_100_assists_possessions","DOUBLE","0.0","7236.371897983332",41535,"1568.7310682751643","1703.7872779375816","201.36874029024","818.3016027600705","2621.1205429847046",40766,17.03],["per_100_steals","DOUBLE","0.0","300.0",251,"25.990623521060105","32.77823600459611","2.8712387412431877","12.090470526610789","39.038986087223854",40766,17.07],["per_100_steals_possessions","DOUBLE","0.0","7236.371897983332",38374,"1567.6719067319007","1703.213193208215","201.42725288805894","816.4129925716966","2622.0796584170803",40766,17.07],["per_100_blocks","DOUBLE","0.0","442.0",287,"16.380562372490463","29.2646586830046","1.0","5.0944478628653815","18.506146062980754",40766,17.04],["per_100_blocks_possessions","DOUBLE","0.0","7236.371897983332",43319,"1566.7922502952529","1702.5553954686586","201.57065931531062","815.200519222689","2619.0444419094715",40766,17.04],["per_100_turnovers","DOUBLE","0.0","464.0",355,"47.79937888198758","58.79481036134792","5.0","22.516744580475912","70.71818696344009",40766,17.06],["per_100_turnovers_possessions","DOUBLE","0.0","7236.371897983332",41535,"1569.0198725490673","1703.7570619723776","201.68958974373135","818.8986698905197","2621.141191257721",40766,17.06],["game_score","DOUBLE","-15.5","2331.8",17690,"261.88768634642724","338.16133479692513","22.82095677855665","111.84504944185575","388.6789098755833",40766,17.07],["game_score_games","BIGINT","0","82",81,"28.025118971692095","29.043184972664132","3","15","55",40766,0.0],["p_min","DOUBLE","0.5","3533.0",7982,"779.7915984567455","845.944583140776","102.30718405288029","408.19525992723254","1300.7743807878292",40766,17.35],["t_min","DOUBLE","230.0","20080.0",10643,"7962.22601295942","6807.500083893257","1451.7590375602265","5524.0153535966","14753.33644964803",40766,17.35],["o_min","DOUBLE","230.0","20080.0",10643,"7962.22601295942","6807.500083893257","1451.7590375602265","5524.0153535966","14753.33644964803",40766,17.35],["p_pts","DOUBLE","0.0","2980.0",2265,"338.6589404956225","430.7527720520268","33.57997646451066","149.61962313459705","494.9678530200825",40766,17.35],["t_pts","HUGEINT","57","10110",7335,"3465.178275708562","2985.2050717424236","655","2409","6394",40766,17.35],["o_pts","HUGEINT","63","10240",7616,"3463.787861700549","2965.9287513716868","664","2423","6406",40766,17.35],["p_fg","DOUBLE","0.0","1071.0",808,"127.6516100311619","161.1779230660973","12.524217472815893","56.48804832485646","188.45986915194217",40766,17.35],["t_fg","DOUBLE","20.0","3914.0",4285,"1306.2862739278826","1130.062010292516","242.06147205874652","908.6726330344002","2400.8667168172806",40766,17.35],["o_fg","DOUBLE","20.0","3974.0",4122,"1304.830538655587","1123.264341727522","245.7083359281213","912.9185510174085","2400.8120461386816",40766,17.35],["p_fga","DOUBLE","0.0","2224.0",1785,"276.06511351832614","339.66987066066554","30.217769638160853","127.01966627122886","409.6892469287143",40766,17.35],["t_fga","DOUBLE","58.0","8203.0",8682,"2823.8265321264284","2420.344602540309","532.7242416467244","1966.86919903908","5226.486275455822",40766,17.35],["o_fga","DOUBLE","62.0","7889.0",8369,"2821.9165454815256","2419.694186866326","532.990776553064","1967.6758114571467","5217.355210325171",40766,17.35],["p_fg3","DOUBLE","0.0","402.0",312,"20.705653657812732","39.249084215685805","0.0","2.0","20.990724049971657",40766,17.35],["t_fg3","DOUBLE","0.0","1419.0",1258,"213.7185042291141","246.23488995433883","27.754332457652747","108.66901277743274","327.7311547602827",40766,17.35],["p_ft","DOUBLE","0.0","826.0",587,"62.650066775485975","91.8028392314332","4.997566662714609","24.541726921687474","81.74912804580244",40766,17.35],["t_ft","DOUBLE","2.0","2313.0",2353,"638.8677845377653","561.2364098749667","124.115345505603","442.07203740653114","1132.5781786989949",40766,17.35],["o_ft","DOUBLE","3.0","2353.0",2452,"640.6965425137261","559.0842386022706","125.34544415075455","441.21399967459706","1135.7998141556766",40766,17.35],["p_fta","DOUBLE","0.0","972.0",738,"82.64953257159816","117.40553051665198","7.480679240851523","33.895511612062855","110.29359714067179",40766,17.35],["t_fta","DOUBLE","3.0","2928.0",3044,"842.9749517732602","739.754776427513","163.86905851263091","583.1031823525261","1488.8970547619963",40766,17.35],["o_fta","DOUBLE","5.0","3018.0",3069,"845.3396646386705","738.0259837097075","164.2777074812968","585.8787651010402","1491.643775331012",40766,17.35],["p_orb","DOUBLE","0.0","523.0",388,"39.34744027303754","55.41748915294029","3.9815700427349245","16.39759490837909","51.39074676432841",40766,17.35],["t_orb","DOUBLE","0.0","1514.0",1428,"401.68452292625017","358.0396774815832","74.3524578023264","274.9618647565269","700.2527547085597",40766,17.35],["o_orb","DOUBLE","0.0","1495.0",1319,"401.3319186822971","355.21842599483006","74.68402832862256","274.3917167742128","705.9645067161647",40766,17.35],["p_drb","DOUBLE","0.0","1007.0",812,"100.67837958154028","127.52860328107039","10.971348059244125","46.70415209287088","148.1949682139836",40766,17.35],["t_drb","DOUBLE","0.0","3274.0",3347,"1030.2328535391007","886.0605532699192","196.02044995452223","714.8370635616524","1907.064744061044",40766,17.35],["o_drb","DOUBLE","0.0","3027.0",3347,"1029.9709155661078","879.9667043185448","199.77552234284812","717.7769556964427","1910.0385726861969",40766,17.35],["p_trb","DOUBLE","0.0","1530.0",956,"140.18062027006974","178.25645021996758","15.432479208737986","65.53419066459983","204.0450301143942",40766,17.35],["t_trb","DOUBLE","0.0","4025.0",4089,"1431.917376465351","1230.6686837215348","270.1215660231868","992.3737499389035","2651.2861419817514",40766,17.35],["o_trb","DOUBLE","0.0","4089.0",4261,"1431.302834248405","1224.1611562986632","274.0227966906819","995.871508113473","2650.912353243424",40766,17.35],["p_ast","DOUBLE","0.0","1164.0",761,"76.32708116931295","116.99504964143415","5.920882138413349","28.039708620353785","96.64821886599476",40766,17.35],["t_ast","DOUBLE","6.0","2549.0",2817,"782.0941979522185","684.3954417185237","142.2361280953569","541.8485480658472","1422.0865225522134",40766,17.35],["p_stl","DOUBLE","0.0","300.0",234,"25.995429588959787","32.71748318840857","2.9746774513695913","12.136659175314733","39.080564336517405",40766,17.35],["t_stl","DOUBLE","1.0","1053.0",875,"266.47858732749665","234.80308810835268","48.59229612080573","184.85277889410344","476.33021133230034",40766,17.35],["p_blk","DOUBLE","0.0","435.0",281,"16.38566552901024","29.224286488651398","1.0","5.236048239064152","18.503852861840386",40766,17.35],["t_blk","DOUBLE","0.0","697.0",676,"167.6397685116486","150.1437594392508","31.058973927355705","114.37095787147115","294.3018865500411",40766,17.35],["p_tov","DOUBLE","0.0","464.0",340,"47.734856803680074","58.62632192695601","5.0","22.56097476818236","70.65815080788708",40766,17.35],["t_tov","DOUBLE","0.0","1727.0",1712,"502.0043923430776","436.8963491234767","93.17055418652556","348.49073085493455","906.8804407479693",40766,17.35],["o_tov","DOUBLE","0.0","1927.0",1764,"502.4004451699065","439.34198335711073","92.13350081094916","350.5452471272409","901.5038112340577",40766,17.35],["p_pf","DOUBLE","0.0","380.0",365,"71.50488202997478","73.8668255494167","11.061795631856787","41.81044421574754","120.0299343735648",40766,17.35],["t_pf","DOUBLE","7.0","2380.0",2484,"731.22323786912","630.586579201994","143.05129803576335","510.5282822871886","1301.6876616579623",40766,17.35],["t_poss","DOUBLE","72.335","9045.113441627791",30237,"3206.7654461884044","2746.9426688419385","605.130887831302","2237.867494513759","5932.077920455689",40766,17.35],["rating_player_possessions","DOUBLE","1.1178581942287784","7236.371897983332",36967,"1567.7511662165946","1699.4798872653198","204.5582842134345","817.5915918488405","2621.5712716624544",40766,17.35],["rating_games","BIGINT","0","82",81,"27.61749987734877","28.868702838392018","3","14","54",40766,0.0],["points_produced","DOUBLE","-110.11964733170403","2827.0901710156013",30455,"338.44512527642615","422.5845108594773","35.16152459862503","153.683592467917","503.7473766602691",40766,17.35],["individual_possessions","DOUBLE","-51.868470983573715","2485.1730918340927",27127,"312.1677973911496","379.96909230529707","35.20480965506348","146.59865267475686","468.5344408982588",40766,17.35],["individual_defensive_rating","DOUBLE","-13.530117963228847","155.15567899045016",33900,"108.91553165949271","7.809451598649423","104.46236456500763","108.75159056212213","113.10933440212105",40766,17.35]]},"nba_team_game_stats":{"schema":"marts","row_count":142976,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["game_id","BIGINT","20000001","62500001",57918,"26158586.655718442","6052969.756372354","21419591","26384492","28731734",142976,0.0],["team_id","BIGINT","1610612737","1610612766",33,"1610612751.0982614","8.666994066120955","1610612744","1610612751","1610612758",142976,0.0],["opponent_team_id","BIGINT","1610612737","1610612766",33,"1610612751.0982614","8.666994091400936","1610612744","1610612751","1610612758",142976,0.0],["season_start_year","BIGINT","1946","2026",79,"1995.6551309310653","19.135033760621027","1981","1997","2012",142976,0.0],["season_label","VARCHAR","1946-47","2026-27",74,null,null,null,null,null,142976,0.0],["game_type","VARCHAR","NBA Cup Final","Regular Season",4,null,null,null,null,null,142976,0.0],["game_date","DATE","1946-11-26","2026-10-31",14280,"1996-09-23 00:48:13.375112",null,"1982-08-13","1998-08-12","2012-10-24",142976,0.0],["is_home","BOOLEAN","false","true",2,null,null,null,null,null,142976,0.0],["is_win","BOOLEAN","false","true",2,null,null,null,null,null,142976,0.0],["overtime_periods","DOUBLE","0.0","5.0",6,"0.06196844225604297","0.2796965808067656","0.0","0.0","0.0",142976,0.0],["team_minutes","DOUBLE","239.0","365.0",9,"241.54930897493284","6.992458841891452","240.0","240.0","240.0",142976,0.0],["points","BIGINT","0","186",149,"104.36662796553267","14.246161685676384","95","104","114",142976,0.0],["opp_points","BIGINT","0","186",149,"104.36662796553267","14.246161685676377","95","104","114",142976,0.0],["point_margin","BIGINT","-73","73",114,"0.0","13.714669881545912","-9","0","9",142976,0.0],["field_goals_made","DOUBLE","0.0","74.0",68,"39.655718212529635","6.387162989839556","35.122724521461215","39.53931998737195","43.996004922684186",142976,0.0],["field_goals_attempted","DOUBLE","0.0","240.0",127,"86.46147707221355","10.14641696062143","79.5801419499451","85.90088475852475","92.3791369719258",142976,4.47],["three_pointers_made","DOUBLE","0.0","29.0",30,"4.93076912255033","4.97368701771998","0.0","3.9954081708532243","8.0",142976,0.57],["three_pointers_attempted","DOUBLE","0.0","70.0",83,"13.999879778792979","12.738619081176004","1.3809863957561594","12.068804462550226","22.446250597628545",142976,1.1],["free_throws_made","DOUBLE","0.0","61.0",67,"20.14852066867175","7.022483913855476","15.0","19.81754390256917","24.693771887657643",142976,0.0],["free_throws_attempted","DOUBLE","0.0","91.0",95,"26.72927693298608","8.897505242256345","20.23548485924754","25.999284875088122","32.080088120699564",142976,0.1],["rebounds_offensive","DOUBLE","0.0","38.0",39,"12.07097067993134","4.4954711341561575","9.0","11.993027181388966","15.0",142976,20.13],["rebounds_defensive","DOUBLE","0.0","60.0",64,"30.59994062587315","6.16628348585057","27.0","30.797257762854137","34.53484875684407",142976,19.9],["rebounds_total","DOUBLE","0.0","109.0",146,"43.63045540115252","9.771102554346234","38.31818996759911","43.27306524243378","48.99423617978194",142976,2.66],["assists","DOUBLE","0.0","53.0",56,"23.15305638804425","6.184862906970342","19.0","23.0","27.0",142976,4.08],["steals","DOUBLE","0.0","27.0",28,"7.9412939533702875","3.17339336952799","6.0","8.0","10.0",142976,17.35],["blocks","DOUBLE","0.0","23.0",27,"4.989091550360256","2.6906567558961396","3.0","5.0","6.835482703070442",142976,16.71],["turnovers","DOUBLE","0.0","40.0",44,"15.020819187866497","4.386451887258215","12.0","15.0","17.997165429743593",142976,20.68],["fouls_personal","DOUBLE","0.0","122.0",79,"22.632134711232506","5.172069195384711","19.0","22.0","26.0",142976,0.65],["opp_field_goals_made","DOUBLE","0.0","74.0",68,"39.655718212529635","6.38716298983955","35.05020710121663","39.49282157224911","43.99807573268433",142976,0.0],["opp_field_goals_attempted","DOUBLE","0.0","240.0",127,"86.46147707221355","10.146416960621439","79.57489464742358","85.91090982657782","92.19750577087068",142976,4.47],["opp_three_pointers_made","DOUBLE","0.0","29.0",30,"4.93076912255033","4.97368701771997","0.0","3.992590302314003","8.0",142976,0.57],["opp_three_pointers_attempted","DOUBLE","0.0","70.0",83,"13.999879778792979","12.738619081176056","1.3711101547841205","12.039051074486219","22.326881604567195",142976,1.1],["opp_free_throws_made","DOUBLE","0.0","61.0",67,"20.14852066867175","7.022483913855507","15.0","19.833561775763318","24.755080950122274",142976,0.0],["opp_free_throws_attempted","DOUBLE","0.0","91.0",95,"26.72927693298608","8.897505242256388","20.0","26.0","32.30432407365991",142976,0.1],["opp_rebounds_offensive","DOUBLE","0.0","38.0",39,"12.07097067993134","4.495471134156174","9.0","11.992018173327569","14.998681149811814",142976,20.13],["opp_rebounds_defensive","DOUBLE","0.0","60.0",64,"30.59994062587315","6.166283485850593","27.0","30.746025592100946","34.51469336743873",142976,19.9],["opp_rebounds_total","DOUBLE","0.0","109.0",146,"43.63045540115252","9.771102554346239","38.349329382671534","43.05442818449125","48.98790804489144",142976,2.66],["opp_assists","DOUBLE","0.0","53.0",56,"23.15305638804425","6.184862906970312","19.0","23.0","27.0",142976,4.08],["opp_steals","DOUBLE","0.0","27.0",28,"7.9412939533702875","3.17339336952798","5.999641450365532","8.0","10.0",142976,17.35],["opp_blocks","DOUBLE","0.0","23.0",27,"4.989091550360256","2.69065675589615","3.0","5.0","6.8688326589427335",142976,16.71],["opp_turnovers","DOUBLE","0.0","40.0",44,"15.020819187866497","4.386451887258218","12.0","14.99954600612577","17.999431700880976",142976,20.68],["opp_fouls_personal","DOUBLE","0.0","122.0",79,"22.632134711232506","5.172069195384703","19.0","22.0","26.0",142976,0.65],["possessions","DOUBLE","64.9","147.3",564,"95.89341566753839","7.300809445386755","90.81691549792082","95.43388174307766","100.41111485268326",142976,22.41],["pace","DOUBLE","64.9","139.2",564,"95.23665554854425","6.8776620726086835","90.42850181668508","94.90221749084037","99.64278322059539",142976,22.41],["offensive_rating","DOUBLE","0.0","174.3",953,"107.99305598124933","11.723453683557608","100.11980910001218","107.94606984652206","115.76067906456339",142976,22.41],["defensive_rating","DOUBLE","0.0","174.3",953,"107.99305598124892","11.723453683557526","100.11708518156598","107.95297513663591","115.77329678565795",142976,22.41],["net_rating","DOUBLE","-76.1","76.1",1137,"3.812449619799979e-16","14.430231123710206","-9.652058846384525","-0.1423911766899366","9.653930176233937",142976,22.41],["effective_field_goal_pct","DOUBLE","0.0","0.951",641,"0.4917368184696027","0.06828757540007206","0.44502913387964443","0.4895064193297385","0.5364675056194875",142976,5.0],["turnover_pct","DOUBLE","0.0","0.319",245,"0.13550559558349975","0.03720868014575296","0.10991035909277129","0.13402293497059423","0.15958137795638128",142976,20.69],["offensive_rebound_pct","DOUBLE","0.0","1.0",635,"0.28104751369575426","0.09398763960665003","0.2195208745502303","0.27731587204503266","0.3369805482958813",142976,20.33],["free_throw_rate","DOUBLE","0.0","1.22",813,"0.23379844047445364","0.08800486619106436","0.17098455213067032","0.22440027275442834","0.2861115346728323",142976,4.47],["opp_effective_field_goal_pct","DOUBLE","0.0","0.951",641,"0.491736818469601","0.0682875754000721","0.44499581743780503","0.48951304185327754","0.5364366880508857",142976,5.0],["opp_turnover_pct","DOUBLE","0.0","0.319",245,"0.13550559558350125","0.03720868014575311","0.1099454978734457","0.1339768810844931","0.15963574643350797",142976,20.69],["defensive_rebound_pct","DOUBLE","0.0","1.0",527,"0.7189635482511549","0.09398817791832745","0.6637074555650265","0.7226297488081856","0.780503230974465",142976,20.33],["opp_free_throw_rate","DOUBLE","0.0","1.22",813,"0.23379844047445414","0.08800486619106457","0.17087055998677483","0.2245377617936614","0.2859954313084343",142976,4.47],["rebound_pct","DOUBLE","0.0","1.0",667,"0.5000093689642253","0.08722995528522262","0.4621152500107403","0.5000285929828776","0.537946676322236",142976,2.95],["three_point_attempt_rate","DOUBLE","0.0","0.724",816,"0.2104723323348493","0.13412817368319713","0.1012083888320238","0.1989333672392728","0.30557317754782504",142976,22.01],["assist_pct","DOUBLE","0.0","1.0",752,"0.5819574300527125","0.12429701197191653","0.5138074061973321","0.590297928006176","0.664262394086174",142976,4.08],["true_shooting_pct","DOUBLE","0.0","0.949",571,"0.5351974636089392","0.06300221718094787","0.49206811079373897","0.5338547991782239","0.5770304150158106",142976,4.48],["counts_source","VARCHAR","none","team_box",3,null,null,null,null,null,142976,0.0],["has_full_box","BOOLEAN","false","true",2,null,null,null,null,null,142976,0.0],["formula_version","VARCHAR","v1","v1",1,null,null,null,null,null,142976,0.0]]},"nba_league_season_baselines":{"schema":"marts","row_count":170,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["season_start_year","BIGINT","1946","2026",79,"1988.1470588235295","24.091703933073756","1967","1988","2010",170,0.0],["season_label","VARCHAR","1946-47","2026-27",74,null,null,null,null,null,170,0.0],["game_type","VARCHAR","NBA Cup Final","Regular Season",4,null,null,null,null,null,170,0.0],["team_games","BIGINT","2","2460",80,"841.035294117647","953.7244394683729","97","170","1886",170,0.0],["team_games_with_counts","BIGINT","0","2460",122,"803.4176470588235","963.013697073841","85","168","1868",170,0.0],["team_games_with_full_box","BIGINT","0","2460",47,"652.5294117647059","974.0064649705286","0","142","1465",170,0.0],["lg_points","HUGEINT","178","284395",161,"87776.01764705882","99655.08115765172","10047","17691","204134",170,0.0],["lg_field_goals_made","DOUBLE","63.0","103739.0",157,"33382.57738095238","38034.12500605229","3962.5","6442.5","80724.5",170,1.18],["lg_field_goals_attempted","DOUBLE","167.0","219458.0",117,"81399.1","90339.55099775593","10950.0","13828.0","190675.0",170,35.29],["lg_three_pointers_made","DOUBLE","0.0","33210.0",115,"4337.0636942675155","8187.229318822945","0.0","199.875","2167.125",170,7.65],["lg_three_pointers_attempted","DOUBLE","0.0","92167.0",96,"12188.254777070064","22818.63389102471","0.0","642.875","6097.9375",170,7.65],["lg_free_throws_made","DOUBLE","28.0","48462.0",173,"16991.359281437126","18453.174136214733","1993.8125","3374.25","39320.625",170,1.76],["lg_free_throws_attempted","DOUBLE","37.0","64700.0",170,"23170.12987012987","25129.411570217406","2785.375","4399.0","53536.125",170,9.41],["lg_rebounds_offensive","DOUBLE","16.0","31788.0",98,"12742.925531914894","13029.280677492885","1695.0","1991.0","27157.0",170,44.71],["lg_rebounds_defensive","DOUBLE","60.0","85653.0",104,"33322.60638297872","34165.07351183671","4337.0","5554.5","71950.0",170,44.71],["lg_rebounds_total","DOUBLE","87.0","111107.0",108,"40316.198198198195","45797.62860411398","5394.25","7026.0","96454.0",170,34.71],["lg_assists","DOUBLE","38.0","65782.0",122,"21964.777777777777","25078.691624092426","2873.0","3586.5","52300.0",170,36.47],["lg_steals","DOUBLE","11.0","20713.0",94,"8331.125","8665.820141282224","1079.5","1246.5","18513.5",170,43.53],["lg_blocks","DOUBLE","9.0","12649.0",72,"4472.451219512195","5273.569642016309","713.0","829.0","11560.0",170,51.76],["lg_turnovers","DOUBLE","18.0","37253.0",127,"15583.166666666666","16183.563196661942","2054.5","2338.5","34453.0",170,43.53],["lg_fouls_personal","DOUBLE","33.0","55986.0",157,"20257.590604026846","21901.58051158835","2537.9375","3766.25","47050.5",170,12.35],["lg_team_minutes","DOUBLE","480.0","595750.0",171,"203151.49411764706","230493.26419436504","23536.25","41350.0","455277.5",170,0.0],["lg_possessions","DOUBLE","187.3","247782.7",106,"102659.56914893616","104662.19401890635","13837.8","16226.5","218080.0",170,44.71],["lg_points_per_game","DOUBLE","60.8","124.0",130,"102.64764705882358","10.687764407974937","97.10000000000001","105.1","110.225",170,0.0],["lg_pace","DOUBLE","85.2","106.6",85,"94.8697247706422","4.917551795791086","90.85000000000001","94.8","98.525",170,35.88],["lg_points_per_possession","DOUBLE","0.9307","1.2655",105,"1.0822798165137613","0.04347340136096953","1.0579","1.0823","1.106725",170,35.88],["lg_offensive_rating","DOUBLE","93.1","126.5",83,"108.23302752293576","4.3475845794143435","105.8","108.2","110.675",170,35.88],["lg_true_shooting_pct","DOUBLE","0.321","0.609",100,"0.5173313253012052","0.04040452848220474","0.49612500000000004","0.5282500000000001","0.543",170,2.35],["lg_effective_field_goal_pct","DOUBLE","0.271","0.554",121,"0.46863855421686745","0.04879520053727417","0.44525000000000003","0.4825","0.496625",170,2.35],["lg_three_point_attempt_rate","DOUBLE","0.02","0.443",90,"0.22427619047619057","0.12795270274282658","0.1125","0.222","0.34975",170,38.24],["lg_free_throw_rate","DOUBLE","0.137","0.4",90,"0.24490963855421696","0.04006340766594822","0.221","0.24325","0.2625",170,2.35],["lg_turnover_pct","DOUBLE","0.076","0.158",44,"0.1323853211009174","0.01101926617244873","0.125","0.132","0.14",170,35.88],["lg_offensive_rebound_pct","DOUBLE","0.168","0.406",72,"0.2826055045871559","0.04165333527809425","0.249","0.275","0.323",170,35.88],["formula_version","VARCHAR","v1","v1",1,null,null,null,null,null,170,0.0]]},"nba_team_advanced_profile":{"schema":"marts","row_count":2737,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["team_id","BIGINT","1610612737","1610612766",33,"1610612750.960906","8.649122206967903","1610612744","1610612751","1610612758",2737,0.0],["season_start_year","BIGINT","1946","2026",79,"1995.377055169894","20.320718684272347","1981","1998","2012",2737,0.0],["season_label","VARCHAR","1946-47","2026-27",74,null,null,null,null,null,2737,0.0],["game_type","VARCHAR","NBA Cup Final","Regular Season",4,null,null,null,null,null,2737,0.0],["games_played","BIGINT","1","82",49,"52.23821702594081","35.09518532615477","10","82","82",2737,0.0],["wins","BIGINT","0","73",65,"26.119108512970406","20.003902859550095","5","27","44",2737,0.0],["losses","BIGINT","0","73",71,"26.119108512970406","19.85371548358658","5","28","42",2737,0.0],["possessions","DOUBLE","75.3","9323.1",2035,"4861.061123800823","3378.8893571040508","947.091527942925","7303.66274509804","7851.499365867914",2737,20.02],["offensive_rating","DOUBLE","84.6","147.4",357,"107.61973503883033","5.70059682265956","103.99898889538282","107.31454545454545","111.16025564803805",2737,20.02],["defensive_rating","DOUBLE","84.6","147.4",318,"108.62928277752394","5.747414686817808","104.88665279429252","108.11912325570962","111.82797204339008",2737,20.02],["net_rating","DOUBLE","-44.6","31.4",326,"-1.008634079488351","6.216337015793172","-4.673038049940547","-0.34338235294117647","3.0216886748933223",2737,20.02],["pace","DOUBLE","70.7","113.4",211,"94.77514846962079","5.495112007646027","90.7806380346412","94.53829787234041","98.69313264490751",2737,20.02],["effective_field_goal_pct","DOUBLE","0.209","0.605",345,"0.4816783216783226","0.0438969491005231","0.46033807766204876","0.48535711711711715","0.5080942714126805",2737,0.73],["true_shooting_pct","DOUBLE","0.266","0.647",256,"0.5272937062937066","0.03779981581947004","0.5072221454131424","0.5303631077694237","0.5511324331696673",2737,0.73],["assist_pct","DOUBLE","0.0","0.822",419,"0.5735801921655578","0.08538412302750197","0.544013725490196","0.5855387331966279","0.6201212121212121",2737,1.13],["rebound_pct","DOUBLE","0.0","1.0",228,"0.4994229910714286","0.036070373567940385","0.4860571428571428","0.49970625000000013","0.5133331656606303",2737,1.79],["turnover_pct","DOUBLE","0.0","0.21",109,"0.1342087711283687","0.016855954844166004","0.12425265151515151","0.1339828431372549","0.14453202805376972",2737,20.02],["three_point_attempt_rate","DOUBLE","0.009","0.545",420,"0.2175889513108614","0.12812608891272181","0.1157441232391323","0.21208223062381848","0.31637771392081737",2737,21.96],["points_in_paint_share","DOUBLE","0.204","0.559",228,"0.41102706552706486","0.042032188828637976","0.384859649122807","0.412568480861244","0.43783151572625256",2737,48.7],["fast_break_points_share","DOUBLE","0.021","0.274",133,"0.12486396011395995","0.027745521832187436","0.10546712802768166","0.12394628099173553","0.14326315789473681",2737,48.7],["offensive_rebound_pct","DOUBLE","0.0","1.0",213,"0.28197852900867926","0.06218083402575635","0.24492196209587513","0.28030065359477124","0.31553268108009486",2737,20.02],["free_throw_rate","DOUBLE","0.105","0.708",249,"0.23634965034965016","0.044672840490936526","0.20703535594839942","0.2313165296958401","0.2609675696167632",2737,0.73],["opp_effective_field_goal_pct","DOUBLE","0.191","0.69",384,"0.4880684578579315","0.04305196566628931","0.4675408251231528","0.490227564102564","0.5137702352472089",2737,0.73],["opp_turnover_pct","DOUBLE","0.0","0.215",110,"0.13364093193238888","0.01740799492325603","0.12356747919143876","0.13395328719723187","0.14405392516507703",2737,20.02],["defensive_rebound_pct","DOUBLE","0.0","1.0",256,"0.71679442667885","0.05696396874270831","0.6832649035651667","0.7186115746322642","0.7510026041666668",2737,20.02],["opp_free_throw_rate","DOUBLE","0.08","0.864",244,"0.24009827015090218","0.04943650351635488","0.20793215480172003","0.23378096921490646","0.26428860923889924",2737,0.73],["margin_of_victory","DOUBLE","-31.67","25.0",1233,"-0.9075593715747181","5.668903870056308","-4.289640248356463","-0.36332482993197285","2.787789414414414",2737,0.0],["pythagorean_wins","DOUBLE","0.0","69.7",629,"26.1759225429302","19.809773188444733","4.948267757147068","28.087637362637363","43.32991001564946",2737,0.0],["luck_wins","DOUBLE","-10.0","8.8",187,"-0.05681402995980988","2.4473591969442126","-1.1580666830873956","-0.10302343159486017","1.1317932797662527",2737,0.0],["simple_rating_system","DOUBLE","-22.34","17.15",1158,"-0.004903902154921352","4.571344063160212","-2.965241545893719","0.16439560439560438","3.0666493383742908",2737,37.27],["strength_of_schedule","DOUBLE","-13.74","12.34",212,"0.001444379732090854","0.9750111522696926","-0.2697799688057041","0.004207541478129714","0.27848588863463014",2737,37.27],["relative_offensive_rating","DOUBLE","-22.5","42.0",233,"-0.4295111923252628","4.533208442471587","-2.896718648473035","-0.2699518318493651","2.3765200077700075",2737,20.02],["relative_defensive_rating","DOUBLE","-15.6","42.0",247,"0.5800365463682041","4.524834862050575","-2.1938461538461542","0.36407482533243185","2.8084798711755234",2737,20.02],["relative_pace","DOUBLE","-23.3","16.0",206,"-0.006121516674280487","3.052172628916614","-1.8348214285714288","-0.1427762370456868","1.6865576923076924",2737,20.02],["relative_effective_field_goal_pct","DOUBLE","-0.123","0.109",173,"-0.002238866396761126","0.02274595543930877","-0.01495228794642857","-0.0017843137254901964","0.01190830115830116",2737,0.73],["relative_true_shooting_pct","DOUBLE","-0.127","0.095",175,"-0.002160103054839894","0.021919800894868353","-0.014183292383292386","-0.00153656462585034","0.011566216216216217",2737,0.73],["games_with_counts","BIGINT","0","82",71,"49.90171720862258","35.17976268338762","10","75","82",2737,0.0],["games_with_full_box","BIGINT","0","82",68,"40.5297771282426","37.33478137446712","3","21","82",2737,0.0],["coverage_flag","VARCHAR","full","shooting_only",4,null,null,null,null,null,2737,0.0],["formula_version","VARCHAR","v1","v1",1,null,null,null,null,null,2737,0.0]]},"nba_team_form":{"schema":"marts","row_count":123424,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["team_id","BIGINT","1610612737","1610612766",33,"1610612751.2630203","8.567655182433473","1610612744","1610612751","1610612759",123424,0.0],["game_id","BIGINT","20000001","62500001",54777,"25920808.793459944","6162078.482532566","21239214","23469809","28909596",123424,0.0],["season_start_year","BIGINT","1973","2026",53,"2000.8299682395643","14.857916019852851","1989","2002","2014",123424,0.0],["game_type","VARCHAR","NBA Cup Final","Regular Season",4,null,null,null,null,null,123424,0.0],["game_date","DATE","1973-10-09","2026-10-31",11295,"2001-11-28 12:53:13.518278",null,"1989-10-02","2002-10-16","2014-09-14",123424,0.0],["last_10_games","BIGINT","0","10",12,"8.125550946331346","3.3948996204654356","8","10","10",123424,0.0],["last_10_net_rating","DOUBLE","-51.2","51.2",794,"0.14874470739120588","7.096098283741783","-4.443470355173841","0.26621422240075465","4.827047582031349",123424,7.77],["last_20_games","BIGINT","0","20",22,"14.965063520871144","7.289229248090458","9","20","20",123424,0.0],["last_20_net_rating","DOUBLE","-51.2","51.2",794,"0.1550856512295952","6.449647577210033","-3.9984611479153616","0.28909366431445754","4.356982271234593",123424,7.49],["season_to_date_games","BIGINT","0","81",77,"33.87640167228416","24.96069709109336","11","31","55",123424,0.0],["season_to_date_net_rating","DOUBLE","-51.2","51.2",794,"0.14511550114713082","6.0592529393239785","-3.7106275171587058","0.2638658349382395","3.982696534806872",123424,7.48],["league_to_date_offensive_rating","DOUBLE","89.2","123.3",215,"106.87048890429647","3.571655745904877","104.70291235072112","106.50118068646313","108.31365618390718",123424,6.53],["league_to_date_pace","DOUBLE","84.4","110.0",209,"96.00481102634792","4.529290619079634","91.87616703019825","95.9650544089557","99.70255702324269",123424,6.53],["formula_version","VARCHAR","v1","v1",1,null,null,null,null,null,123424,0.0]]},"nba_player_stint_advanced":{"schema":"marts","row_count":40766,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["person_id","BIGINT","2","1643813",6628,"314170.2795221508","567684.5716006765","1892","77263","202150",40766,0.0],["first_name","VARCHAR","A.C.","Zyon",1756,null,null,null,null,null,40766,0.0],["last_name","VARCHAR","Abdelnaby","de Larrea",3617,null,null,null,null,null,40766,0.0],["team_id","BIGINT","1610612737","1610612766",33,"1610612751.0226414","8.667738848511718","1610612744","1610612751","1610612758",40766,0.0],["season_start_year","BIGINT","1946","2026",79,"1997.629200804592","19.926478995926008","1984","2000","2015",40766,0.0],["season_label","VARCHAR","1946-47","2026-27",74,null,null,null,null,null,40766,0.0],["game_type","VARCHAR","NBA Cup Final","Regular Season",4,null,null,null,null,null,40766,0.0],["games_played","BIGINT","1","82",80,"35.60214394348231","29.445653996002303","7","26","66",40766,0.0],["total_minutes","DOUBLE","0.0","3882.0",5126,"795.2521439107948","866.09125575891","101.43089567775357","405.9137194740719","1338.7789422329668",40766,1.89],["total_points","DOUBLE","0.0","4029.0",2761,"366.1064122062503","457.0705701588462","36.67327353587718","164.53483321970566","547.4486618691461",40766,0.0],["true_shooting_pct","DOUBLE","0.0","1.5",888,"0.5044800029995471","0.12898026088939923","0.46135339560717","0.5156731121296895","0.5627637839896655",40766,1.86],["effective_field_goal_pct","DOUBLE","0.0","1.5",725,"0.46401821552955336","0.13469106942683753","0.4172563488860413","0.47480285457809945","0.5225571147428766",40766,2.1],["three_point_attempt_rate","DOUBLE","0.0","1.0",912,"0.22623406273909746","0.2349363691864479","0.00714327246930255","0.16165378590389515","0.39580805424214544",40766,19.85],["free_throw_rate","DOUBLE","0.0","4.5",885,"0.22593956704750667","0.19000797852162588","0.12862108703033923","0.20283688758326152","0.2860451771430585",40766,2.09],["true_shooting_points_added","DOUBLE","-241.9","454.7",2842,"0.1195200316354012","42.48764259388065","-14.177479946318059","-2.240307873291207","6.396999084370952",40766,0.75],["usage_pct","DOUBLE","0.0","1.708",624,"0.19062170217788948","0.06895006385707016","0.1495096053887014","0.18485393769817282","0.2247829647355339",40766,16.88],["turnover_pct","DOUBLE","0.0","1.0",507,"0.14020459612926156","0.08446746395320283","0.10016747222935328","0.13158479429331763","0.16887810907628906",40766,17.49],["assist_pct","DOUBLE","-3.656","20.131",758,"0.13321469973268427","0.15715029322879553","0.06362448923092535","0.10606973980514868","0.17898979836980275",40766,7.32],["offensive_rebound_pct","DOUBLE","0.0","12.0",348,"0.061637075643654164","0.12391847294479212","0.021712292667231063","0.0463806910108833","0.0865358431397966",40766,13.87],["defensive_rebound_pct","DOUBLE","0.0","16.0",657,"0.14478008145131416","0.147968496846973","0.08919767814943912","0.13092809007693704","0.18559567667989177",40766,13.87],["rebound_pct","DOUBLE","0.0","16.0",487,"0.10365464272472094","0.1374345556228385","0.06058839464332239","0.09222246227503637","0.13549590745737827",40766,7.38],["steal_pct","DOUBLE","0.0","0.542",155,"0.016200753530318118","0.015002161117309164","0.009140469672957787","0.014905640307181405","0.02085453679663495",40766,17.31],["block_pct","DOUBLE","0.0","0.821",204,"0.015315181145084464","0.0215201288797872","0.0025880496043507307","0.008999391938522372","0.020380975888588653",40766,13.2],["player_possessions","DOUBLE","0.0","7236.4",25029,"1568.7312784578244","1703.787504212589","201.36512230563721","818.3014272991406","2621.1231116000836",40766,17.03],["points_per_100","DOUBLE","0.0","309.9",750,"19.450373643318905","9.347490298095558","14.522199913742632","18.973923712053214","23.75421535221155",40766,17.28],["rebounds_total_per_100","DOUBLE","0.0","107.3",441,"9.112760215882796","5.345951451165109","5.4414484548242505","8.210349530408244","12.094340229968916",40766,17.28],["assists_per_100","DOUBLE","0.0","54.6",262,"4.338067137180459","3.4792177364359973","2.0754605950909837","3.4632352941176494","5.889673807633315",40766,17.28],["steals_per_100","DOUBLE","0.0","54.2",167,"1.6200753530319254","1.5002161117309196","0.9140469672957788","1.4905640307181403","2.085453679663495",40766,17.31],["blocks_per_100","DOUBLE","0.0","58.6",159,"1.0444411494321066","1.4271675622349893","0.2","0.6","1.3985398087892669",40766,17.28],["turnovers_per_100","DOUBLE","0.0","79.9",242,"3.0537407297537764","2.3655827160218483","1.996615384615385","2.8010992275698157","3.775266996319626",40766,17.31],["game_score_per_game","DOUBLE","-6.9","39.2",359,"6.337038570752526","5.2130395505868625","2.2907936413331","5.147651627889502","9.336388458683455",40766,17.07],["rating_games","BIGINT","0","82",81,"27.61749987734877","28.868702838392018","3","14","54",40766,0.0],["points_produced","DOUBLE","-110.1","2827.1",9403,"338.4453301676803","422.5845800032991","35.16072007782354","153.68868998415266","503.67449576051797",40766,17.35],["individual_possessions","DOUBLE","-51.9","2485.2",10195,"312.1677162783801","379.96905998362246","35.198910415327305","146.58005506448956","468.53521823272376",40766,17.35],["individual_offensive_rating","DOUBLE","-2128.6","570.1",1497,"103.58891312793257","29.208151100215805","96.24176694527333","105.45947761521852","113.5289309643547",40766,17.91],["individual_defensive_rating","DOUBLE","-13.5","155.2",710,"108.91533165157982","7.80969713711377","104.4587032118672","108.75304915420327","113.10140816478925",40766,17.35],["formula_version","VARCHAR","v1","v1",1,null,null,null,null,null,40766,0.0]]},"nba_player_season_advanced":{"schema":"marts","row_count":37844,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["person_id","BIGINT","2","1643813",6628,"313338.3428020294","567815.7447553434","1875","77230","202094",37844,0.0],["first_name","VARCHAR","A.C.","Zyon",1756,null,null,null,null,null,37844,0.0],["last_name","VARCHAR","Abdelnaby","de Larrea",3617,null,null,null,null,null,37844,0.0],["season_start_year","BIGINT","1946","2026",79,"1997.3863756473945","20.005009820500973","1984","2000","2014",37844,0.0],["season_label","VARCHAR","1946-47","2026-27",74,null,null,null,null,null,37844,0.0],["game_type","VARCHAR","NBA Cup Final","Regular Season",4,null,null,null,null,null,37844,0.0],["primary_team_id","BIGINT","1610612737","1610612766",33,"1610612751.021615","8.657604073459888","1610612744","1610612751","1610612758",37844,0.0],["team_count","BIGINT","1","5",5,"1.0772117112355988","0.2851200323745844","1","1","1",37844,0.0],["is_multi_team","BOOLEAN","false","true",2,null,null,null,null,null,37844,0.0],["games_played","HUGEINT","1","142",87,"38.35104640101469","30.253319824855296","7","35","70",37844,0.0],["total_minutes","DOUBLE","0.0","3882.0",5156,"857.003895998922","892.5781872373204","113.16833252499666","465.08413998246084","1495.5344890858685",37844,1.93],["total_points","DOUBLE","0.0","4029.0",2761,"394.3741147870204","471.53794070483985","41.311413775983944","187.5794843237163","611.6371623891398",37844,0.0],["true_shooting_pct","DOUBLE","0.0","1.5",888,"0.506269919836444","0.12568866981198829","0.46418700733496476","0.5165511226902578","0.562703123112791",37844,1.77],["effective_field_goal_pct","DOUBLE","0.0","1.5",760,"0.4656039959016402","0.1310563432910752","0.41980873108963357","0.4757413701848313","0.5225163639772589",37844,2.0],["three_point_attempt_rate","DOUBLE","0.0","1.0",912,"0.22493495290034843","0.23364377861075034","0.007711191782684283","0.15950000385330895","0.3943948963978657",37844,20.05],["free_throw_rate","DOUBLE","0.0","4.5",877,"0.22690099490414983","0.18455331091592575","0.13189551110401515","0.20454701345438953","0.2864375138049909",37844,2.0],["true_shooting_points_added","DOUBLE","-241.9","454.7",2880,"0.128919062832801","44.407333971105714","-15.263298085322955","-2.277508138236168","7.223875273167167",37844,0.75],["usage_pct","DOUBLE","0.0","1.708",582,"0.19069092359227754","0.06849913361786926","0.1499282150273301","0.18491586489123168","0.22465222810190613",37844,17.17],["turnover_pct","DOUBLE","0.0","1.0",479,"0.1392881007453099","0.08091807287040226","0.10072165320402461","0.13136861403478195","0.16788602495895866",37844,17.75],["assist_pct","DOUBLE","-3.656","20.131",758,"0.13345740153657254","0.15724928613587752","0.06419689441081507","0.1063684254880657","0.1792228395694771",37844,7.48],["offensive_rebound_pct","DOUBLE","0.0","12.0",343,"0.06155513857700873","0.12038629049759744","0.022415477422229508","0.04702407777905776","0.08678668125022007",37844,14.1],["defensive_rebound_pct","DOUBLE","0.0","16.0",631,"0.14467985235312164","0.14469853530790316","0.08973795377782696","0.13124749992502346","0.18542379428503858",37844,14.09],["rebound_pct","DOUBLE","0.0","16.0",472,"0.10343603371910276","0.13067020250259367","0.06092335338932143","0.09247146243351052","0.13550967943361883",37844,7.53],["steal_pct","DOUBLE","0.0","0.542",152,"0.01619630544241591","0.014730605708120976","0.009985962753924011","0.01497356225449088","0.020708360538550727",37844,17.61],["block_pct","DOUBLE","0.0","0.821",189,"0.0154030219780208","0.021128241132753668","0.002997403541569299","0.009","0.020790912751439006",37844,13.43],["player_possessions","DOUBLE","0.0","7236.4",24977,"1696.3241639491032","1758.374717330896","225.65805591362354","946.4273389720368","2947.8232075959504",37844,17.35],["points_per_100","DOUBLE","0.0","309.9",744,"19.56514826093927","9.32157316484343","14.668067960462244","19.050399082846003","23.7998673259499",37844,17.57],["rebounds_total_per_100","DOUBLE","0.0","107.3",441,"9.128767430677934","5.242883244297277","5.477979051315516","8.241597715859175","12.103699039891122",37844,17.57],["assists_per_100","DOUBLE","0.0","54.6",250,"4.342836993107881","3.4670077238301324","2.0917543793699727","3.464690260103779","5.8741727823203735",37844,17.57],["steals_per_100","DOUBLE","0.0","54.2",159,"1.6196305442416785","1.4730605708121034","0.9985962753924017","1.4973562254490886","2.0708360538550736",37844,17.61],["blocks_per_100","DOUBLE","0.0","58.6",152,"1.0509200487273243","1.3861772859808392","0.2","0.6297215772522693","1.3997414676908901",37844,17.57],["turnovers_per_100","DOUBLE","0.0","79.9",240,"3.032979508065297","2.265458048416026","1.9994987154209232","2.823997219883181","3.7464579566003606",37844,17.6],["game_score_per_game","DOUBLE","-6.9","39.2",359,"6.484570843597076","5.253866975315798","2.4021468639025465","5.293149760901193","9.512312228683761",37844,17.4],["rating_games","HUGEINT","0","85",85,"29.74989430292781","30.017085811669567","3","16","60",37844,0.0],["points_produced","DOUBLE","-110.1","2827.1",9065,"365.8735827264272","437.0185439956449","39.84949424402758","175.46938643063308","564.5486380994148",37844,17.64],["individual_possessions","DOUBLE","-51.9","2485.2",10441,"337.4664121402674","393.0672683427982","39.555674083061355","168.85067438164702","523.5048346202701",37844,17.64],["individual_offensive_rating","DOUBLE","-1886.6","311.9",1370,"104.04859716527311","26.066807894959396","96.8063568785961","105.67523557105012","113.59831902582016",37844,18.16],["individual_defensive_rating","DOUBLE","-13.5","155.2",710,"108.91980493438965","7.677410396965048","104.51396266574851","108.72585974878953","113.0063545696438",37844,17.64],["formula_version","VARCHAR","v1","v1",1,null,null,null,null,null,37844,0.0]]},"nba_player_advanced_career":{"schema":"marts","row_count":4958,"columns":["column_name","column_type","min","max","approx_unique","avg","std","q25","q50","q75","count","null_percentage"],"rows":[["person_id","BIGINT","2","1643813",6628,"433608.1050826946","655089.9863738508","76150","77845","203660",4958,0.0],["first_name","VARCHAR","A.C.","Zyon",1756,null,null,null,null,null,4958,0.0],["last_name","VARCHAR","Abdelnaby","de Larrea",3617,null,null,null,null,null,4958,0.0],["is_guard","BOOLEAN","false","true",2,null,null,null,null,null,4958,0.0],["is_forward","BOOLEAN","false","true",2,null,null,null,null,null,4958,0.0],["is_center","BOOLEAN","false","true",2,null,null,null,null,null,4958,0.0],["games_played","HUGEINT","1","1933",1286,"292.73033481242436","342.63156927669087","29","134","488",4958,0.0],["games_with_advanced","BIGINT","0","1932",948,"157.55849132714803","276.42750720845333","0","11","189",4958,0.0],["minutes_per_game","DOUBLE","0.0","44.3",371,"14.512625418060203","8.946323048912","7.123379680385909","13.300536686645513","20.790127697562486",4958,3.51],["double_doubles","BIGINT","0","1005",208,"13.277732956837434","55.640642427233225","0","0","2",4958,0.0],["triple_doubles","BIGINT","0","223",37,"0.44050020169423154","5.920731631662248","0","0","0",4958,0.0],["usage_pct","DOUBLE","0.0","0.929",259,"0.1876052963430012","0.05669742235329364","0.15532414529914534","0.18236243424897725","0.21339391935578672",4958,20.03],["true_shooting_pct","DOUBLE","0.0","1.5",631,"0.48655583075335235","0.11178901043761147","0.4484917044787273","0.5020553945249596","0.5423965343277033",4958,2.28],["effective_field_goal_pct","DOUBLE","0.0","1.5",544,"0.447160289555327","0.11800989837343026","0.40500681577374475","0.4622201241838881","0.5050700543232233",4958,2.48],["offensive_rating","DOUBLE","0.0","200.0",459,"101.75609084652446","11.239636912812024","98.21469696969696","102.53518518518517","107.45173149905125",4958,41.39],["defensive_rating","DOUBLE","0.0","214.3",400,"105.92660013764625","10.53753154295218","101.6817152229946","105.51335026517219","110.20826149425285",4958,41.39],["net_rating","DOUBLE","-171.4","120.0",522,"-4.168616655196146","14.47166901485007","-7.041961139635559","-2.605458089668616","0.9432",4958,41.39],["assist_pct","DOUBLE","0.0","3.189",330,"0.12460306720793894","0.10429179314916813","0.06633728722258134","0.10028600184034965","0.16462399077277973",4958,10.57],["rebound_pct","DOUBLE","0.0","0.9",224,"0.09922314981949451","0.05122163730665736","0.06186178359683795","0.09106996046920213","0.13118464528668614",4958,10.61],["player_impact_estimate","DOUBLE","-0.667","4.0",334,"0.07199655884377139","0.10082269839371572","0.052763218248310914","0.07606143759106361","0.09714512239678481",4958,41.39],["individual_offensive_rating","DOUBLE","0.0","300.0",728,"100.75225430597757","19.82887986755152","94.83822356292943","103.12946874792866","109.655174512987",4958,20.37],["individual_defensive_rating","DOUBLE","47.3","146.1",404,"109.59555667760677","6.5310977505820755","105.94982061735584","109.2299431472362","112.94169346984074",4958,20.11],["formula_version","VARCHAR","v1","v1",1,null,null,null,null,null,4958,0.0]]}}}</script>
+<script>
+/* ---------- Lineage ---------- */
+const NODES = [
+  // raw
+  { id: 'raw_nba_team_statistics', lane: 0, status: 'exist', grain: 'team × game', what: 'Kaggle TeamStatistics.csv, full-replace load.' },
+  { id: 'raw_nba_player_statistics', lane: 0, status: 'exist', grain: 'player × game', what: 'Kaggle PlayerStatistics.csv.' },
+  { id: 'raw_nba_player_statistics_extended', lane: 0, status: 'exist', grain: 'player × game', what: 'Kaggle PlayerStatisticsExtended.csv, the NBA\'s advanced box scores from 1996-97.' },
+  { id: 'raw_nba_games', lane: 0, status: 'exist', grain: 'game', what: 'Kaggle Games.csv.' },
+  { id: 'raw_nba_players', lane: 0, status: 'exist', grain: 'player', what: 'Kaggle Players.csv.' },
+  // staging
+  { id: 'stg_nba_team_statistics', lane: 1, status: 'exist', up: ['raw_nba_team_statistics'], grain: 'team × game', mat: 'view', path: 'dbt/models/staging/nba/stg_nba_team_statistics.sql',
+    what: 'Renames columns, decodes season and game type from the game id, and nulls stats the league didn\'t record (null_if_unrecorded).',
+    notes: ['Before 1983-84 almost every count is null here; only scores exist.'] },
+  { id: 'stg_nba_player_statistics', lane: 1, status: 'mod', up: ['raw_nba_player_statistics'], grain: 'player × game', mat: 'view', path: 'dbt/models/staging/nba/stg_nba_player_statistics.sql',
+    what: 'Player box scores, cleaned the same way as the team table.',
+    notes: ['Changed in phase 2: minutes are parsed by the nba_minutes macro, because from 2024-25 the source writes most of them as mm.ss (19.38 = 19:38).'] },
+  { id: 'stg_nba_player_statistics_extended', lane: 1, status: 'mod', up: ['raw_nba_player_statistics_extended'], grain: 'player × game', mat: 'view', path: 'dbt/models/staging/nba/stg_nba_player_statistics_extended.sql',
+    what: 'The NBA\'s own advanced stats per game: on-court ratings, PIE, possessions, usage.', notes: ['Same minutes fix as the base player table.'] },
+  { id: 'stg_nba_games', lane: 1, status: 'exist', up: ['raw_nba_games'], grain: 'game', mat: 'view', path: 'dbt/models/staging/nba/stg_nba_games.sql', what: 'One row per game with home and away team ids, used to recover missing player team ids.' },
+  { id: 'stg_nba_players', lane: 1, status: 'exist', up: ['raw_nba_players'], grain: 'player', mat: 'view', path: 'dbt/models/staging/nba/stg_nba_players.sql', what: 'Names and position flags joined onto the player marts.' },
+  // intermediate
+  { id: 'int_nba_player_games', lane: 2, status: 'new', up: ['stg_nba_player_statistics', 'stg_nba_games'], grain: 'player × competitive game', key: 'game_id, person_id', rows: '1,451,357', mat: 'table', path: 'dbt/models/intermediate/nba/int_nba_player_games.sql',
+    what: 'Every player-game in a competitive game type, with the player\'s team always set.',
+    notes: ['player_team_id is null in the source for all of 2021-22 and thousands of rows a season since 2003. The team is recovered from is_home plus the game\'s home/away ids (is_team_inferred flags it).', 'Minutes are nulled for games whose minutes sum to 0 (most games before 1964-65).'] },
+  { id: 'int_nba_team_games', lane: 2, status: 'new', up: ['stg_nba_team_statistics', 'int_nba_player_games'], grain: 'team × competitive game', key: 'game_id, team_id', rows: '142,976', mat: 'table', path: 'dbt/models/intermediate/nba/int_nba_team_games.sql',
+    what: 'The foundation of every team metric: each team-game next to its opponent\'s counts (opp_ columns), with team minutes, overtime periods and box-estimated possessions.',
+    notes: ['Before 1983-84 a count missing from the team box falls back to the players\' sum, only when that sum is complete (counts_source).', 'Total rebounds = offensive + defensive wherever both resolve (fixes 1984-85).', 'has_full_box marks the games where possessions and pace can be estimated.'] },
+  { id: 'int_nba_team_season_srs', lane: 2, status: 'new', up: ['int_nba_team_games'], grain: 'team × regular season', key: 'season_start_year, team_id', rows: '1,717', mat: 'table', path: 'dbt/models/intermediate/nba/int_nba_team_season_srs.sql',
+    what: 'Simple Rating System solved by iteration in a DuckDB recursive CTE. Each season\'s ratings are held as one list, so every team updates at once.',
+    notes: ['Converges in about 11–16 iterations; stops at a change below 1e-6 or 500 iterations.', 'Regular season only: playoff brackets make the iteration oscillate.'] },
+  { id: 'int_nba_player_game_context', lane: 2, status: 'new', up: ['int_nba_player_games', 'int_nba_team_games'], grain: 'player × competitive game', key: 'game_id, person_id', rows: '1,451,357', mat: 'table', path: 'dbt/models/intermediate/nba/int_nba_player_game_context.sql',
+    what: 'Each player-game with its team and opponent counts, the player\'s floor share, and the per-game opportunity denominators for usage, assist, rebound, steal and block rates.',
+    notes: ['team_player_minutes = the team\'s summed player minutes, so floor shares add up to 5.', 'Also computes Game Score per game.'] },
+  { id: 'int_nba_player_stints', lane: 2, status: 'new', up: ['int_nba_player_game_context'], grain: 'player × team × season × game type', key: 'person_id, team_id, season_start_year, game_type', rows: '40,766', mat: 'table', path: 'dbt/models/intermediate/nba/int_nba_player_stints.sql',
+    what: 'All the sums the player marts divide, plus Dean Oliver\'s points produced, individual possessions and individual defensive rating from stint totals.',
+    notes: ['p_ / t_ / o_ columns are player, team and opponent totals over the games the player played that have every rating input (rating_games).'] },
+  // marts
+  { id: 'nba_team_game_stats', lane: 3, status: 'new', up: ['int_nba_team_games'], grain: 'team × game', key: 'game_id, team_id', rows: '142,976', mat: 'table', path: 'dbt/models/marts/nba/nba_team_game_stats.sql',
+    what: 'Per-game team box counts for both sides, possessions, pace, ratings, the eight Four Factors and style rates.', notes: ['Ratings null before 1973-74. Sum counts to compare periods.'] },
+  { id: 'nba_league_season_baselines', lane: 3, status: 'new', up: ['int_nba_team_games'], grain: 'season × game type', key: 'season_start_year, game_type', rows: '170', mat: 'table', path: 'dbt/models/marts/nba/nba_league_season_baselines.sql',
+    what: 'League totals (lg_*) and league-average pace, ratings, TS%, eFG%, 3PA and FT rates, turnover and rebound rates.', notes: ['Totals are null unless every team game recorded the count; rates use the consistent sample and report its size.'] },
+  { id: 'nba_team_advanced_profile', lane: 3, status: 'rebuilt', up: ['int_nba_team_games', 'int_nba_team_season_srs', 'nba_league_season_baselines'], grain: 'team × season × game type', key: 'team_id, season_start_year, game_type', rows: '2,737', mat: 'table', path: 'dbt/models/marts/nba/nba_team_advanced_profile.sql',
+    what: 'The season story for a team: ratings, pace, Four Factors on both ends, Pythagorean and luck wins, SRS and strength of schedule, gaps to the league.',
+    notes: ['Rebuilt in place: was regular-season only, 1996 on, built by averaging per-game rates. Now summed counts, every season, split by game_type.'] },
+  { id: 'nba_team_form', lane: 3, status: 'new', up: ['int_nba_team_games'], grain: 'team × game (as of tip-off)', key: 'game_id, team_id', rows: '123,424', mat: 'table', path: 'dbt/models/marts/nba/nba_team_form.sql',
+    what: 'Going into each game: last-10, last-20 and season-to-date net rating, next to league-to-date offensive rating and pace.', notes: ['Uses only earlier games; a data test enforces it. 1973-74 on.'] },
+  { id: 'nba_player_stint_advanced', lane: 3, status: 'new', up: ['int_nba_player_stints', 'int_nba_team_games', 'stg_nba_players'], grain: 'player × team × season × game type', key: 'person_id, team_id, season_start_year, game_type', rows: '40,766', mat: 'table', path: 'dbt/models/marts/nba/nba_player_stint_advanced.sql',
+    what: 'Player advanced metrics per team stint: shooting, usage and share rates, per-100, Game Score, individual ratings.' },
+  { id: 'nba_player_season_advanced', lane: 3, status: 'new', up: ['int_nba_player_stints', 'int_nba_team_games', 'stg_nba_players'], grain: 'player × season × game type', key: 'person_id, season_start_year, game_type', rows: '37,844', mat: 'table', path: 'dbt/models/marts/nba/nba_player_season_advanced.sql',
+    what: 'The same metrics with a traded player\'s stints added together (is_multi_team, team_count, primary_team_id).', notes: ['The sums list at the top must include every sum a rate needs.'] },
+  { id: 'nba_player_advanced_career', lane: 3, status: 'rebuilt', up: ['int_nba_player_stints', 'stg_nba_player_statistics_extended', 'stg_nba_players'], grain: 'player', key: 'person_id', rows: '4,958', mat: 'table', path: 'dbt/models/marts/nba/nba_player_advanced_career.sql',
+    what: 'Career line for every player: box-score rates and individual ratings from career sums, plus the NBA\'s on-court ratings, PIE and double/triple-doubles from 1996-97.',
+    notes: ['Rebuilt in place: previously 1996-on only, built by minute-weighting per-game rates.'] },
+  { id: 'nba_player_game_stats', lane: 3, status: 'mod', up: ['stg_nba_player_statistics', 'stg_nba_player_statistics_extended', 'stg_nba_players'], grain: 'player × game', key: 'person_id, game_id', mat: 'table', path: 'dbt/models/marts/nba/nba_player_game_stats.sql',
+    what: 'Existing game log mart. Phase 2 added game_score.' },
+  // readers
+  { id: 'nao', lane: 4, reader: true, label: 'nao chat agent', up: ['nba_team_game_stats', 'nba_league_season_baselines', 'nba_team_advanced_profile', 'nba_team_form', 'nba_player_stint_advanced', 'nba_player_season_advanced', 'nba_player_advanced_career', 'nba_player_game_stats'],
+    what: 'Reads every lake.marts.nba_* table. Its RULES.md and docs were updated for the new marts and filters; task nao:sync refreshes its context.' },
+  { id: 'cube', lane: 4, reader: true, label: 'Cube semantic layer', up: [], what: 'Existing cubes cover games, team season summary, player season stats and dims. None of the new marts has a cube yet (/cube-develop scaffolds one).' },
+  { id: 'dbeaver', lane: 4, reader: true, label: 'DBeaver / task lake:sql', up: [], what: 'Ad-hoc SQL against the lake. Table and column comments come from the dbt docs (persist_docs on marts).' },
+];
+const LANES = [
+  ['Raw', 'raw_nba · Kaggle loads'],
+  ['Staging', 'staging_nba · views'],
+  ['Intermediate', 'intermediate_nba · tables'],
+  ['Marts', 'marts · tables'],
+  ['Readers', 'consumers'],
+];
+const STATUS = { new: ['New', 'c-new'], rebuilt: ['Rebuilt', 'c-rebuilt'], mod: ['Modified', 'c-mod'], exist: ['Existing', 'c-exist'] };
+const byId = Object.fromEntries(NODES.map(n => [n.id, n]));
+NODES.forEach(n => n.down = []);
+NODES.forEach(n => (n.up || []).forEach(u => byId[u] && byId[u].down.push(n.id)));
+
+const lineage = document.getElementById('lineage');
+const svgNS = 'http://www.w3.org/2000/svg';
+const edgesSvg = document.createElementNS(svgNS, 'svg');
+edgesSvg.setAttribute('class', 'edges');
+edgesSvg.setAttribute('aria-hidden', 'true');
+lineage.appendChild(edgesSvg);
+const nodeEls = {};
+LANES.forEach(([name, sub], i) => {
+  const lane = document.createElement('div');
+  lane.className = 'lane';
+  lane.innerHTML = `<h4>${name}<small>${sub}</small></h4>`;
+  NODES.filter(n => n.lane === i).forEach(n => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'node' + (n.reader ? ' reader' : '');
+    b.setAttribute('aria-pressed', 'false');
+    const st = n.reader ? '' : `<span class="chip ${STATUS[n.status][1]}">${STATUS[n.status][0]}</span>`;
+    b.innerHTML = `${st}<span>${n.label || n.id}</span>`;
+    b.addEventListener('click', () => select(n.id));
+    nodeEls[n.id] = b;
+    lane.appendChild(b);
+  });
+  lineage.appendChild(lane);
+});
+
+function drawEdges() {
+  const box = lineage.getBoundingClientRect();
+  edgesSvg.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
+  edgesSvg.innerHTML = '';
+  NODES.forEach(n => (n.up || []).forEach(u => {
+    const a = nodeEls[u], b = nodeEls[n.id];
+    if (!a || !b) return;
+    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    const x1 = ra.right - box.left, y1 = ra.top + ra.height / 2 - box.top;
+    const x2 = rb.left - box.left, y2 = rb.top + rb.height / 2 - box.top;
+    const mx = (x1 + x2) / 2;
+    const p = document.createElementNS(svgNS, 'path');
+    p.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+    p.dataset.from = u; p.dataset.to = n.id;
+    edgesSvg.appendChild(p);
+  }));
+  highlight();
+}
+
+let current = 'int_nba_team_games';
+function lineageSet(id) {
+  const set = new Set([id]);
+  const walk = (k, dir) => (byId[k][dir] || []).forEach(x => { if (!set.has(x)) { set.add(x); walk(x, dir); } });
+  walk(id, 'up'); walk(id, 'down');
+  return set;
+}
+function highlight() {
+  const set = lineageSet(current);
+  lineage.classList.add('focus');
+  Object.entries(nodeEls).forEach(([k, el]) => {
+    el.classList.toggle('lit', set.has(k));
+    el.setAttribute('aria-pressed', k === current ? 'true' : 'false');
+  });
+  edgesSvg.querySelectorAll('path').forEach(p => p.classList.toggle('lit', set.has(p.dataset.from) && set.has(p.dataset.to)));
+}
+function linkList(ids) {
+  if (!ids || !ids.length) return '<span class="muted">none</span>';
+  return '<div class="links">' + ids.map(i => `<button type="button" data-go="${i}">${byId[i].label || i}</button>`).join('') + '</div>';
+}
+function select(id) {
+  current = id;
+  const n = byId[id];
+  const d = document.getElementById('detail');
+  const st = n.reader ? '<span class="chip c-league">Reader</span>' : `<span class="chip ${STATUS[n.status][1]}">${STATUS[n.status][0]}</span>`;
+  const facts = [];
+  if (n.grain) facts.push(['Grain', n.grain]);
+  if (n.key) facts.push(['Unique key', `<code>${n.key}</code>`]);
+  if (n.rows) facts.push(['Rows', n.rows]);
+  if (n.mat) facts.push(['Materialised as', n.mat]);
+  if (n.path) facts.push(['File', `<code>${n.path}</code>`]);
+  d.innerHTML = `
+    <header>${st}<h3>${n.label || n.id}</h3></header>
+    <p style="margin:0">${n.what || ''}</p>
+    ${facts.length ? `<dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
+    ${n.notes ? `<ul>${n.notes.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}
+    <dl class="facts">
+      <div><dt>Reads from</dt><dd>${linkList(n.up)}</dd></div>
+      <div><dt>Feeds</dt><dd>${linkList(n.down)}</dd></div>
+    </dl>`;
+  d.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => select(b.dataset.go)));
+  highlight();
+}
+select(current);
+drawEdges();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawEdges);
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawEdges, 80); });
+
+/* ---------- Coverage chart ---------- */
+const COV = [
+  { label: 'Scores, wins, MOV, SRS, Pythagorean', segs: [[1946, 2027, 'full']] },
+  { label: 'Shooting counts (FGA, FTA, TS, eFG)', segs: [[1946, 1983, 'part'], [1983, 2027, 'full']] },
+  { label: 'Player minutes; player AST%, TRB%', segs: [[1964, 2027, 'full']] },
+  { label: 'Possessions, ratings, pace, ORB/DRB/STL/BLK%', segs: [[1973, 1983, 'part'], [1983, 2027, 'full']] },
+  { label: 'Player TOV: usage, TOV%, individual ORtg', segs: [[1977, 1983, 'part'], [1983, 2027, 'full']] },
+  { label: 'Three-point line (3PA rate)', segs: [[1979, 2027, 'full']] },
+  { label: 'NBA advanced box: on-court ratings, PIE', segs: [[1996, 2027, 'full']] },
+  { label: 'Play-by-play events', segs: [[1996, 2027, 'idle']] },
+  { label: 'Exact player minutes (mm.ss)', segs: [[2024, 2027, 'full']] },
+];
+function drawCoverage() {
+  const W = 960, labelW = 300, padR = 18, rowH = 34, top = 30, H = top + COV.length * rowH + 14;
+  const x0 = 1946, x1 = 2027;
+  const sx = y => labelW + (y - x0) / (x1 - x0) * (W - labelW - padR);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Season coverage of each metric family, 1946-47 to 2026-27">
+    <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="6" height="6" fill="var(--accent-soft)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--accent)" stroke-width="2.2"/></pattern></defs>`;
+  [1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020].forEach(y => {
+    s += `<line x1="${sx(y)}" x2="${sx(y)}" y1="${top - 8}" y2="${H - 8}" stroke="var(--line)" stroke-width="1"/>`;
+    s += `<text x="${sx(y)}" y="${top - 14}" text-anchor="middle" font-size="12" fill="var(--muted)">${y}</text>`;
+  });
+  [[1973, '73-74'], [1983, '83-84']].forEach(([y, t]) => {
+    s += `<line x1="${sx(y)}" x2="${sx(y)}" y1="${top - 4}" y2="${H - 8}" stroke="var(--muted)" stroke-dasharray="3 3" stroke-width="1"/>`;
+    s += `<text x="${sx(y) + 4}" y="${H - 2}" font-size="11" fill="var(--muted)">${t}</text>`;
+  });
+  COV.forEach((r, i) => {
+    const y = top + i * rowH;
+    s += `<text x="0" y="${y + rowH / 2 + 4}" font-size="13" fill="var(--ink)">${r.label}</text>`;
+    r.segs.forEach(([a, b, k]) => {
+      const fill = k === 'full' ? 'var(--accent)' : k === 'part' ? 'url(#hatch)' : 'var(--muted)';
+      const op = k === 'idle' ? ' opacity=".45"' : '';
+      s += `<rect x="${sx(a)}" y="${y + 8}" width="${Math.max(2, sx(b) - sx(a))}" height="${rowH - 16}" rx="2" fill="${fill}"${op}/>`;
+    });
+    const start = r.segs[0][0];
+    if (start > 1946) s += `<text x="${sx(start) - 6}" y="${y + rowH / 2 + 4}" font-size="11.5" text-anchor="end" fill="var(--muted)">${start}-${String(start + 1).slice(2)}</text>`;
+  });
+  s += '</svg>';
+  document.getElementById('cov').innerHTML = s;
+  const lg = document.getElementById('lg-partial');
+  lg.style.background = 'repeating-linear-gradient(45deg, var(--accent) 0 2px, var(--accent-soft) 2px 5px)';
+}
+drawCoverage();
+
+/* ---------- Metric dictionary ---------- */
+const T = 'nba_team_game_stats', P = 'nba_team_advanced_profile', L = 'nba_league_season_baselines', F = 'nba_team_form';
+const PS = 'nba_player_stint_advanced', PSe = 'nba_player_season_advanced', C = 'nba_player_advanced_career', PG = 'nba_player_game_stats';
+const M = [
+  ['team', 'possessions', 'How many times the team had the ball (box estimate, shared by both teams).', '0.5·[(FGA + 0.4·FTA − 1.07·ORB%·(FGA−FG) + TOV) + (opponent same)]', '1973-74', [T, P]],
+  ['team', 'pace', 'Possessions per 48 minutes.', '48·(Poss + Opp Poss) / (2·Tm_MP/5)', '1973-74', [T, P]],
+  ['team', 'offensive_rating', 'Points scored per 100 possessions.', '100·PTS / Poss', '1973-74', [T, P]],
+  ['team', 'defensive_rating', 'Points allowed per 100 possessions.', '100·Opp PTS / Poss', '1973-74', [T, P]],
+  ['team', 'net_rating', 'Point margin per 100 possessions.', 'ORtg − DRtg', '1973-74', [T, P]],
+  ['team', 'effective_field_goal_pct', 'Shooting, counting a three as 1.5 twos. Four Factor 1.', '(FG + 0.5·3P) / FGA', 'with counts', [T, P]],
+  ['team', 'turnover_pct', 'Share of plays ending in a turnover. Four Factor 2.', 'TOV / (FGA + 0.44·FTA + TOV)', '1973-74', [T, P]],
+  ['team', 'offensive_rebound_pct', 'Share of own misses rebounded. Four Factor 3.', 'ORB / (ORB + Opp DRB)', '1973-74', [T, P]],
+  ['team', 'free_throw_rate', 'Free throws made per shot attempt. Four Factor 4.', 'FT / FGA', 'with counts', [T, P]],
+  ['team', 'opp_effective_field_goal_pct', 'Opponent shooting (defensive Four Factor).', '(Opp FG + 0.5·Opp 3P) / Opp FGA', 'with counts', [T, P]],
+  ['team', 'opp_turnover_pct', 'Turnovers forced per opponent play.', 'Opp TOV / (Opp FGA + 0.44·Opp FTA + Opp TOV)', '1973-74', [T, P]],
+  ['team', 'defensive_rebound_pct', 'Share of opponent misses rebounded.', 'DRB / (DRB + Opp ORB)', '1973-74', [T, P]],
+  ['team', 'opp_free_throw_rate', 'Free throws conceded per opponent shot.', 'Opp FT / Opp FGA', 'with counts', [T, P]],
+  ['team', 'rebound_pct', 'Share of all rebounds in the game.', 'TRB / (TRB + Opp TRB)', 'with counts', [T, P]],
+  ['team', 'three_point_attempt_rate', 'Share of shots taken from three.', '3PA / FGA', '1979-80', [T, P]],
+  ['team', 'assist_pct', 'Share of made shots that were assisted.', 'AST / FG', 'with counts', [T, P]],
+  ['team', 'true_shooting_pct', 'Scoring efficiency including free throws.', 'PTS / (2·(FGA + 0.44·FTA))', 'with counts', [T, P]],
+  ['team', 'points_in_paint_share', 'Share of points scored in the paint.', 'Σ paint PTS / Σ PTS (games recorded)', '≈1996-97', [P]],
+  ['team', 'fast_break_points_share', 'Share of points from fast breaks.', 'Σ fast-break PTS / Σ PTS (games recorded)', '≈1996-97', [P]],
+  ['team', 'margin_of_victory', 'Average points margin per game.', '(PTS − Opp PTS) / G', '1946-47', [P]],
+  ['team', 'pythagorean_wins', 'Wins the scoring margin "deserved".', 'G·PTS^14 / (PTS^14 + Opp PTS^14)', '1946-47', [P]],
+  ['team', 'luck_wins', 'Wins above (or below) the Pythagorean expectation.', 'Wins − pythagorean_wins', '1946-47', [P]],
+  ['team', 'simple_rating_system', 'Margin adjusted for opponent strength (points per game vs an average team). Regular season only.', 'SRS_t = MOV_t + mean(SRS of opponents), iterated; league centred on 0', '1946-47', [P]],
+  ['team', 'strength_of_schedule', 'How hard the schedule was; positive = harder than average.', 'SRS − MOV', '1946-47', [P]],
+  ['team', 'relative_offensive_rating', 'Offence vs league that season (also relative_defensive_rating, relative_pace, relative_effective_field_goal_pct, relative_true_shooting_pct).', 'team value − league value', 'as input', [P]],
+  ['team', 'coverage_flag', 'How complete the season\'s data is: full, shooting_only, partial, scores_only.', 'from games_with_counts / games_with_full_box', '1946-47', [P]],
+  ['team', 'counts_source', 'Where a game\'s counts came from: team_box, player_sum or none.', '—', '1946-47', [T]],
+  ['team', 'last_10_net_rating', 'Net rating over the previous 10 games (also last_20_ and season_to_date_), before tip-off.', '100·(Σ PTS − Σ Opp PTS) / Σ Poss over window', '1973-74', [F]],
+  ['league', 'league_to_date_offensive_rating', 'League offence on earlier dates this season (also league_to_date_pace).', '100·Σ PTS / Σ Poss, dates before the game', '1973-74', [F]],
+  ['league', 'lg_points … lg_team_minutes', 'League totals for each count; null unless every game recorded it.', 'Σ over all team-games', 'varies', [L]],
+  ['league', 'lg_possessions', 'League possessions from season totals.', 'possession formula on summed counts', '1983-84 complete', [L]],
+  ['league', 'lg_pace', 'League pace.', '48·2·Σ Poss / (2·Σ Tm_MP/5)', '1973-74', [L]],
+  ['league', 'lg_offensive_rating', 'League points per 100 possessions (also lg_points_per_possession).', '100·Σ PTS / Σ Poss', '1973-74', [L]],
+  ['league', 'lg_true_shooting_pct', 'League TS% (also lg_effective_field_goal_pct, lg_three_point_attempt_rate, lg_free_throw_rate).', 'on summed counts', 'with counts', [L]],
+  ['league', 'lg_turnover_pct', 'League turnover rate (also lg_offensive_rebound_pct).', 'on summed counts', '1973-74', [L]],
+  ['league', 'lg_points_per_game', 'Points per team-game.', 'Σ PTS / team-games', '1946-47', [L]],
+  ['player', 'true_shooting_pct', 'Scoring efficiency including free throws.', 'Σ PTS / (2·(Σ FGA + 0.44·Σ FTA))', 'with attempts', [PS, PSe, C]],
+  ['player', 'effective_field_goal_pct', 'Shooting, counting a three as 1.5 twos.', '(Σ FG + 0.5·Σ 3P) / Σ FGA', 'with attempts', [PS, PSe, C]],
+  ['player', 'three_point_attempt_rate', 'Share of shots from three.', 'Σ 3PA / Σ FGA', '1979-80', [PS, PSe]],
+  ['player', 'free_throw_rate', 'Free throws made per shot.', 'Σ FT / Σ FGA', 'with attempts', [PS, PSe]],
+  ['player', 'true_shooting_points_added', 'Points above what league-average shooting would score on the same attempts.', 'Σ PTS − 2·Lg TS·(Σ FGA + 0.44·Σ FTA)', 'with attempts', [PS, PSe]],
+  ['player', 'usage_pct', 'Share of team plays the player used while on the floor.', 'Σ (FGA + 0.44·FTA + TOV) / Σ share·(Tm FGA + 0.44·Tm FTA + Tm TOV)', '1977-78', [PS, PSe, C]],
+  ['player', 'turnover_pct', 'Share of the player\'s plays ending in a turnover.', 'Σ TOV / Σ (FGA + 0.44·FTA + TOV)', '1977-78', [PS, PSe]],
+  ['player', 'assist_pct', 'Share of teammates\' baskets the player assisted while on the floor.', 'Σ AST / Σ (share·Tm FG − FG)', '1964-65', [PS, PSe, C]],
+  ['player', 'offensive_rebound_pct', 'Share of available offensive rebounds grabbed while on the floor.', 'Σ ORB / Σ share·(Tm ORB + Opp DRB)', '1973-74', [PS, PSe]],
+  ['player', 'defensive_rebound_pct', 'Share of available defensive rebounds grabbed.', 'Σ DRB / Σ share·(Tm DRB + Opp ORB)', '1973-74', [PS, PSe]],
+  ['player', 'rebound_pct', 'Share of all available rebounds grabbed.', 'Σ TRB / Σ share·(Tm TRB + Opp TRB)', '1964-65', [PS, PSe, C]],
+  ['player', 'steal_pct', 'Share of opponent possessions ending in the player\'s steal.', 'Σ STL / Σ share·Opp Poss', '1973-74', [PS, PSe]],
+  ['player', 'block_pct', 'Share of opponent two-point tries the player blocked.', 'Σ BLK / Σ share·(Opp FGA − Opp 3PA)', '1973-74', [PS, PSe]],
+  ['player', 'player_possessions', 'Team possessions while the player was on the floor.', 'Σ share·Tm Poss', '1973-74', [PS, PSe]],
+  ['player', 'points_per_100', 'Production per 100 on-floor possessions (also rebounds_total_, assists_, steals_, blocks_, turnovers_per_100).', '100·Σ stat / Σ player_possessions', '1973-74', [PS, PSe]],
+  ['player', 'game_score', 'One-number box-score summary of a game (season marts: game_score_per_game).', 'PTS + 0.4·FG − 0.7·FGA − 0.4·(FTA−FT) + 0.7·ORB + 0.3·DRB + STL + 0.7·AST + 0.7·BLK − 0.4·PF − TOV', 'all inputs', [PG, PS, PSe]],
+  ['player', 'points_produced', 'Dean Oliver\'s PProd: points created by scoring, assists and offensive rebounds, with shared credit.', 'Oliver: (PProd_FG + PProd_AST + FT)·ORB discount + PProd_ORB', '1977-78', [PS, PSe]],
+  ['player', 'individual_possessions', 'Dean Oliver\'s TotPoss: possessions the player used.', 'ScPoss + FGxPoss + FTxPoss + TOV', '1977-78', [PS, PSe]],
+  ['player', 'individual_offensive_rating', 'Points produced per 100 individual possessions (Basketball-Reference\'s ORtg).', '100·Σ PProd / Σ TotPoss', '1977-78', [PS, PSe, C]],
+  ['player', 'individual_defensive_rating', 'Points allowed per 100 possessions, mostly the team\'s defence. Team-dependent.', 'Tm DRtg + 0.2·(100·D_Pts_per_ScPoss·(1 − Stop%) − Tm DRtg)', '1973-74', [PS, PSe, C]],
+  ['player', 'offensive_rating (career)', 'The NBA\'s on-court team rating while the player played (also defensive_rating, net_rating).', 'Σ (rating·on-court poss) / Σ on-court poss', '1996-97', [C]],
+  ['player', 'player_impact_estimate', 'NBA PIE: share of the game\'s statistical events.', 'minute-weighted NBA value', '1996-97', [C]],
+];
+const tbody = document.querySelector('#dict tbody');
+let filter = 'all';
+const chipFor = s => s === 'team' ? 'c-team' : s === 'player' ? 'c-player' : 'c-league';
+function renderDict() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const rows = M.filter(m => (filter === 'all' || m[0] === filter) && (!q || m.join(' ').toLowerCase().includes(q)));
+  tbody.innerHTML = rows.map(m => `<tr>
+    <td><span class="chip ${chipFor(m[0])}">${m[0]}</span><br><code>${m[1]}</code></td>
+    <td>${m[2]}</td>
+    <td>${m[3]}</td>
+    <td style="white-space:nowrap">${m[4]}</td>
+    <td class="where">${m[5].map(x => `<code>${x}</code>`).join('<br>')}</td></tr>`).join('')
+    || '<tr><td colspan="5" class="muted">No metric matches. Try a shorter word such as "rate" or "rebound".</td></tr>';
+  document.getElementById('count').textContent = `${rows.length} of ${M.length} metrics`;
+}
+document.getElementById('q').addEventListener('input', renderDict);
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  filter = b.dataset.f;
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  renderDict();
+}));
+renderDict();
+
+/* ---------- Quirks ---------- */
+const Q = [
+  ['Team box scores before 1983-84', 'The team file has scores only before 1983-84; FGA, rebounds, turnovers and the rest are null.', 'int_nba_team_games sums the player rows instead, but only when the sum is complete. counts_source records which applied. Player sums leave out team rebounds and team turnovers, so early possessions run slightly low.'],
+  ['Missing player team ids', 'player_team_id is null for all of 2021-22 (36k rows) and 2–4k rows a season since 2003.', 'int_nba_player_games recovers the team from is_home and the game\'s home and away ids, flagged by is_team_inferred.'],
+  ['Minutes written as mm.ss', 'From 2024-25 most minutes are mm.ss (19.38 = 19 min 38 s). Late 2025-26 and 2026-27 switch to true decimals. Read as decimals, team-games summed to about 237.', 'The nba_minutes macro in staging decides per team-game: mm.ss when every fraction is below .60 and the total comes to 240 + 25 × OT. 97–100% of 2024+ team-games now sum exactly.'],
+  ['Truncated and missing minutes', 'Player minutes are whole numbers (truncated) from 1996 to 2023, about 235 a game, and recorded as 0 before 1964-65.', 'Player formulas use the team\'s summed player minutes on both sides of each ratio. Zero-minute games become null. Team minutes come from the team field, or are rounded from player minutes when that is 0.'],
+  ['1984-85 total rebounds', 'That season\'s team box has total rebounds but no offensive/defensive split, and the totals include about 6 team rebounds a game.', 'Team total rebounds = offensive + defensive wherever both resolve. The league rebound-share balance test caught it.'],
+  ['Team minutes of 0 in 2026-27', 'A few current-season games record 0 team minutes, which pushed one team\'s season pace to 145.', 'Fallback from player minutes, and has_full_box now requires minutes. The pace range test (60–140) caught it.'],
+  ['Playoff SRS doesn\'t settle', 'Playoff brackets and play-in pairs make the SRS iteration oscillate instead of converging.', 'SRS and SOS are regular season only, as on Basketball-Reference.'],
+  ['Impossible early box scores', 'Some 1959–62 team box scores record more makes than attempts (one game: 8 FGA), a few early player sums do too, and nine 1953–83 team-games record more assists than made field goals.', 'int_nba_team_games nulls any shooting pair with makes above attempts, in the team box (so the player sum can stand in) and again after the fallback, and nulls assists above made field goals. Found by the dataset profile.'],
+  ['Minutes for part of the roster', 'Some 1951–84 games record minutes for only some players, so a starter could look like five players\' worth of floor time.', 'int_nba_player_game_context nulls the floor share, and with it every rate opportunity and Oliver input, unless recorded minutes cover 95% of the game. This removes 4.4% of pre-1996 team-games. Found by the dataset profile.'],
+  ['The NBA\'s own possessions differ', 'The Extended file\'s possessions average about 1 a game more than the box estimate (a different method).', 'Kept as separate definitions. All new metrics use the Basketball-Reference box estimate.'],
+];
+document.getElementById('quirk-list').innerHTML = Q.map(([h, p, f]) =>
+  `<div class="quirk"><h3>${h}</h3><p>${p}</p><p class="fix"><b>Handled:</b> ${f}</p></div>`).join('');
+
+
+/* ---------- Last-season samples ---------- */
+const GD = JSON.parse(document.getElementById('guide-data').textContent);
+const SAMPLE_META = [
+  ['nba_team_advanced_profile', 'Team profile', 'Every team\'s 2025-26 regular season, best net rating first. The chart plots offence against defence, with the defence axis flipped so better is up; the dashed lines are the league average (116.6). Teams up and to the right were good at both.'],
+  ['nba_league_season_baselines', 'League baselines', 'One row per game type. Playoff games are slower and lower-scoring than the regular season. The Cup Final is a single game, so its numbers rest on two team-games.'],
+  ['nba_player_season_advanced', 'Player seasons', 'The top 30 players by Game Score per game among those with 1,500+ minutes. Traded players are one combined row (is_multi_team).'],
+  ['nba_player_stint_advanced', 'Player stints', 'Players traded mid-season with 1,200+ minutes, one row per team. Each stint\'s team context comes from that team\'s games only.'],
+  ['nba_team_game_stats', 'Team game', 'The last playoff game of 2025-26, one row per team. Both rows share the same possession estimate, so pace is equal and each team\'s defensive rating is the other\'s offensive rating.'],
+  ['nba_team_form', 'Team form', 'Each team\'s form going into its final regular-season game: last 10 and last 20 games, and season to date, next to the league\'s offensive rating and pace up to that date.'],
+];
+const isRate = c => /(_pct|_rate|share)$/.test(c) && !/^lg_points_per/.test(c);
+function fmtCell(c, v) {
+  if (v === null || v === undefined) return '<span class="muted">null</span>';
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  if (typeof v === 'string') return v.trim();
+  if (Number.isInteger(v)) return v.toLocaleString('en-GB');
+  if (isRate(c) || /per_possession/.test(c)) return v.toFixed(3);
+  return (Math.round(v * 10) / 10).toLocaleString('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+function sampleTable(d) {
+  const numeric = d.columns.map((c, i) => d.rows.some(r => typeof r[i] === 'number'));
+  return `<div class="tbl"><table class="sample"><thead><tr>${d.columns.map((c, i) => `<th class="${numeric[i] ? 'num' : ''}">${c}</th>`).join('')}</tr></thead>
+    <tbody>${d.rows.map(r => `<tr>${r.map((v, i) => `<td class="${numeric[i] ? 'num' : ''}">${fmtCell(d.columns[i], v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+function scatter(d) {
+  const ci = n => d.columns.indexOf(n);
+  const pts = d.rows.map(r => ({ team: r[ci('team')].trim(), o: r[ci('offensive_rating')], dr: r[ci('defensive_rating')], net: r[ci('net_rating')], w: r[ci('wins')], l: r[ci('losses')] }));
+  const lg = GD.samples.nba_league_season_baselines.rows.find(r => r[0] === 'Regular Season')[4];
+  const W = 760, H = 430, m = { l: 56, r: 22, t: 18, b: 46 };
+  const ox = [Math.floor(Math.min(...pts.map(p => p.o)) - 1), Math.ceil(Math.max(...pts.map(p => p.o)) + 1)];
+  const dy = [Math.floor(Math.min(...pts.map(p => p.dr)) - 1), Math.ceil(Math.max(...pts.map(p => p.dr)) + 1)];
+  const sx = v => m.l + (v - ox[0]) / (ox[1] - ox[0]) * (W - m.l - m.r);
+  const sy = v => m.t + (v - dy[0]) / (dy[1] - dy[0]) * (H - m.t - m.b);   // low DRtg (good) at top
+  let g = '';
+  for (let v = Math.ceil(ox[0] / 2) * 2; v <= ox[1]; v += 2) g += `<line x1="${sx(v)}" x2="${sx(v)}" y1="${m.t}" y2="${H - m.b}" stroke="var(--line)"/><text x="${sx(v)}" y="${H - m.b + 18}" text-anchor="middle" font-size="12" fill="var(--muted)">${v}</text>`;
+  for (let v = Math.ceil(dy[0] / 2) * 2; v <= dy[1]; v += 2) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)"/><text x="${m.l - 8}" y="${sy(v) + 4}" text-anchor="end" font-size="12" fill="var(--muted)">${v}</text>`;
+  g += `<line x1="${sx(lg)}" x2="${sx(lg)}" y1="${m.t}" y2="${H - m.b}" stroke="var(--muted)" stroke-dasharray="4 4"/>`;
+  g += `<line x1="${m.l}" x2="${W - m.r}" y1="${sy(lg)}" y2="${sy(lg)}" stroke="var(--muted)" stroke-dasharray="4 4"/>`;
+  g += `<text x="${W - m.r}" y="${m.t + 12}" text-anchor="end" font-size="12" fill="var(--muted)">good offence, good defence ↗</text>`;
+  g += `<text x="${(m.l + W - m.r) / 2}" y="${H - 6}" text-anchor="middle" font-size="12.5" fill="var(--ink)">offensive_rating (points scored per 100 possessions)</text>`;
+  g += `<text transform="translate(14 ${(m.t + H - m.b) / 2}) rotate(-90)" text-anchor="middle" font-size="12.5" fill="var(--ink)">defensive_rating (allowed per 100, flipped)</text>`;
+  const sorted = [...pts].sort((a, b) => b.net - a.net);
+  const labelled = new Set([...sorted.slice(0, 5), ...sorted.slice(-3)].map(p => p.team));
+  pts.forEach((p, i) => {
+    g += `<circle cx="${sx(p.o)}" cy="${sy(p.dr)}" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2" tabindex="0" data-i="${i}" aria-label="${p.team}: offensive ${p.o}, defensive ${p.dr}, net ${p.net}"/>`;
+    if (labelled.has(p.team)) g += `<text x="${sx(p.o) + 8}" y="${sy(p.dr) + 4}" font-size="11.5" fill="var(--ink)">${p.team}</text>`;
+  });
+  return { html: `<div class="frame scatter scatter-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="2025-26 regular season: offensive vs defensive rating by team">${g}</svg><div class="tip" hidden></div></div>`, pts };
+}
+function wireScatter(el, pts) {
+  const tip = el.querySelector('.tip');
+  const show = c => {
+    const p = pts[+c.dataset.i];
+    tip.innerHTML = `<b>${p.team}</b> · ${p.w}–${p.l}<br>ORtg ${p.o.toFixed(1)} · DRtg ${p.dr.toFixed(1)}<br>Net ${p.net > 0 ? '+' : ''}${p.net.toFixed(1)}`;
+    tip.hidden = false;
+    const wr = el.getBoundingClientRect(), cr = c.getBoundingClientRect();
+    let x = cr.left - wr.left + el.scrollLeft + 12, y = cr.top - wr.top - 10;
+    if (x + 170 > el.scrollLeft + wr.width) x -= 190;
+    tip.style.left = x + 'px'; tip.style.top = Math.max(0, y) + 'px';
+  };
+  el.querySelectorAll('circle').forEach(c => {
+    c.addEventListener('mouseenter', () => show(c)); c.addEventListener('focus', () => show(c));
+    c.addEventListener('mouseleave', () => tip.hidden = true); c.addEventListener('blur', () => tip.hidden = true);
+  });
+}
+const seasonTabs = document.getElementById('season-tabs');
+function showSample(key) {
+  const meta = SAMPLE_META.find(m => m[0] === key);
+  const d = GD.samples[key];
+  seasonTabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', b.dataset.k === key ? 'true' : 'false'));
+  let html = `<p class="caption"><code>${key}</code> · ${d.rows.length} rows shown. ${meta[2]}</p>`;
+  let sc = null;
+  if (key === 'nba_team_advanced_profile') { sc = scatter(d); html += sc.html; }
+  html += sampleTable(d);
+  const panel = document.getElementById('season-panel');
+  panel.innerHTML = html;
+  if (sc) wireScatter(panel.querySelector('.scatter'), sc.pts);
+}
+SAMPLE_META.forEach(([k, label]) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.k = k; b.textContent = label;
+  b.addEventListener('click', () => showSample(k));
+  seasonTabs.appendChild(b);
+});
+showSample('nba_team_advanced_profile');
+
+/* ---------- Dataset profiles ---------- */
+const PROF_ORDER = ['nba_team_advanced_profile', 'nba_team_game_stats', 'nba_league_season_baselines', 'nba_team_form',
+  'nba_player_season_advanced', 'nba_player_stint_advanced', 'nba_player_advanced_career',
+  'int_nba_team_games', 'int_nba_team_season_srs', 'int_nba_player_games', 'int_nba_player_game_context', 'int_nba_player_stints'];
+const profSel = document.getElementById('prof-select');
+PROF_ORDER.forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = `${GD.profiles[k].schema}.${k}`; profSel.appendChild(o); });
+const NUMERIC = /^(BIGINT|INTEGER|DOUBLE|HUGEINT|DECIMAL|FLOAT|SMALLINT|INT128|UBIGINT)/;
+function fmtStat(type, v, col) {
+  if (v === null || v === undefined || v === '') return '<span class="muted">—</span>';
+  if (!NUMERIC.test(type)) return String(v).length > 16 ? String(v).slice(0, 15) + '…' : String(v);
+  const n = Number(v);
+  if (!isFinite(n)) return String(v);
+  if (/_id$/.test(col)) return String(Math.round(n));
+  const a = Math.abs(n);
+  if (a >= 10000) return Math.round(n).toLocaleString('en-GB');
+  if (a >= 100) return n.toFixed(1);
+  if (a >= 1 || n === 0) return Number.isInteger(n) ? String(n) : n.toFixed(2);
+  return n.toFixed(3);
+}
+function renderProfile() {
+  const k = profSel.value, p = GD.profiles[k];
+  const ix = n => p.columns.indexOf(n);
+  const onlyFlagged = document.getElementById('prof-flagged').checked;
+  let sparse = 0, extreme = 0;
+  const rows = p.rows.map(r => {
+    const col = r[ix('column_name')], type = r[ix('column_type')], nullPct = r[ix('null_percentage')];
+    const max = Number(r[ix('max')]);
+    const fl = [];
+    if (nullPct > 50) { fl.push('<span class="flag sparse">Sparse</span>'); sparse++; }
+    if (isRate(col) && NUMERIC.test(type) && max > 1) { fl.push('<span class="flag extreme">Above 1</span>'); extreme++; }
+    return { r, col, type, nullPct, fl };
+  });
+  document.getElementById('prof-findings').innerHTML = `
+    <div><b>${p.row_count.toLocaleString('en-GB')}</b>rows · ${p.rows.length} columns · <code>${p.schema}</code></div>
+    <div><b>${sparse}</b>sparse columns (null in over half the rows)</div>
+    <div><b>${extreme}</b>rate columns with small-sample values above 1</div>`;
+  document.querySelector('#prof-table tbody').innerHTML = rows.filter(x => !onlyFlagged || x.fl.length).map(({ r, col, type, nullPct, fl }) => {
+    const nn = Math.max(0, 100 - nullPct);
+    const st = n => fmtStat(type, r[ix(n)], col);
+    return `<tr><td>${col}${fl.join('')}</td><td class="type">${type}</td>
+      <td><span class="nn"><i><b style="width:${nn}%"></b></i>${nn.toFixed(nn % 1 ? 1 : 0)}%</span></td>
+      <td class="num">${Number(r[ix('approx_unique')]).toLocaleString('en-GB')}</td>
+      <td class="num">${st('min')}</td><td class="num">${st('q25')}</td><td class="num">${st('q50')}</td><td class="num">${st('avg')}</td>
+      <td class="num">${st('q75')}</td><td class="num">${st('max')}</td><td class="num">${st('std')}</td></tr>`;
+  }).join('') || '<tr><td colspan="11" class="muted">No flagged columns in this dataset.</td></tr>';
+}
+profSel.addEventListener('change', renderProfile);
+document.getElementById('prof-flagged').addEventListener('change', renderProfile);
+renderProfile();
+
+/* ---------- Copy buttons ---------- */
+document.querySelectorAll('.copy').forEach(btn => btn.addEventListener('click', () => {
+  const el = document.getElementById(btn.dataset.copy);
+  const text = el.textContent;
+  const done = () => { const t = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => btn.textContent = t, 1400); };
+  const fallback = () => { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = 'Press Ctrl/⌘ C'; setTimeout(() => btn.textContent = btn.dataset.copy.startsWith('c') ? 'Copy' : 'Copy SQL', 1800); };
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+}));
+</script>

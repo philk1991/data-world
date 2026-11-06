@@ -265,6 +265,11 @@ tasks:
         connect_lake(read_only=True).sql(sys.argv[1]).show(max_rows=50)
         ' \"\$1\"" _ {{shellQuote .SQL}}
 
+  docs:nba-guide:
+    desc: "Refresh the sample rows and column profiles embedded in docs/nba-metrics-field-guide/index.html from the lake (read-only). Run after a dbt build that changes the NBA metric models."
+    cmds:
+      - bash -c "source {{.VENV}} && cd data-ingestion && PYTHONPATH=. python ../docs/nba-metrics-field-guide/refresh_data.py"
+
   lake:maintain:
     desc: "Compact the lake and expire snapshots older than RETAIN (default 7 days), then delete unreferenced files. Safe alongside writers. e.g. task lake:maintain RETAIN='1 day'"
     vars:
