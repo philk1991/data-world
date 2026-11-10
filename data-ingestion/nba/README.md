@@ -18,6 +18,12 @@ at a time and loads each into DuckDB as a full-replace table (`read_csv_auto` fo
 League Schedule files are intentionally skipped. Re-running
 rebuilds every table from the latest daily snapshot, so the script is idempotent.
 
+**Known upstream gap.** The dataset is missing six 2024-25 regular-season games (four
+absent, two recorded 0-0 with no player box score); re-ingesting does not fix it (still
+missing in version 542, 10 Nov 2026). The dbt doc block `nba__upstream_gap_2024_25`
+lists them; remove it and the 2024 exception in `assert_nba_closed_seasons_complete`
+once upstream adds them.
+
 | Kaggle file | DuckDB table |
 |---|---|
 | `Games.csv` | `raw_nba.raw_nba_games` |

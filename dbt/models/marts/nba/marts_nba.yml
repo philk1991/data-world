@@ -247,6 +247,7 @@ models:
       One row per team per regular season with win/loss record, home/away wins
       and scoring averages. Season comes from the game id, so the 2020 bubble
       games belong to 2019-20. Restricted to Regular Season games. Ordered by season then win percentage.
+      {{ doc('nba__upstream_gap_2024_25') }}
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -715,6 +716,7 @@ models:
       inputs for true shooting and effective field goal percentage. Includes
       seasons before 1954-55 (incomplete schedules; see nba_seasons_dim).
       Ordered by season then total points descending.
+      {{ doc('nba__upstream_gap_2024_25') }}
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -865,6 +867,7 @@ models:
       nba_player_season_stats, so a player's rows for a season and game type add
       up to that mart's games_played and totals. The game-grain counterpart to
       nba_player_season_stats. Ordered by game date descending.
+      {{ doc('nba__upstream_gap_2024_25') }}
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -1339,6 +1342,7 @@ models:
       sum the counts and recompute rather than averaging rows. Possession-based
       metrics start in 1973-74 and are null where an input is missing; counts
       before 1983-84 are summed from complete player box scores (counts_source).
+      {{ doc('nba__upstream_gap_2024_25') }}
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -1962,6 +1966,7 @@ models:
       franchises, so games against defunct teams are missing), in_progress for
       the latest season, and complete otherwise. Careers, Cube and nao filter on
       is_in_coverage by default.
+      {{ doc('nba__upstream_gap_2024_25') }}
     columns:
       - name: season_start_year
         description: "{{ doc('nba__season_start_year') }}"

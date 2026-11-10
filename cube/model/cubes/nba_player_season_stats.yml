@@ -24,6 +24,9 @@ cubes:
       inputs were recorded. Joined to nba_team_dim on primary_team_id for team
       names, and to nba_players_dim on person_id for biography and per-season
       age.
+      Known upstream gap: the source is missing six 2024-25 regular-season
+      games, so players on eleven teams are short those games (see the dbt
+      model docs); it is not fixable here.
 
     joins:
       - name: nba_team_dim

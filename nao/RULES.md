@@ -60,6 +60,10 @@ staging tables.
 - **Say where the number came from.** Your answers are SQL over the marts, not
   the defined metrics in the Cube semantic layer, so for a headline figure
   give the table and filters you used.
+- **2024-25 is six games short upstream.** The source is missing six
+  regular-season games, so ATL, CHA, HOU, LAC, LAL, MIL, NOP, ORL, UTA and WAS
+  show 81 games and SAS 80. When a 2024-25 answer involves those teams (records,
+  totals, a player's games played), say so. It is a data gap, not a real result.
 
 ## Table grain (pick the right one)
 

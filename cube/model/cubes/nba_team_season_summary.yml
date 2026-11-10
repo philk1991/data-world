@@ -14,6 +14,9 @@ cubes:
       games belong to 2019-20.
       Restricted to Regular Season games, from 1954-55 (earlier schedules are
       incomplete). Joined to nba_team_dim on team_id for team names.
+      Known upstream gap: the source is missing six 2024-25 regular-season
+      games, so ten teams show 81 games and San Antonio 80 (see the dbt
+      model docs); it is not fixable here.
 
     joins:
       - name: nba_team_dim

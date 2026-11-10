@@ -18,6 +18,9 @@ cubes:
       incomplete) and every game type, so apply the competitive segment for
       anything but exhibition questions. For one team's record across home and
       away games, use nba_team_season_summary instead.
+      Known upstream gap: the source is missing six 2024-25 regular-season
+      games, so ten teams show 81 games and San Antonio 80 (see the dbt
+      model docs); it is not fixable here.
 
     dimensions:
       - name: game_id

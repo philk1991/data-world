@@ -547,3 +547,9 @@ Dean Oliver's individual offensive rating: points produced per 100 individual po
 {% docs nba__individual_defensive_rating %}
 Dean Oliver's individual defensive rating: points allowed per 100 possessions, the team's defensive rating moved 20% toward the player's stop rate. Mostly reflects the team's defence; don't use it as a stand-alone defensive grade. From 1973-74 where every input exists.
 {% enddocs %}
+
+{# ── Known upstream gaps ───────────────────────────────────────────────── #}
+
+{% docs nba__upstream_gap_2024_25 %}
+Known upstream gap, outside our control: the Kaggle source is missing six 2024-25 Regular Season games (still missing in dataset version 542, checked 10 Nov 2026). Four (game ids 22400532, 22400537, 22400538, 22400617) are absent from the games and box score files; two more (22400627, 22400988) are recorded 0-0 with no player box score and are dropped in staging. So 2024-25 shows 1,224 of 1,230 games: ATL, CHA, HOU, LAC, LAL, MIL, NOP, ORL, UTA and WAS have 81 games, SAS 80, and those teams' records and totals and their players' season totals are short by the missing games. The games are present in the play-by-play.
+{% enddocs %}

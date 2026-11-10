@@ -5,6 +5,7 @@ models:
     description: >
       One row per NBA game, 1946–present. Renames raw columns and derives
       home_team_won from the winning team id.
+      {{ doc('nba__upstream_gap_2024_25') }}
     columns:
       - name: game_id
         description: "{{ doc('nba__game_id') }}"
@@ -114,6 +115,7 @@ models:
       Traditional team box scores, one row per team per game. Stat columns are
       null for games where the league did not record that stat yet (the raw data
       zero-fills them; see the null_if_unrecorded macro).
+      {{ doc('nba__upstream_gap_2024_25') }}
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:

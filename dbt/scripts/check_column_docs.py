@@ -10,7 +10,8 @@ models/docs/<domain>.md, so the wording cannot drift between models. Rules:
    it uses is a named variant, <domain>__<column>__<variant> — the escape hatch for
    columns that share a name but not a meaning (games_played on a player mart vs
    a head-to-head mart).
-3. Every block in the domain's docs file is referenced somewhere.
+3. Every block in the domain's docs file is referenced somewhere (by a column or
+   a model description).
 
 Reads the YAML and Markdown directly, so it needs no dbt parse.
 
@@ -38,6 +39,7 @@ def check(domain: str) -> list[str]:
     referenced: set[str] = set()
     for yml in sorted(MODELS_DIR.glob(f"*/{domain}/*.yml")):
         for model in (yaml.safe_load(yml.read_text()) or {}).get("models", []):
+            referenced.update(DOC_REF.findall(model.get("description") or ""))
             for column in model.get("columns", []):
                 refs = DOC_REF.findall(column.get("description") or "")
                 columns[column["name"]][model["name"]] = refs

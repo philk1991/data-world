@@ -29,7 +29,7 @@ known_exceptions AS (
             -- The season was cut short by COVID-19; teams finished on 64-75 games.
             (2019, 'COVID-19 shortened season'),
             -- Upstream gap: 4 games missing from the Kaggle source, 2 more recorded 0-0
-            -- and dropped (plans/nba-staff-ae-project.md, finding 5). Remove when fixed.
+            -- and dropped (doc block nba__upstream_gap_2024_25). Remove when fixed.
             (2024, 'upstream data gap')
         ) AS t (season_start_year, reason)  -- noqa: AL01, AL05
 ),
