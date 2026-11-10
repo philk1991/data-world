@@ -106,6 +106,12 @@ If Step 2 reported `cube_file_exists: true`, read that existing file first
 and preserve any hand-written measures the user wants to keep — merge, don't
 overwrite.
 
+NBA cubes are `public: false`: the published interface is the views in
+`cube/model/views/nba.yml` (plans/adr/0002-dbt-cube-boundary.md). For an NBA
+cube, set `public: false` and add its members to an existing view, or a new
+view whose description states the grain and default scope. Other domains
+publish their cubes directly until they get views.
+
 ## Step 5 — Validate
 
 There's no `cube:validate` task. At minimum:

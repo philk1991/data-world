@@ -37,38 +37,43 @@ CONTINUE_WAIT_TIMEOUT_S = 60
 INSTRUCTIONS = """\
 Answers questions from the Cube semantic layer over the data-world lake (NBA and
 Spotify marts). Work in this order:
-1. Call describe_model once to see the cubes, their measures and dimensions. Read
-   the descriptions: they state each cube's grain and when stats were not recorded.
-2. Build a Cube query from those member names and call query. Prefer the model's
+1. Call describe_model once to see the views (NBA: player_season, player_career,
+   team_season, game, player) and cubes, with their measures and dimensions. Read
+   the descriptions: they state the grain, the default scope (player views
+   default to the Regular Season until you filter game_type) and when stats were
+   not recorded.
+2. Build a query from one view's member names and call query. Prefer the model's
    own measures (e.g. points_per_game, win_pct, true_shooting_pct) over computing
    ratios or averaging rows yourself — they are weighted correctly across rows.
-3. Only combine members from cubes that share a join_group.
+3. Query one view at a time; outside the views, only combine members from cubes
+   that share a join_group.
 4. When answering, state the filters you applied (season, game type) and any
    data-coverage caveat from the descriptions.
 """
 
 QUERY_FORMAT = """\
 A Cube REST query (JSON object). Members are always "<cube>.<member>". Keys:
-  measures: ["nba_team_season_summary.win_pct", ...]
-  dimensions: ["nba_team_dim.current_full_name", ...]
+  measures: ["team_season.win_pct", ...]
+  dimensions: ["team_season.team_full_name", ...]
   filters: [{"member": "<cube>.<member>", "operator": "<op>", "values": ["..."]}]
     operators: equals, notEquals, contains, notContains, startsWith, endsWith,
     gt, gte, lt, lte, set, notSet, inDateRange, notInDateRange, beforeDate, afterDate.
-    values are always strings, also for numbers ("2023"). For OR/AND use
+    values are always strings, also for numbers ("2023"); equals with several
+    values matches any of them. For OR/AND use
     {"or": [filter, ...]} / {"and": [filter, ...]}. Filtering on a measure
     filters after aggregation (like HAVING).
-  segments: ["nba_player_season_stats.qualified"] — named, predefined filters
+  segments: ["player_season.qualified"] — named, predefined filters
     listed by describe_model. Prefer a segment over rebuilding its filter by hand.
   timeDimensions: [{"dimension": "<cube>.<time dim>", "granularity": "year",
     "dateRange": ["2020-01-01", "2020-12-31"]}] — only for type-time dimensions.
   order: {"<cube>.<member>": "desc"} (or a list of [member, "asc"|"desc"] pairs)
   limit: integer (default 100, max 1000); offset: integer
 Example — best regular-season records of 2023-24:
-  {"measures": ["nba_team_season_summary.win_pct"],
-   "dimensions": ["nba_team_dim.current_full_name"],
-   "filters": [{"member": "nba_team_season_summary.season_label",
+  {"measures": ["team_season.win_pct"],
+   "dimensions": ["team_season.team_full_name"],
+   "filters": [{"member": "team_season.season_label",
                 "operator": "equals", "values": ["2023-24"]}],
-   "order": {"nba_team_season_summary.win_pct": "desc"}, "limit": 5}
+   "order": {"team_season.win_pct": "desc"}, "limit": 5}
 """
 
 server = MCPServer(name="cube", instructions=INSTRUCTIONS)

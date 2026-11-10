@@ -422,7 +422,7 @@ tasks:
         async def main():
             cubes = await server.describe_model()
             print(cubes[:400] + '...')
-            print(await server.query({'measures': ['nba_team_season_summary.count']}))
+            print(await server.query({'measures': ['team_season.count']}))
         asyncio.run(main())
         "
 

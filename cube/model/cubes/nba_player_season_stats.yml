@@ -1,5 +1,6 @@
 cubes:
   - name: nba_player_season_stats
+    public: false
     # Seasons from 1954-55 only: earlier schedules are missing every game against a
     # defunct franchise (plans/adr/0003-coverage-cutoff.md). nba_seasons_dim owns the cutoff.
     sql: >
@@ -31,6 +32,10 @@ cubes:
     joins:
       - name: nba_team_dim
         sql: "{CUBE}.primary_team_id = {nba_team_dim}.team_id"
+        relationship: many_to_one
+
+      - name: nba_team_seasons_dim
+        sql: "{CUBE}.primary_team_id = {nba_team_seasons_dim}.team_id AND {CUBE}.season_start_year = {nba_team_seasons_dim}.season_start_year"
         relationship: many_to_one
 
       - name: nba_players_dim
@@ -222,6 +227,23 @@ cubes:
         sql: person_id
         type: count_distinct
         description: Number of distinct players across matching rows (a player with Regular Season and Playoffs rows counts once).
+
+      - name: count_seasons
+        sql: season_start_year
+        type: count_distinct
+        description: >
+          Number of distinct seasons across matching rows. Grouped by player, the
+          seasons they played in the filtered game types (a career's length).
+
+      - name: first_season_start_year
+        sql: season_start_year
+        type: min
+        description: Earliest season_start_year across matching rows (grouped by player, their first season).
+
+      - name: last_season_start_year
+        sql: season_start_year
+        type: max
+        description: Latest season_start_year across matching rows (grouped by player, their last season).
 
       - name: sum_games_played
         sql: games_played

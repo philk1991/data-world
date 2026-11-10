@@ -1,0 +1,50 @@
+cubes:
+  - name: nba_team_seasons_dim
+    sql_table: marts.nba_team_seasons_dim
+    public: false
+    description: >
+      Conformed team-season dimension, one row per team per season it played a
+      competitive game, with the team's name as of that season (the 2007-08
+      SuperSonics, not the Thunder). Join target for nba_player_season_stats
+      (primary_team_id, season_start_year) and nba_team_season_summary.
+      nba_team_dim keeps the current identity.
+
+    dimensions:
+      - name: team_id
+        sql: team_id
+        type: number
+        primary_key: true
+        description: Franchise identifier, stable across relocations and renames.
+
+      - name: season_start_year
+        sql: season_start_year
+        type: number
+        primary_key: true
+        description: >
+          Calendar year the season started (e.g. 2023 for 2023-24), decoded from
+          the game id. Follows the league's own season assignment, so the 2020
+          bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
+
+      - name: team_city
+        sql: team_city
+        type: string
+        description: The team's city that season.
+
+      - name: team_name
+        sql: team_name
+        type: string
+        description: >
+          The team's name (e.g. SuperSonics) during the franchise era or season
+          the row covers.
+
+      - name: team_full_name
+        sql: team_full_name
+        type: string
+        description: City and name that season (e.g. "Seattle SuperSonics" for 2007-08).
+
+      - name: team_abbrev
+        sql: team_abbrev
+        type: string
+        description: >
+          The team's abbreviation (e.g. SEA) during the franchise era or season
+          the row covers. Null where no franchise era covers the season.

@@ -1,5 +1,6 @@
 cubes:
   - name: nba_players_dim
+    public: false
     sql_table: marts.nba_players_dim
     description: >
       Conformed player dimension, one row per person_id carrying biography

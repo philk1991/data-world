@@ -1,5 +1,6 @@
 cubes:
   - name: nba_team_dim
+    public: false
     sql_table: marts.nba_team_dim
     description: >
       Conformed franchise dimension, one row per team_id carrying the team's

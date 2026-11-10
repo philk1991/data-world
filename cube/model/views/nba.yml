@@ -1,0 +1,181 @@
+# The published NBA interface: BI tools, the Cube MCP server and agents query these
+# views; the cubes behind them are private (plans/adr/0002-dbt-cube-boundary.md).
+# Each view states its grain and default scope in its description, which is what
+# describe_model shows. Player views default to the Regular Season (ADR 0001): a
+# filter on game_type replaces the default, so filter game_type = Playoffs for
+# playoff numbers or IN (Regular Season, Playoffs) for both added together.
+# Seasons before 1954-55 are already excluded by the cubes (ADR 0003).
+views:
+  - name: player_season
+    description: >
+      One row per player per season (Regular Season by default). Totals,
+      per-game averages and shooting percentages, all weighted correctly when
+      rows are combined. Seasons from 1954-55. The default scope is the Regular
+      Season: filter game_type = 'Playoffs' for playoff seasons, or game_type IN
+      ('Regular Season', 'Playoffs') for both added together; grouping by
+      game_type alone does not lift the default. For leaderboards apply the
+      qualified segment (per-game stats) or fg_qualified / three_point_qualified
+      / free_throw_qualified (shooting percentages), plus completed_seasons so
+      the season in progress doesn't top them. team_name is the primary team's
+      name that season. Stats not yet recorded in early seasons (steals and
+      blocks before 1973-74, turnovers before 1977-78) are null and left out of
+      the rates. The source is missing six 2024-25 regular-season games.
+    cubes:
+      - join_path: nba_player_season_stats
+        includes: "*"
+        excludes:
+          - regular_season
+          - playoffs
+          - career
+          - count_seasons
+          - first_season_start_year
+          - last_season_start_year
+
+      - join_path: nba_player_season_stats.nba_team_seasons_dim
+        includes:
+          - team_name
+          - team_full_name
+          - team_abbrev
+
+      - join_path: nba_player_season_stats.nba_players_dim
+        includes:
+          - position
+          - height_inches
+          - body_weight_lbs
+          - country
+          - draft_year
+    default_filters:
+      - member: game_type
+        operator: equals
+        values: ["Regular Season"]
+        unless: [game_type]
+
+  - name: player_career
+    description: >
+      Career totals, per-game averages and shooting percentages: group by
+      person_id (or player_name) and the season rows add up into a career, the
+      same numbers as the nba_player_career_stats mart. Seasons from 1954-55.
+      A career is the Regular Season by default: filter game_type = 'Playoffs'
+      for a playoff career, or game_type IN ('Regular Season', 'Playoffs') for
+      both added together. count_seasons, first_season_start_year and
+      last_season_start_year give the career's span.
+    cubes:
+      - join_path: nba_player_season_stats
+        includes:
+          - person_id
+          - player_name
+          - first_name
+          - last_name
+          - game_type
+          - count
+          - count_players
+          - count_seasons
+          - first_season_start_year
+          - last_season_start_year
+          - sum_games_played
+          - sum_total_points
+          - sum_total_rebounds
+          - sum_total_assists
+          - sum_total_steals
+          - sum_total_blocks
+          - sum_total_turnovers
+          - sum_field_goals_made
+          - sum_field_goals_attempted
+          - sum_three_pointers_made
+          - sum_three_pointers_attempted
+          - sum_free_throws_made
+          - sum_free_throws_attempted
+          - points_per_game
+          - rebounds_per_game
+          - assists_per_game
+          - steals_per_game
+          - blocks_per_game
+          - turnovers_per_game
+          - field_goal_pct
+          - three_point_pct
+          - free_throw_pct
+          - three_point_attempt_rate
+          - effective_field_goal_pct
+          - name: true_shooting_pct
+            description: >
+              Career true shooting, PTS / (2 x (FGA + 0.44 x FTA)) over games with
+              both attempt counts recorded, 0-1. There is no career attempts
+              minimum yet, so filter sum_field_goals_made for a leaderboard.
+          - assist_to_turnover_ratio
+          - name: max_total_points
+            alias: best_season_points
+            description: Most points the player scored in one season of the filtered game types.
+          - name: max_points_per_game
+            alias: best_season_points_per_game
+            description: Highest points per game the player averaged in one season of the filtered game types.
+
+      - join_path: nba_player_season_stats.nba_players_dim
+        includes:
+          - position
+          - height_inches
+          - body_weight_lbs
+          - birth_date
+          - country
+          - school
+          - draft_year
+          - draft_round
+          - draft_number
+          - is_undrafted
+    default_filters:
+      - member: game_type
+        operator: equals
+        values: ["Regular Season"]
+        unless: [game_type]
+
+  - name: team_season
+    description: >
+      One row per team per regular season: record, home and away wins, and
+      scoring averages, from 1954-55. win_pct and the per-game measures are
+      weighted correctly across rows. team_name is the team's name that season
+      (the 2007-08 SuperSonics); current_team_name is the franchise's name today.
+      The source is missing six 2024-25 games, so ten teams show 81 games and
+      San Antonio 80.
+    cubes:
+      - join_path: nba_team_season_summary
+        includes: "*"
+
+      - join_path: nba_team_season_summary.nba_team_seasons_dim
+        includes:
+          - team_name
+          - team_full_name
+          - team_abbrev
+
+      - join_path: nba_team_season_summary.nba_team_dim
+        includes:
+          - name: current_full_name
+            alias: current_team_name
+          - current_league
+          - has_relocated_or_renamed
+
+  - name: game
+    description: >
+      One row per game with both teams' box score lines on a home/away axis,
+      from 1954-55. Competitive games only by default (Regular Season, Play-in,
+      Playoffs, NBA Cup Final): filter game_type to include Preseason or
+      All-Star games. Apply home_court_games to leave out neutral-site games
+      for home-advantage questions. For one team's record use team_season.
+    cubes:
+      - join_path: nba_game_results
+        includes: "*"
+        excludes:
+          - competitive
+    default_filters:
+      - member: game_type
+        operator: in
+        values: ["Regular Season", "Play-in Tournament", "Playoffs", "NBA Cup Final"]
+        unless: [game_type]
+
+  - name: player
+    description: >
+      One row per player who ever played: biography (height, weight, position,
+      draft, school, country) and career span. Apply has_competitive_games to
+      leave out players who only appeared in preseason or All-Star games. For
+      stats use player_season or player_career.
+    cubes:
+      - join_path: nba_players_dim
+        includes: "*"

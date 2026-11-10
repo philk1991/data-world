@@ -1,5 +1,6 @@
 cubes:
   - name: nba_team_season_summary
+    public: false
     # Seasons from 1954-55 only (plans/adr/0003-coverage-cutoff.md); nba_seasons_dim owns the cutoff.
     sql: >
       SELECT m.*
@@ -21,6 +22,10 @@ cubes:
     joins:
       - name: nba_team_dim
         sql: "{CUBE}.team_id = {nba_team_dim}.team_id"
+        relationship: many_to_one
+
+      - name: nba_team_seasons_dim
+        sql: "{CUBE}.team_id = {nba_team_seasons_dim}.team_id AND {CUBE}.season_start_year = {nba_team_seasons_dim}.season_start_year"
         relationship: many_to_one
 
     dimensions:

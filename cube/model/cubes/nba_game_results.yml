@@ -1,5 +1,6 @@
 cubes:
   - name: nba_game_results
+    public: false
     # Seasons from 1954-55 only (plans/adr/0003-coverage-cutoff.md); nba_seasons_dim owns the cutoff.
     sql: >
       SELECT m.*
