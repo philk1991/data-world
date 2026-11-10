@@ -1,6 +1,7 @@
 """Copy dbt column descriptions onto the Cube dimensions that expose them.
 
-A cube built on a dbt mart (sql_table: marts.<model>) usually has dimensions
+A cube built on a dbt mart (sql_table: marts.<model>, or meta.dbt_model: <model>
+when the cube filters the mart with sql:) usually has dimensions
 that are the mart's columns as-is (sql: season_start_year). Their description
 should be the dbt column's description — after doc blocks are rendered — so
 Claude (via the Cube MCP server), the Playground and the dbt docs all say the
@@ -92,7 +93,8 @@ def main() -> int:
         text = path.read_text()
         lines = text.split("\n")
         for cube in yaml.safe_load(text).get("cubes", []):
-            mart = marts.get(str(cube.get("sql_table", "")).split(".")[-1])
+            model = (cube.get("meta") or {}).get("dbt_model") or str(cube.get("sql_table", "")).split(".")[-1]
+            mart = marts.get(model)
             if not mart:
                 continue
             for dim in cube.get("dimensions", []):

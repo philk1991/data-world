@@ -1,3 +1,4 @@
+{% set turnovers_start = nba_coverage_start('turnovers') %}
 {% set rate_pairs = [
     ('usage_plays', 'usage_opportunity'),
     ('assists', 'assist_opportunity'),
@@ -46,7 +47,7 @@ WITH context AS (
 flagged AS (
     SELECT
         *,
-        season_start_year >= 1973
+        season_start_year >= {{ nba_coverage_start('possessions') }}
         AND team_possessions IS NOT NULL
         AND COALESCE(minutes_played, 0) > 0
         AND on_court_share IS NOT NULL
@@ -115,8 +116,10 @@ stints AS (
 
 SELECT
     *,
-    CASE WHEN season_start_year >= 1977 THEN {{ nba_oliver_pprod() }} END AS points_produced,
-    CASE WHEN season_start_year >= 1977 THEN {{ nba_oliver_tot_poss() }} END AS individual_possessions,
+    CASE WHEN season_start_year >= {{ turnovers_start }} THEN {{ nba_oliver_pprod() }} END AS points_produced,
+    CASE
+        WHEN season_start_year >= {{ turnovers_start }} THEN {{ nba_oliver_tot_poss() }}
+    END AS individual_possessions,
     {{ nba_oliver_drtg() }} AS individual_defensive_rating
 FROM
     stints

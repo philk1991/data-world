@@ -43,7 +43,7 @@ career_span AS (
     WHERE
         person_id IS NOT NULL
         AND minutes_played IS NOT NULL
-        AND game_type IN ('Regular Season', 'Playoffs', 'Play-in Tournament', 'NBA Cup Final')
+        AND game_type IN {{ nba_competitive_game_types() }}
     GROUP BY
         person_id
 ),

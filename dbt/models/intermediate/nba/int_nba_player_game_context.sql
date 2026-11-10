@@ -1,3 +1,5 @@
+{% set three_point_start = nba_coverage_start('three_pointers') %}
+{% set possessions_start = nba_coverage_start('possessions') %}
 -- One row per player per competitive game, with the team's and opponent's
 -- counts for that game and the per-game "opportunity" denominators every
 -- team-context player rate is built from (macros/nba_metrics.sql). A rate over
@@ -29,6 +31,8 @@ with_team_minutes AS (
         SUM(minutes_played) OVER (PARTITION BY game_id, team_id) AS team_player_minutes
     FROM
         player_games
+    WHERE
+        is_competitive
 ),
 
 joined AS (
@@ -48,8 +52,10 @@ joined AS (
         p.points,
         p.field_goals_made,
         p.field_goals_attempted,
-        CASE WHEN p.season_start_year < 1979 THEN 0 ELSE p.three_pointers_made END AS three_pointers_made,
-        CASE WHEN p.season_start_year < 1979 THEN 0 ELSE p.three_pointers_attempted END AS three_pointers_attempted,
+        CASE WHEN p.season_start_year < {{ three_point_start }} THEN 0 ELSE p.three_pointers_made END
+            AS three_pointers_made,
+        CASE WHEN p.season_start_year < {{ three_point_start }} THEN 0 ELSE p.three_pointers_attempted END
+            AS three_pointers_attempted,
         p.free_throws_made,
         p.free_throws_attempted,
         p.rebounds_offensive,
@@ -85,7 +91,8 @@ joined AS (
         t.opp_rebounds_defensive,
         t.opp_rebounds_total,
         t.opp_turnovers,
-        CASE WHEN t.has_full_box AND t.season_start_year >= 1973 THEN t.possessions END AS team_possessions,
+        CASE WHEN t.has_full_box AND t.season_start_year >= {{ possessions_start }} THEN t.possessions END
+            AS team_possessions,
         -- Only where the players' recorded minutes cover the game: some 1951-84 box
         -- scores record minutes for part of the roster, which would inflate shares.
         CASE

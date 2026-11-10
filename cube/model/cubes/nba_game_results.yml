@@ -1,14 +1,23 @@
 cubes:
   - name: nba_game_results
-    sql_table: marts.nba_game_results
+    # Seasons from 1954-55 only (plans/adr/0003-coverage-cutoff.md); nba_seasons_dim owns the cutoff.
+    sql: >
+      SELECT m.*
+      FROM marts.nba_game_results m
+      INNER JOIN marts.nba_seasons_dim d USING (season_start_year)
+      WHERE d.is_in_coverage
+    meta:
+      dbt_model: nba_game_results
     description: >
       One row per NBA game combining game metadata and result with both teams'
       traditional box score lines, pivoted onto a home/away axis. Box score
       columns are null for games where the league did not record that stat yet
       (field goal attempts before ~1983, turnovers before ~1986, points in the
       paint before ~1997), so box score measures only reflect games where it
-      was recorded. For one team's record across home and away games, use
-      nba_team_season_summary instead.
+      was recorded. Covers seasons from 1954-55 (earlier schedules are
+      incomplete) and every game type, so apply the competitive segment for
+      anything but exhibition questions. For one team's record across home and
+      away games, use nba_team_season_summary instead.
 
     dimensions:
       - name: game_id
@@ -89,6 +98,12 @@ cubes:
           before 2025-26 to identify them).
 
     segments:
+      - name: competitive
+        sql: "{CUBE}.game_type IN ('Regular Season', 'Play-in Tournament', 'Playoffs', 'NBA Cup Final')"
+        description: >
+          Regular Season, Play-in Tournament, Playoffs and NBA Cup Final games:
+          leaves out preseason and All-Star exhibitions.
+
       - name: home_court_games
         sql: "NOT {CUBE}.is_neutral_site"
         description: >

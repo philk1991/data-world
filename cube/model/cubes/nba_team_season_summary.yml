@@ -1,12 +1,19 @@
 cubes:
   - name: nba_team_season_summary
-    sql_table: marts.nba_team_season_summary
+    # Seasons from 1954-55 only (plans/adr/0003-coverage-cutoff.md); nba_seasons_dim owns the cutoff.
+    sql: >
+      SELECT m.*
+      FROM marts.nba_team_season_summary m
+      INNER JOIN marts.nba_seasons_dim d USING (season_start_year)
+      WHERE d.is_in_coverage
+    meta:
+      dbt_model: nba_team_season_summary
     description: >
       One row per team per regular season with win/loss record, home/away wins
       and scoring averages. Season comes from the game id, so the 2020 bubble
       games belong to 2019-20.
-      Restricted to Regular Season games. Joined to nba_team_dim on team_id for
-      team names.
+      Restricted to Regular Season games, from 1954-55 (earlier schedules are
+      incomplete). Joined to nba_team_dim on team_id for team names.
 
     joins:
       - name: nba_team_dim

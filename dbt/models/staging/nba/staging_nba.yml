@@ -213,11 +213,11 @@ models:
         tests:
           - not_null
       - name: team_name
-        description: Team name during this era.
+        description: "{{ doc('nba__team_name') }}"
         tests:
           - not_null
       - name: team_abbrev
-        description: Team abbreviation during this era.
+        description: "{{ doc('nba__team_abbrev') }}"
       - name: season_founded
         description: First season of this franchise era.
         tests:

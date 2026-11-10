@@ -116,8 +116,7 @@ enriched AS (
         COALESCE(p.first_name, n.first_name) AS first_name,
         COALESCE(p.last_name, n.last_name) AS last_name,
         ps.season_start_year,
-        ps.season_start_year::VARCHAR || '-'
-        || RIGHT((ps.season_start_year + 1)::VARCHAR, 2) AS season_label,
+        {{ nba_season_label('ps.season_start_year') }} AS season_label,
         ps.game_type,
         ps.clutch_games,
         ps.clutch_points,

@@ -3,12 +3,15 @@ version: 2
 models:
   - name: int_nba_player_games
     description: >
-      One row per player per competitive game played (Regular Season, Play-in
-      Tournament, Playoffs, NBA Cup Final), with the player's team resolved:
-      player_team_id is null in the raw data for all of 2021-22 and a few
-      thousand rows a season since 2003, so the team falls back to the game's
-      home or away team by is_home. Minutes are null for games whose minutes
-      sum to 0 (most games before 1964-65).
+      One row per player per game played, every game type, with the player's
+      team resolved: player_team_id is null in the raw data for all of 2021-22
+      and a few thousand rows a season since 2003, so the team falls back to the
+      game's home or away team by is_home. is_competitive marks the Regular
+      Season, Play-in Tournament, Playoffs and NBA Cup Final, the games the team
+      context models keep. Minutes are null for games whose minutes sum to 0
+      (most games before 1964-65). Shooting pairs with more makes than attempts
+      are nulled. Double- and triple-doubles are flagged here, the one
+      definition every NBA mart uses.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -24,16 +27,34 @@ models:
         description: "{{ doc('nba__person_id') }}"
         tests:
           - not_null
-      - name: team_id
-        description: "{{ doc('nba__team_id') }} The player's team, from player_team_id or else the game's home/away team."
+      - name: game_type
+        description: "{{ doc('nba__game_type') }}"
         tests:
           - not_null
+      - name: is_competitive
+        description: "{{ doc('nba__is_competitive') }}"
+        tests:
+          - not_null
+      - name: team_id
+        description: "{{ doc('nba__team_id') }} The player's team, from player_team_id or else the game's home/away team. Null for a few All-Star rows with no game record."
+        tests:
+          - not_null:
+              config:
+                where: "is_competitive"
       - name: is_team_inferred
-        description: True when the raw player_team_id was null and team_id came from the game's home/away team.
+        description: "{{ doc('nba__is_team_inferred') }}"
         tests:
           - not_null
       - name: minutes_played
         description: "{{ doc('nba__minutes_played') }} Null where the game's minutes sum to 0 (not recorded)."
+      - name: is_double_double
+        description: "{{ doc('nba__is_double_double') }}"
+        tests:
+          - not_null
+      - name: is_triple_double
+        description: "{{ doc('nba__is_triple_double') }}"
+        tests:
+          - not_null
 
   - name: int_nba_team_games
     description: >

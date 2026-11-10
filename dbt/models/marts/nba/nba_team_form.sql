@@ -29,7 +29,7 @@ rated AS (
     FROM
         team_games
     WHERE
-        season_start_year >= 1973
+        season_start_year >= {{ nba_coverage_start('possessions') }}
 ),
 
 windows AS (

@@ -1,19 +1,29 @@
 cubes:
   - name: nba_player_season_stats
-    sql_table: marts.nba_player_season_stats
+    # Seasons from 1954-55 only: earlier schedules are missing every game against a
+    # defunct franchise (plans/adr/0003-coverage-cutoff.md). nba_seasons_dim owns the cutoff.
+    sql: >
+      SELECT s.*
+      FROM marts.nba_player_season_stats s
+      INNER JOIN marts.nba_seasons_dim d USING (season_start_year)
+      WHERE d.is_in_coverage
+    meta:
+      dbt_model: nba_player_season_stats
     description: >
       One row per player per season per game type (Regular Season, Playoffs,
       etc.) of traditional box score totals, per-game averages and shooting
-      splits, enriched with bio. Season comes from the game id. A
-      player traded mid-season is combined into one row per game type, with
-      primary_team_id set to the team they played the most games for. Only
-      games actually played count. Splitting by game_type lets visualisations
-      compare regular-season and playoff production. Stats the league did not
-      record yet (steals and blocks before 1973-74, turnovers before ~1977-78,
-      attempts in some early seasons) are null, and the per-game and
-      percentage measures only count seasons where their inputs were recorded.
-      Joined to nba_team_dim on primary_team_id for team names, and to
-      nba_players_dim on person_id for biography and per-season age.
+      splits, enriched with bio, from 1954-55 (earlier seasons have incomplete
+      schedules). A player traded mid-season is combined into one row per game
+      type, with primary_team_id set to the team they played the most games
+      for. Only games actually played count. Every game type is included, so
+      apply a segment: regular_season for season leaders and the default
+      career, playoffs for playoff numbers, career for both added together.
+      Stats the league did not record yet (steals and blocks before 1973-74,
+      turnovers before ~1977-78, attempts in some early seasons) are null, and
+      the per-game and percentage measures only count seasons where their
+      inputs were recorded. Joined to nba_team_dim on primary_team_id for team
+      names, and to nba_players_dim on person_id for biography and per-season
+      age.
 
     joins:
       - name: nba_team_dim
@@ -34,15 +44,21 @@ cubes:
       - name: first_name
         sql: first_name
         type: string
-        description: Player first name. Missing for a couple of historical players.
+        description: >
+          Player first name. Missing for a couple of historical players. From
+          the bio table, falling back to the box score when the player has no
+          bio record.
 
       - name: last_name
         sql: last_name
         type: string
-        description: Player last name. Missing for a couple of historical players.
+        description: >
+          Player last name. Missing for a couple of historical players. From the
+          bio table, falling back to the box score when the player has no bio
+          record.
 
       - name: player_name
-        sql: "{CUBE}.first_name || ' ' || {CUBE}.last_name"
+        sql: "CONCAT_WS(' ', {CUBE}.first_name, {CUBE}.last_name)"
         type: string
         description: Player full name (first and last name).
 
@@ -84,7 +100,10 @@ cubes:
       - name: primary_team_id
         sql: primary_team_id
         type: number
-        description: Team the player played the most games for that season. Null for old seasons where team ids were not recorded.
+        description: >
+          Team the player played the most games for that season and game type
+          (ties: most minutes, then the lower team id). Set by
+          nba_player_season_stats; other player-season marts read it from there.
 
       - name: team_games_played
         sql: team_games_played
@@ -92,22 +111,45 @@ cubes:
         description: >
           Games of this type the player's primary team played that season, so
           games_played can be read as a share of the games available. Falls back
-          to the most games any team played when primary_team_id is null.
-          Differs from 82 in short or uneven seasons (1998-99: 50, 2011-12: 66,
-          2019-20: 64-75, 2020-21: 72). Null for All-Star games before 2025-26,
-          which have no team box scores.
+          to the most games any team played when the primary team has no team
+          box scores. Differs from 82 in short or uneven seasons (1998-99: 50,
+          2011-12: 66, 2019-20: 64-75, 2020-21: 72). Null for All-Star games
+          before 2025-26, which have no team box scores.
 
       - name: is_qualified
         sql: is_qualified
         type: boolean
         description: >
-          True when the player appeared in at least 70% of team_games_played,
+          True when the player appeared in at least 70% of team_games_played:
           the NBA's 58-of-82 per-game minimum scaled to the games the team
-          actually played. Use it for per-game leaderboards instead of a fixed
-          games threshold, which is biased in short seasons. Null outside the
-          Regular Season.
+          actually played. The one qualification rule for player-season
+          leaderboards, per-game and rate alike; a fixed games or minutes
+          threshold is biased in short seasons. Null outside the Regular Season.
 
     segments:
+      - name: regular_season
+        sql: "{CUBE}.game_type = 'Regular Season'"
+        description: >
+          Regular Season games only: the default for season leaders and for a
+          career total (plans/adr/0001-career-scope.md).
+
+      - name: playoffs
+        sql: "{CUBE}.game_type = 'Playoffs'"
+        description: Playoff games only, the alternative career scope.
+
+      - name: career
+        sql: "{CUBE}.game_type IN ('Regular Season', 'Playoffs')"
+        description: >
+          Regular Season and Playoffs added together. Play-in and NBA Cup final
+          games count toward neither career scope.
+
+      - name: completed_seasons
+        sql: "{CUBE}.season_start_year IN (SELECT season_start_year FROM marts.nba_seasons_dim WHERE coverage_tier = 'complete')"
+        description: >
+          Finished seasons only. Apply with qualified for all-time or
+          multi-season leaderboards, so the season in progress (where a handful
+          of games qualifies) doesn't top them.
+
       - name: qualified
         sql: "{CUBE}.is_qualified"
         description: >
@@ -260,15 +302,17 @@ cubes:
         type: number
         description: Share of field goal attempts taken from three across matching rows, 0-1.
 
+      # Both rates divide sums of matched inputs the mart exposes (ts_*, efg_*), so they
+      # are correct at any grain (plans/adr/0002-dbt-cube-boundary.md).
       - name: effective_field_goal_pct
-        sql: "(SUM({CUBE}.total_field_goals_made) + 0.5 * COALESCE(SUM({CUBE}.total_three_pointers_made), 0)) / NULLIF(SUM({CUBE}.total_field_goals_attempted), 0)"
+        sql: "(SUM({CUBE}.total_field_goals_made) + 0.5 * SUM({CUBE}.efg_three_pointers_made)) / NULLIF(SUM({CUBE}.total_field_goals_attempted), 0)"
         type: number
-        description: Field goal percentage adjusted for the extra value of a three, (FGM + 0.5 × 3PM) / FGA, 0-1.
+        description: Field goal percentage adjusted for the extra value of a three, (FGM + 0.5 × 3PM) / FGA, over games with field goal attempts recorded, 0-1.
 
       - name: true_shooting_pct
-        sql: "SUM(CASE WHEN {CUBE}.total_field_goals_attempted IS NOT NULL AND {CUBE}.total_free_throws_attempted IS NOT NULL THEN {CUBE}.total_points END) / NULLIF(2 * (SUM(CASE WHEN {CUBE}.total_free_throws_attempted IS NOT NULL THEN {CUBE}.total_field_goals_attempted END) + 0.44 * SUM(CASE WHEN {CUBE}.total_field_goals_attempted IS NOT NULL THEN {CUBE}.total_free_throws_attempted END)), 0)"
+        sql: "SUM({CUBE}.ts_points) / NULLIF(2 * (SUM({CUBE}.ts_field_goals_attempted) + 0.44 * SUM({CUBE}.ts_free_throws_attempted)), 0)"
         type: number
-        description: Shooting efficiency accounting for twos, threes and free throws, PTS / (2 × (FGA + 0.44 × FTA)), 0-1.
+        description: Shooting efficiency accounting for twos, threes and free throws, PTS / (2 × (FGA + 0.44 × FTA)), over games with both attempt counts recorded, 0-1.
 
       - name: assist_to_turnover_ratio
         sql: "SUM(CASE WHEN {CUBE}.total_turnovers IS NOT NULL THEN {CUBE}.total_assists END) * 1.0 / NULLIF(SUM({CUBE}.total_turnovers), 0)"

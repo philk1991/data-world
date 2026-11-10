@@ -18,8 +18,9 @@
 -- team context stays its own team's); individual offensive rating is total
 -- points produced over total individual possessions, and individual defensive
 -- rating is the stints' ratings weighted by the possessions they cover.
--- team_count and is_multi_team flag traded players; primary_team_id is the team
--- they played the most games for.
+-- team_count and is_multi_team flag traded players. primary_team_id,
+-- team_games_played and is_qualified come from nba_player_season_stats, so the
+-- two marts share one primary-team rule and one qualification rule.
 WITH stints AS (
     SELECT *
     FROM
@@ -36,6 +37,18 @@ players AS (
     SELECT *
     FROM
         {{ ref('stg_nba_players') }}
+),
+
+season_stats AS (
+    SELECT
+        person_id,
+        season_start_year,
+        game_type,
+        primary_team_id,
+        team_games_played,
+        is_qualified
+    FROM
+        {{ ref('nba_player_season_stats') }}
 ),
 
 -- Transform
@@ -67,7 +80,6 @@ seasons AS (
         SUM(individual_defensive_rating * rating_player_possessions)
         / NULLIF(SUM(rating_player_possessions) FILTER (WHERE individual_defensive_rating IS NOT NULL), 0)
             AS individual_defensive_rating,
-        ARG_MAX(team_id, games_played) AS primary_team_id,
         COUNT(*) AS team_count
     FROM
         stints
@@ -91,13 +103,14 @@ SELECT
     p.first_name,
     p.last_name,
     e.season_start_year,
-    e.season_start_year::VARCHAR || '-'
-    || RIGHT((e.season_start_year + 1)::VARCHAR, 2) AS season_label,
+    {{ nba_season_label('e.season_start_year') }} AS season_label,
     e.game_type,
-    e.primary_team_id,
+    ss.primary_team_id,
     e.team_count,
     e.team_count > 1 AS is_multi_team,
     e.games_played,
+    ss.team_games_played,
+    ss.is_qualified,
     ROUND(e.minutes_played, 1) AS total_minutes,
     e.points AS total_points,
     {{ nba_player_metric_columns() }},
@@ -107,3 +120,6 @@ FROM
 LEFT JOIN
     players p
     USING (person_id)
+LEFT JOIN
+    season_stats ss
+    USING (person_id, season_start_year, game_type)

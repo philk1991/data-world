@@ -109,23 +109,40 @@ models:
             - "stg_nba_team_statistics: source of per-team box scores, pivoted to home/away"
   - name: nba_player_career_stats
     description: >
-      One row per player aggregating their traditional box score totals,
-      per-game averages and shooting efficiency across their competitive games
-      (Regular Season, Playoffs, Play-in Tournament and NBA Cup Final; preseason
-      and All-Star games are excluded), enriched with player biography. Only
-      games the player actually played (minutes_played is not null) are
-      counted. Ordered by total_points descending. Career figures cover only
-      games present in the dataset.
+      One row per player per career scope: game_type Regular Season (the
+      default career, as on NBA.com) or Playoffs. The two rows add up: sum the
+      totals across both and recompute rates from the summed made/attempted and
+      ts_* columns for a combined career. Play-in and NBA Cup final games count
+      toward neither. A convenience rollup of nba_player_season_stats that
+      leaves out seasons before 1954-55 (incomplete schedules);
+      has_games_before_coverage flags careers whose totals are partial for that
+      reason. Ordered by game type then total points descending.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - person_id
+              - game_type
     columns:
       - name: person_id
         description: "{{ doc('nba__person_id') }}"
         tests:
           - not_null
-          - unique
+          - relationships:
+              arguments:
+                to: ref('nba_players_dim')
+                field: person_id
       - name: first_name
         description: "{{ doc('nba__first_name') }}"
       - name: last_name
         description: "{{ doc('nba__last_name') }}"
+      - name: game_type
+        description: "{{ doc('nba__game_type') }} The career scope: Regular Season or Playoffs."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["Regular Season", "Playoffs"]
       - name: is_guard
         description: "{{ doc('nba__is_guard') }}"
       - name: is_forward
@@ -136,22 +153,36 @@ models:
         description: "{{ doc('nba__draft_year') }}"
       - name: height_inches
         description: "{{ doc('nba__height_inches') }}"
+      - name: has_games_before_coverage
+        description: True when the player also has games of this type before 1954-55, which are left out, so the career totals are partial.
+        tests:
+          - not_null
+      - name: seasons_played
+        description: "{{ doc('nba__seasons_played') }}"
+        tests:
+          - not_null
+      - name: first_season_start_year
+        description: "{{ doc('nba__first_season_start_year') }}"
+        tests:
+          - not_null
+      - name: last_season_start_year
+        description: "{{ doc('nba__last_season_start_year') }}"
+        tests:
+          - not_null
       - name: first_game_date
         description: "{{ doc('nba__first_game_date') }}"
         tests:
-          - not_null:
-              config:
-                severity: warn
+          - not_null
       - name: last_game_date
         description: "{{ doc('nba__last_game_date') }}"
         tests:
-          - not_null:
-              config:
-                severity: warn
+          - not_null
       - name: games_played
         description: "{{ doc('nba__games_played__player') }}"
         tests:
           - not_null
+      - name: total_minutes
+        description: "{{ doc('nba__total_minutes') }}"
       - name: total_points
         description: "{{ doc('nba__total_points') }}"
         tests:
@@ -166,6 +197,26 @@ models:
         description: "{{ doc('nba__total_blocks') }}"
       - name: total_turnovers
         description: "{{ doc('nba__total_turnovers') }}"
+      - name: total_field_goals_made
+        description: "{{ doc('nba__total_field_goals_made') }}"
+      - name: total_field_goals_attempted
+        description: "{{ doc('nba__total_field_goals_attempted') }}"
+      - name: total_three_pointers_made
+        description: "{{ doc('nba__total_three_pointers_made') }}"
+      - name: total_three_pointers_attempted
+        description: "{{ doc('nba__total_three_pointers_attempted') }}"
+      - name: total_free_throws_made
+        description: "{{ doc('nba__total_free_throws_made') }}"
+      - name: total_free_throws_attempted
+        description: "{{ doc('nba__total_free_throws_attempted') }}"
+      - name: ts_points
+        description: "{{ doc('nba__ts_points') }}"
+      - name: ts_field_goals_attempted
+        description: "{{ doc('nba__ts_field_goals_attempted') }}"
+      - name: ts_free_throws_attempted
+        description: "{{ doc('nba__ts_free_throws_attempted') }}"
+      - name: efg_three_pointers_made
+        description: "{{ doc('nba__efg_three_pointers_made') }}"
       - name: points_per_game
         description: "{{ doc('nba__points_per_game') }}"
       - name: rebounds_per_game
@@ -178,16 +229,19 @@ models:
         description: Career three point percentage (made / attempted), 0-1.
       - name: career_free_throw_pct
         description: Career free throw percentage (made / attempted), 0-1.
+      - name: career_true_shooting_pct
+        description: Career true shooting percentage from the summed ts_* columns, 0-1.
 
     config:
       meta:
-        grain: one row per person_id
-        purpose: Aggregate per-game box scores up to a career-level row per player, joined with bio for position, draft and height context.
-        business_question: Who are the most prolific scorers in the dataset, and what do their career averages and shooting splits look like?
+        grain: one row per (person_id, game_type)
+        purpose: Career totals and averages per career scope (regular season, playoffs), additive across the two, for career leaderboards.
+        business_question: Who are the most prolific scorers in regular-season (or playoff) history, and what do their career averages and shooting splits look like?
+        seasonality: Seasons from 1954-55 (dbt var nba_first_complete_season).
         relationships:
           decomposes_into:
-            - "stg_nba_player_statistics: source of all aggregated box score totals"
-            - "stg_nba_players: source of name, position flags, draft year and height"
+            - "nba_player_season_stats: the Regular Season and Playoffs season rows summed per player"
+            - "stg_nba_players: position flags, draft year and height"
   - name: nba_team_season_summary
     description: >
       One row per team per regular season with win/loss record, home/away wins
@@ -378,15 +432,15 @@ models:
       - name: draft_number
         description: "{{ doc('nba__draft_number') }}"
       - name: first_game_date
-        description: "{{ doc('nba__first_game_date') }} Also null for players with no competitive games."
+        description: "{{ doc('nba__first_game_date') }} Over every competitive game (Regular Season, Playoffs, Play-in Tournament, NBA Cup Final); null for players with none."
       - name: last_game_date
-        description: "{{ doc('nba__last_game_date') }} Also null for players with no competitive games."
+        description: "{{ doc('nba__last_game_date') }} Over every competitive game (Regular Season, Playoffs, Play-in Tournament, NBA Cup Final); null for players with none."
       - name: first_season_start_year
-        description: Season (start year) of the player's first competitive game with recorded minutes; null when they have none.
+        description: "{{ doc('nba__first_season_start_year') }} Over every competitive game; null when they have none."
       - name: last_season_start_year
-        description: Season (start year) of the player's latest competitive game with recorded minutes; null when they have none.
+        description: "{{ doc('nba__last_season_start_year') }} Over every competitive game; null when they have none."
       - name: seasons_played
-        description: Distinct seasons with at least one competitive game with recorded minutes; null when they have none.
+        description: "{{ doc('nba__seasons_played') }} Over every competitive game; null when they have none."
       - name: played_in_last_two_seasons
         description: >
           True when the player's last competitive game is in the latest season in
@@ -553,24 +607,37 @@ models:
             - "nba_league_season_baselines: the league averages the relative_* columns subtract"
   - name: nba_player_advanced_career
     description: >
-      One row per player summarising career efficiency over competitive games
-      (Regular Season, Playoffs, Play-in Tournament and NBA Cup Final; preseason
-      and All-Star games excluded), enriched with bio. Box-score rates (usage,
-      TS%, eFG%, AST%, TRB%, individual ratings) are recomputed from the
-      career's summed numerators and opportunities, so they cover every era
-      from each metric's coverage start. The NBA-supplied on-court ratings and
-      PIE exist only from 1996-97: ratings are weighted by on-court possessions,
-      PIE by minutes. Ordered by career triple-doubles then net rating.
+      One row per player per career scope (game_type Regular Season, the
+      default career, or Playoffs) summarising career efficiency, enriched with
+      bio; seasons from 1954-55. Box-score rates (usage, TS%, eFG%, AST%, TRB%,
+      individual ratings) are recomputed from the career's summed numerators and
+      opportunities, so they cover every era from each metric's coverage start.
+      The NBA-supplied on-court ratings and PIE exist only from 1996-97: ratings
+      are weighted by on-court possessions, PIE by minutes. Double- and
+      triple-doubles are counted from the box score in every era. Ordered by
+      game type, triple-doubles, then net rating.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - person_id
+              - game_type
     columns:
       - name: person_id
         description: "{{ doc('nba__person_id') }}"
         tests:
           - not_null
-          - unique
       - name: first_name
         description: "{{ doc('nba__first_name') }}"
       - name: last_name
         description: "{{ doc('nba__last_name') }}"
+      - name: game_type
+        description: "{{ doc('nba__game_type') }} The career scope: Regular Season or Playoffs."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["Regular Season", "Playoffs"]
       - name: is_guard
         description: "{{ doc('nba__is_guard') }}"
       - name: is_forward
@@ -578,21 +645,21 @@ models:
       - name: is_center
         description: "{{ doc('nba__is_center') }}"
       - name: games_played
-        description: "{{ doc('nba__games_played__player') }} Across the career."
+        description: "{{ doc('nba__games_played__player') }} Across the career scope."
         tests:
           - not_null
       - name: games_with_advanced
-        description: Games with advanced box score data (1996-97 on) and recorded minutes; the sample for the on-court ratings, PIE and double/triple-doubles.
+        description: Games with advanced box score data (1996-97 on) and recorded minutes; the sample for the on-court ratings and PIE.
         tests:
           - not_null
       - name: minutes_per_game
         description: Average minutes over games with recorded minutes (from 1964-65).
       - name: double_doubles
-        description: Count of double-double games in the advanced-stats era.
+        description: Double-double games, counted from the box score (see is_double_double on nba_player_game_stats).
         tests:
           - not_null
       - name: triple_doubles
-        description: Count of triple-double games in the advanced-stats era.
+        description: Triple-double games, counted from the box score (see is_triple_double on nba_player_game_stats).
         tests:
           - not_null
       - name: usage_pct
@@ -624,14 +691,15 @@ models:
 
     config:
       meta:
-        grain: one row per person_id
-        purpose: Career efficiency line for every player, with the NBA's on-court ratings for the advanced-stats era.
+        grain: one row per (person_id, game_type)
+        purpose: Career efficiency per career scope (regular season, playoffs) for every player, with the NBA's on-court ratings for the advanced-stats era.
         business_question: Which players have been the most efficient and impactful, and who racks up the most triple-doubles?
-        seasonality: All eras from each metric's coverage start; on-court ratings, PIE and double/triple-doubles from 1996-97.
+        seasonality: Seasons from 1954-55; each metric from its coverage start; on-court ratings and PIE from 1996-97.
         relationships:
           decomposes_into:
             - "int_nba_player_stints: summed numerators and opportunities"
-            - "stg_nba_player_statistics_extended: on-court ratings, PIE and dd/td flags"
+            - "int_nba_player_games: double- and triple-double flags"
+            - "stg_nba_player_statistics_extended: on-court ratings and PIE"
             - "stg_nba_players: name and position flags"
           correlates_with:
             - "nba_player_career_stats: same grain; pairs counting totals with efficiency"
@@ -639,12 +707,14 @@ models:
     description: >
       One row per player per season per game type (Regular Season, Playoffs,
       etc.) of traditional box score totals, per-game averages and shooting
-      splits, enriched with bio. Season comes from the game id. A player
-      traded mid-season is combined into one row per game type, with
-      primary_team_id set to the team they played the most games for. Only games
-      actually played count. Splitting by game_type lets visualisations compare
-      regular-season and playoff production. Ordered by season then total points
-      descending.
+      splits, enriched with bio. Built on int_nba_player_games, so the team is
+      resolved where the raw data leaves it blank and nba_player_game_stats adds
+      up to it exactly. A player traded mid-season is combined into one row per
+      game type, with primary_team_id the team they played the most games for.
+      Only games actually played count. The ts_* and efg_* columns are additive
+      inputs for true shooting and effective field goal percentage. Includes
+      seasons before 1954-55 (incomplete schedules; see nba_seasons_dim).
+      Ordered by season then total points descending.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -657,14 +727,22 @@ models:
         description: "{{ doc('nba__person_id') }}"
         tests:
           - not_null
+          - relationships:
+              arguments:
+                to: ref('nba_players_dim')
+                field: person_id
       - name: first_name
-        description: "{{ doc('nba__first_name') }}"
+        description: "{{ doc('nba__first_name') }} From the bio table, falling back to the box score when the player has no bio record."
       - name: last_name
-        description: "{{ doc('nba__last_name') }}"
+        description: "{{ doc('nba__last_name') }} From the bio table, falling back to the box score when the player has no bio record."
       - name: season_start_year
         description: "{{ doc('nba__season_start_year') }}"
         tests:
           - not_null
+          - relationships:
+              arguments:
+                to: ref('nba_seasons_dim')
+                field: season_start_year
       - name: season_label
         description: "{{ doc('nba__season_label') }}"
         tests:
@@ -673,40 +751,49 @@ models:
         description: "{{ doc('nba__game_type') }} The totals cover games of this type."
         tests:
           - not_null
-          - accepted_values:
+          - relationships:
               arguments:
-                values:
-                  - "Regular Season"
-                  - "Playoffs"
-                  - "Play-in Tournament"
-                  - "Preseason"
-                  - "All-Star Game"
-                  - "NBA Cup Final"
+                to: ref('nba_game_types_dim')
+                field: game_type
+      - name: is_competitive
+        description: "{{ doc('nba__is_competitive') }}"
+        tests:
+          - not_null
       - name: primary_team_id
-        description: "{{ doc('nba__primary_team_id') }} Null for old seasons where team ids were not recorded."
+        description: "{{ doc('nba__primary_team_id') }}"
+        tests:
+          - not_null:
+              config:
+                where: "game_type <> 'All-Star Game'"
+          - relationships:
+              arguments:
+                to: ref('nba_team_dim')
+                field: team_id
+              config:
+                # Exhibition opponents (overseas clubs, All-Star teams) aren't franchises.
+                where: "is_competitive"
       - name: games_played
         description: "{{ doc('nba__games_played__player') }}"
         tests:
           - not_null
       - name: team_games_played
-        description: >
-          Games of this type the player's primary team played that season, so
-          games_played can be read as a share of the games available. Falls
-          back to the most games any team played when primary_team_id is null.
-          Differs from 82 in short or uneven seasons (1998-99: 50, 2011-12: 66,
-          2019-20: 64-75, 2020-21: 72). Null for All-Star games before 2025-26, which have
-          no team box scores.
+        description: "{{ doc('nba__team_games_played') }}"
         tests:
           - not_null:
               config:
                 where: "game_type <> 'All-Star Game'"
       - name: is_qualified
-        description: >
-          True when the player appeared in at least 70% of team_games_played,
-          the NBA's 58-of-82 per-game minimum scaled to the games the team
-          actually played. Use it for per-game leaderboards instead of a fixed
-          games threshold, which is biased in short seasons. Null outside the
-          Regular Season.
+        description: "{{ doc('nba__is_qualified') }}"
+      - name: first_game_date
+        description: "{{ doc('nba__first_game_date') }}"
+        tests:
+          - not_null
+      - name: last_game_date
+        description: "{{ doc('nba__last_game_date') }}"
+        tests:
+          - not_null
+      - name: total_minutes
+        description: "{{ doc('nba__total_minutes') }}"
       - name: total_points
         description: "{{ doc('nba__total_points') }}"
         tests:
@@ -722,17 +809,25 @@ models:
       - name: total_turnovers
         description: "{{ doc('nba__total_turnovers') }}"
       - name: total_field_goals_made
-        description: Field goals made that season, counted only in games where attempts were also recorded so it pairs with total_field_goals_attempted.
+        description: "{{ doc('nba__total_field_goals_made') }}"
       - name: total_field_goals_attempted
-        description: Field goals attempted that season; null for seasons before attempts were recorded (~1980s and earlier).
+        description: "{{ doc('nba__total_field_goals_attempted') }}"
       - name: total_three_pointers_made
-        description: Three pointers made that season, counted only in games where attempts were also recorded; null before the three-point line (1979-80).
+        description: "{{ doc('nba__total_three_pointers_made') }}"
       - name: total_three_pointers_attempted
-        description: Three pointers attempted that season; null before attempts were recorded.
+        description: "{{ doc('nba__total_three_pointers_attempted') }}"
       - name: total_free_throws_made
-        description: Free throws made that season, counted only in games where attempts were also recorded so it pairs with total_free_throws_attempted.
+        description: "{{ doc('nba__total_free_throws_made') }}"
       - name: total_free_throws_attempted
-        description: Free throws attempted that season; null for seasons before attempts were recorded.
+        description: "{{ doc('nba__total_free_throws_attempted') }}"
+      - name: ts_points
+        description: "{{ doc('nba__ts_points') }}"
+      - name: ts_field_goals_attempted
+        description: "{{ doc('nba__ts_field_goals_attempted') }}"
+      - name: ts_free_throws_attempted
+        description: "{{ doc('nba__ts_free_throws_attempted') }}"
+      - name: efg_three_pointers_made
+        description: "{{ doc('nba__efg_three_pointers_made') }}"
       - name: points_per_game
         description: "{{ doc('nba__points_per_game') }}"
       - name: rebounds_per_game
@@ -749,14 +844,16 @@ models:
     config:
       meta:
         grain: one row per (person_id, season_start_year, game_type)
-        purpose: Aggregate per-game box scores to a season-and-game-type line per player, the season-grain counterpart to nba_player_career_stats.
+        purpose: Aggregate per-game box scores to a season-and-game-type line per player, the base for the career rollups and the Cube player-season measures.
         business_question: How did each player perform in a given season, split by regular season vs playoffs, and how do their numbers trend over time?
         relationships:
           decomposes_into:
-            - "stg_nba_player_statistics: source of all aggregated box score totals"
+            - "int_nba_player_games: one row per player per game played, team resolved"
+            - "stg_nba_team_statistics: team games per season and type, for qualification"
             - "stg_nba_players: source of name and bio context"
           correlates_with:
-            - "nba_player_career_stats: career rollup of these same season rows"
+            - "nba_player_career_stats: career rollup of the Regular Season and Playoffs rows"
+            - "nba_player_season_advanced: advanced metrics at the same grain; reads primary_team_id and is_qualified from here"
             - "nba_team_dim: join on primary_team_id for the player's main team that season"
   - name: nba_player_game_stats
     description: >
@@ -764,9 +861,9 @@ models:
       latest ingest: the traditional box score with game context (season, game
       type, team, opponent, home/away, result, starter), plus advanced
       efficiency (usage, true shooting, ratings, PIE) from 1996-97 on, null
-      before. Uses the same played-game filter as nba_player_season_stats, so a
-      player's rows for a season and game type add up to that mart's
-      games_played and totals. The game-grain counterpart to
+      before. Built on int_nba_player_games, the same rows as
+      nba_player_season_stats, so a player's rows for a season and game type add
+      up to that mart's games_played and totals. The game-grain counterpart to
       nba_player_season_stats. Ordered by game date descending.
     tests:
       - dbt_utils.unique_combination_of_columns:
@@ -803,17 +900,24 @@ models:
         description: "{{ doc('nba__game_type') }}"
         tests:
           - not_null
-          - accepted_values:
+          - relationships:
               arguments:
-                values:
-                  - "Regular Season"
-                  - "Playoffs"
-                  - "Play-in Tournament"
-                  - "Preseason"
-                  - "All-Star Game"
-                  - "NBA Cup Final"
+                to: ref('nba_game_types_dim')
+                field: game_type
+      - name: is_competitive
+        description: "{{ doc('nba__is_competitive') }}"
+        tests:
+          - not_null
       - name: player_team_id
-        description: "{{ doc('nba__player_team_id') }}"
+        description: "{{ doc('nba__player_team_id') }} Null for a few All-Star rows with no game record."
+        tests:
+          - not_null:
+              config:
+                where: "is_competitive"
+      - name: is_team_inferred
+        description: "{{ doc('nba__is_team_inferred') }}"
+        tests:
+          - not_null
       - name: opponent_team_id
         description: "{{ doc('nba__opponent_team_id') }}"
       - name: is_home
@@ -825,15 +929,13 @@ models:
         tests:
           - not_null
       - name: starting_position
-        description: Position the player started at (G, F or C); null when they came off the bench.
+        description: "{{ doc('nba__starting_position') }}"
         tests:
           - accepted_values:
               arguments:
                 values: ["G", "F", "C"]
       - name: minutes_played
-        description: "{{ doc('nba__minutes_played') }} Zero for some older games, where the box score records an appearance but no minutes."
-        tests:
-          - not_null
+        description: "{{ doc('nba__minutes_played') }} Null where no player in the game has minutes recorded (most games before 1964-65)."
       - name: points
         description: "{{ doc('nba__points') }}"
       - name: rebounds_offensive
@@ -893,11 +995,15 @@ models:
       - name: player_impact_estimate
         description: "{{ doc('nba__player_impact_estimate') }} Null before 1996-97."
       - name: is_double_double
-        description: True when the player reached double figures in at least two of points, rebounds, assists, steals and blocks. Computed from the box score, so it covers every era (steals and blocks only count from 1973-74).
+        description: "{{ doc('nba__is_double_double') }}"
         tests:
           - not_null
       - name: is_triple_double
-        description: True when the player reached double figures in at least three of points, rebounds, assists, steals and blocks. Computed from the box score, so it covers every era (steals and blocks only count from 1973-74).
+        description: "{{ doc('nba__is_triple_double') }}"
+        tests:
+          - not_null
+      - name: formula_version
+        description: "{{ doc('nba__formula_version') }}"
         tests:
           - not_null
     config:
@@ -907,7 +1013,7 @@ models:
         business_question: How did a player perform game by game, what are the best single-game performances, and how does form change across a season?
         relationships:
           decomposes_into:
-            - "stg_nba_player_statistics: one box score row per player per game (played games only)"
+            - "int_nba_player_games: one row per player per game played, team resolved, double-doubles flagged"
             - "stg_nba_player_statistics_extended: advanced efficiency for the same player-game, 1996-97 on"
             - "stg_nba_players: source of name"
           correlates_with:
@@ -1715,9 +1821,9 @@ models:
       re-divide the summed numerators and opportunities; individual offensive
       rating is total points produced over total individual possessions;
       individual defensive rating is weighted by possessions). team_count and
-      is_multi_team flag traded players. Filter game_type = 'Regular Season'
-      for season leaderboards, and set a minutes minimum (e.g. 500, scaled for
-      shortened seasons) before ranking rates.
+      is_multi_team flag traded players. primary_team_id, team_games_played and
+      is_qualified come from nba_player_season_stats. Filter game_type =
+      'Regular Season' and is_qualified for season leaderboards.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -1751,6 +1857,12 @@ models:
                 values: ["Regular Season", "Play-in Tournament", "Playoffs", "NBA Cup Final"]
       - name: primary_team_id
         description: "{{ doc('nba__primary_team_id') }}"
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('nba_team_dim')
+                field: team_id
       - name: team_count
         description: Teams the player played for that season and game type.
         tests:
@@ -1763,6 +1875,12 @@ models:
         description: "{{ doc('nba__games_played__player') }}"
         tests:
           - not_null
+      - name: team_games_played
+        description: "{{ doc('nba__team_games_played') }}"
+        tests:
+          - not_null
+      - name: is_qualified
+        description: "{{ doc('nba__is_qualified') }}"
       - name: total_minutes
         description: "{{ doc('nba__total_minutes') }}"
       - name: total_points
@@ -1833,5 +1951,159 @@ models:
         relationships:
           decomposes_into:
             - "nba_player_stint_advanced: one row per team stint"
+            - "nba_player_season_stats: primary_team_id, team_games_played and is_qualified"
           correlates_with:
             - "nba_player_season_stats: traditional totals at the same grain"
+  - name: nba_seasons_dim
+    description: >
+      Conformed season dimension: one row per season in the game records, with
+      the coverage facts consumers filter on. coverage_tier is
+      incomplete_schedule before 1954-55 (the source holds only the 30 current
+      franchises, so games against defunct teams are missing), in_progress for
+      the latest season, and complete otherwise. Careers, Cube and nao filter on
+      is_in_coverage by default.
+    columns:
+      - name: season_start_year
+        description: "{{ doc('nba__season_start_year') }}"
+        tests:
+          - not_null
+          - unique
+      - name: season_label
+        description: "{{ doc('nba__season_label') }}"
+        tests:
+          - not_null
+      - name: season_first_game_date
+        description: Date of the season's first game of any type.
+        tests:
+          - not_null
+      - name: season_last_game_date
+        description: Date of the season's latest game of any type in the data.
+        tests:
+          - not_null
+      - name: regular_season_games
+        description: Regular Season games in the game records for the season.
+        tests:
+          - not_null
+      - name: playoff_games
+        description: Playoff games in the game records for the season.
+        tests:
+          - not_null
+      - name: teams
+        description: Teams with Regular Season team box scores that season.
+      - name: min_team_regular_season_games
+        description: Fewest Regular Season games any team played; differs from max_team_regular_season_games in shortened or incomplete seasons.
+      - name: max_team_regular_season_games
+        description: Most Regular Season games any team played.
+      - name: is_current
+        description: True for the latest season in the data (usually in progress).
+        tests:
+          - not_null
+      - name: coverage_tier
+        description: incomplete_schedule (before 1954-55, games against defunct franchises missing), in_progress (the latest season) or complete.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["incomplete_schedule", "in_progress", "complete"]
+      - name: is_in_coverage
+        description: True from 1954-55 (dbt var nba_first_complete_season), the seasons careers, Cube and nao's defaults include.
+        tests:
+          - not_null
+
+    config:
+      meta:
+        grain: one row per season_start_year
+        purpose: One place to say which seasons are complete, current or out of coverage.
+        business_question: Which seasons can be compared fairly, and which season is "this season"?
+        relationships:
+          decomposes_into:
+            - "stg_nba_games: season span and game counts"
+            - "stg_nba_team_statistics: teams and games per team"
+  - name: nba_game_types_dim
+    description: >
+      Conformed game type dimension: one row per game type decoded from the
+      game id, with is_competitive (Regular Season, Play-in Tournament, Playoffs,
+      NBA Cup Final) and is_career (Regular Season and Playoffs, the career
+      scopes; play-in and Cup final games count toward neither).
+    columns:
+      - name: game_type_code
+        description: The type digit in the game id (00TYYNNNNN).
+        tests:
+          - not_null
+          - unique
+      - name: game_type
+        description: "{{ doc('nba__game_type') }}"
+        tests:
+          - not_null
+          - unique
+      - name: is_competitive
+        description: "{{ doc('nba__is_competitive') }}"
+        tests:
+          - not_null
+      - name: is_career
+        description: True for Regular Season and Playoffs, the two career scopes, which can be added together.
+        tests:
+          - not_null
+      - name: counts_toward_standings
+        description: True only for Regular Season games (NBA Cup group and knockout games are Regular Season; the Cup final is not).
+        tests:
+          - not_null
+
+    config:
+      meta:
+        grain: one row per game_type
+        purpose: One definition of which game types count, for competitive and career scopes.
+        business_question: Which games should a total or a career include?
+  - name: nba_team_seasons_dim
+    description: >
+      Team-season dimension: one row per team per season it played, with the
+      team's identity as of that season (city, name and abbreviation; the
+      2007-08 SuperSonics, not today's Thunder). nba_team_dim carries the
+      current identity.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - team_id
+              - season_start_year
+    columns:
+      - name: team_id
+        description: "{{ doc('nba__team_id') }}"
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('nba_team_dim')
+                field: team_id
+      - name: season_start_year
+        description: "{{ doc('nba__season_start_year') }}"
+        tests:
+          - not_null
+      - name: season_label
+        description: "{{ doc('nba__season_label') }}"
+        tests:
+          - not_null
+      - name: team_city
+        description: The team's city that season.
+        tests:
+          - not_null
+      - name: team_name
+        description: "{{ doc('nba__team_name') }}"
+        tests:
+          - not_null
+      - name: team_full_name
+        description: City and name that season (e.g. "Seattle SuperSonics" for 2007-08).
+        tests:
+          - not_null
+      - name: team_abbrev
+        description: "{{ doc('nba__team_abbrev') }} Null where no franchise era covers the season."
+
+    config:
+      meta:
+        grain: one row per (team_id, season_start_year)
+        purpose: Name a team the way it was known that season.
+        business_question: What was this franchise called in a given season?
+        relationships:
+          decomposes_into:
+            - "stg_nba_team_statistics: the season's team city and name"
+            - "stg_nba_team_histories: the abbreviation of the franchise era"

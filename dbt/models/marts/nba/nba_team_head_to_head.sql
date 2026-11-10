@@ -22,7 +22,7 @@ matchups AS (
     FROM
         team_box
     WHERE
-        game_type IN ('Regular Season', 'Playoffs', 'Play-in Tournament', 'NBA Cup Final')
+        game_type IN {{ nba_competitive_game_types() }}
         AND opponent_team_id IS NOT NULL
 )
 

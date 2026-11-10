@@ -1,4 +1,5 @@
--- Staged NBA franchise histories. One row per franchise era.
+-- Staged NBA franchise histories. One row per franchise era. The raw
+-- abbreviations are space-padded, so they are trimmed.
 WITH source AS (
     SELECT *
     FROM
@@ -9,7 +10,7 @@ SELECT
     teamId AS team_id,
     teamCity AS team_city,
     teamName AS team_name,
-    teamAbbrev AS team_abbrev,
+    TRIM(teamAbbrev) AS team_abbrev,
     seasonFounded AS season_founded,
     seasonActiveTill AS season_active_till,
     league,

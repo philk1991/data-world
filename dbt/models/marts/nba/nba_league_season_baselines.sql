@@ -1,3 +1,4 @@
+{% set possessions_start = nba_coverage_start('possessions') %}
 {% set counts = [
     'points', 'field_goals_made', 'field_goals_attempted', 'three_pointers_made', 'three_pointers_attempted',
     'free_throws_made', 'free_throws_attempted', 'rebounds_offensive', 'rebounds_defensive', 'rebounds_total',
@@ -42,11 +43,12 @@ league AS (
         {% endfor %}
         -- Possession sample: team games with a full box on both sides, 1973-74 on.
         {% for c in full %}
-        SUM({{ c }}) FILTER (WHERE has_full_box AND season_start_year >= 1973) AS f_{{ c }},
+        SUM({{ c }}) FILTER (WHERE has_full_box AND season_start_year >= {{ possessions_start }}) AS f_{{ c }},
         {% endfor %}
         COUNT(*) AS team_games,
         COUNT(*) FILTER (WHERE counts_source <> 'none') AS team_games_with_counts,
-        COUNT(*) FILTER (WHERE has_full_box AND season_start_year >= 1973) AS team_games_with_full_box,
+        COUNT(*) FILTER (WHERE has_full_box AND season_start_year >= {{ possessions_start }})
+            AS team_games_with_full_box,
         SUM(points) AS all_points
     FROM
         team_games
@@ -71,8 +73,7 @@ possessions AS (
 
 SELECT
     season_start_year,
-    season_start_year::VARCHAR || '-'
-    || RIGHT((season_start_year + 1)::VARCHAR, 2) AS season_label,
+    {{ nba_season_label('season_start_year') }} AS season_label,
     game_type,
     team_games,
     team_games_with_counts,
@@ -103,7 +104,7 @@ SELECT
     ROUND({{ nba_efg('s_field_goals_made', 's_three_pointers_made', 's_field_goals_attempted') }}, 3)
         AS lg_effective_field_goal_pct,
     CASE
-        WHEN season_start_year >= 1979
+        WHEN season_start_year >= {{ nba_coverage_start('three_pointers') }}
             THEN ROUND({{ nba_three_par('s_three_pointers_attempted', 's_field_goals_attempted') }}, 3)
     END AS lg_three_point_attempt_rate,
     ROUND({{ nba_ft_rate('s_free_throws_made', 's_field_goals_attempted') }}, 3) AS lg_free_throw_rate,

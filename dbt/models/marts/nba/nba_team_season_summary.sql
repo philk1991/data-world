@@ -42,8 +42,7 @@ team_season AS (
 SELECT
     team_id,
     season_start_year,
-    season_start_year::VARCHAR || '-'
-    || RIGHT((season_start_year + 1)::VARCHAR, 2) AS season_label,
+    {{ nba_season_label('season_start_year') }} AS season_label,
     games_played,
     wins,
     losses,

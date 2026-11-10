@@ -73,6 +73,10 @@ vars:
   # Version of the NBA metric formulas in macros/nba_metrics.sql, surfaced as
   # formula_version on every NBA metric mart. Bump it when a formula changes.
   nba_metrics_version: v1
+  # First NBA season with a complete schedule (1954 = 1954-55). Earlier seasons are
+  # missing every game against a defunct franchise, so careers, Cube and nao's defaults
+  # leave them out (plans/adr/0003-coverage-cutoff.md). Game and season marts keep them.
+  nba_first_complete_season: 1954
 flags:
   require_generic_test_arguments_property: true
   use_catalogs_v2: true

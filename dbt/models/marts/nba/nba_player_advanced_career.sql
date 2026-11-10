@@ -1,25 +1,43 @@
--- One row per player summarising career efficiency over competitive games
--- (Regular Season, Playoffs, Play-in Tournament and NBA Cup Final), enriched
--- with bio. Box-score rates (usage, true shooting, effective field goal,
--- assist and rebound percentage, individual offensive/defensive rating) are
--- recomputed from the career's summed numerators and opportunities
--- (int_nba_player_stints, macros/nba_metrics.sql), so they cover every era from
--- each metric's coverage start, with nothing averaged across games.
+-- One row per player per career scope (game_type Regular Season, the default
+-- career, or Playoffs; plans/adr/0001-career-scope.md) summarising career
+-- efficiency, enriched with bio. Seasons before nba_first_complete_season are
+-- left out, as in nba_player_career_stats.
+-- Box-score rates (usage, true shooting, effective field goal, assist and
+-- rebound percentage, individual offensive/defensive rating) are recomputed
+-- from the career's summed numerators and opportunities
+-- (int_nba_player_stints, macros/nba_metrics.sql), so they cover every era
+-- from each metric's coverage start, with nothing averaged across games.
 -- The NBA-supplied on-court ratings (offensive_rating, defensive_rating,
 -- net_rating) and PIE exist only in the advanced box scores (1996-97 on): the
--- ratings are weighted by each game's on-court possessions (summing points per
--- possession, not averaging rates) and PIE by minutes. games_with_advanced and
--- the double/triple-double counts cover those games.
+-- ratings are weighted by each game's on-court possessions and PIE by minutes;
+-- games_with_advanced counts those games. Double- and triple-doubles are
+-- counted from the box score (int_nba_player_games) in every era, the same
+-- definition as nba_player_game_stats.
 WITH stints AS (
     SELECT *
     FROM
         {{ ref('int_nba_player_stints') }}
+    WHERE
+        game_type IN {{ nba_career_game_types() }}
+        AND season_start_year >= {{ nba_first_complete_season() }}
+),
+
+player_games AS (
+    SELECT *
+    FROM
+        {{ ref('int_nba_player_games') }}
+    WHERE
+        game_type IN {{ nba_career_game_types() }}
+        AND season_start_year >= {{ nba_first_complete_season() }}
 ),
 
 player_advanced AS (
     SELECT *
     FROM
         {{ ref('stg_nba_player_statistics_extended') }}
+    WHERE
+        game_type IN {{ nba_career_game_types() }}
+        AND season_start_year >= {{ nba_first_complete_season() }}
 ),
 
 players AS (
@@ -32,20 +50,33 @@ players AS (
 box_career AS (
     SELECT
         person_id,
+        game_type,
         SUM(games_played) AS games_played,
         SUM(minutes_played) AS total_minutes,
-        SUM(usage_opportunity_numerator) FILTER (WHERE season_start_year >= 1977) AS usage_plays,
-        SUM(usage_opportunity) FILTER (WHERE season_start_year >= 1977) AS usage_opportunity,
+        SUM(usage_opportunity_numerator) FILTER (
+            WHERE season_start_year >= {{ nba_coverage_start('turnovers') }}
+        ) AS usage_plays,
+        SUM(usage_opportunity) FILTER (
+            WHERE season_start_year >= {{ nba_coverage_start('turnovers') }}
+        ) AS usage_opportunity,
         SUM(ts_points) AS ts_points,
         SUM(ts_field_goals_attempted) AS ts_field_goals_attempted,
         SUM(ts_free_throws_attempted) AS ts_free_throws_attempted,
         SUM(field_goals_made) AS field_goals_made,
         SUM(field_goals_attempted) AS field_goals_attempted,
         SUM(three_pointers_made) AS three_pointers_made,
-        SUM(assist_opportunity_numerator) FILTER (WHERE season_start_year >= 1964) AS assists,
-        SUM(assist_opportunity) FILTER (WHERE season_start_year >= 1964) AS assist_opportunity,
-        SUM(rebound_opportunity_numerator) FILTER (WHERE season_start_year >= 1964) AS rebounds,
-        SUM(rebound_opportunity) FILTER (WHERE season_start_year >= 1964) AS rebound_opportunity,
+        SUM(assist_opportunity_numerator) FILTER (
+            WHERE season_start_year >= {{ nba_coverage_start('assists') }}
+        ) AS assists,
+        SUM(assist_opportunity) FILTER (
+            WHERE season_start_year >= {{ nba_coverage_start('assists') }}
+        ) AS assist_opportunity,
+        SUM(rebound_opportunity_numerator) FILTER (
+            WHERE season_start_year >= {{ nba_coverage_start('total_rebounds') }}
+        ) AS rebounds,
+        SUM(rebound_opportunity) FILTER (
+            WHERE season_start_year >= {{ nba_coverage_start('total_rebounds') }}
+        ) AS rebound_opportunity,
         SUM(points_produced) AS points_produced,
         SUM(individual_possessions) AS individual_possessions,
         SUM(individual_defensive_rating * rating_player_possessions)
@@ -54,7 +85,7 @@ box_career AS (
     FROM
         stints
     GROUP BY
-        person_id
+        person_id, game_type
 ),
 
 -- Minutes per game counts only stints with recorded minutes (none before
@@ -62,21 +93,33 @@ box_career AS (
 minute_games AS (
     SELECT
         person_id,
+        game_type,
         SUM(games_played) AS games_with_minutes
     FROM
         stints
     WHERE
         minutes_played IS NOT NULL
     GROUP BY
-        person_id
+        person_id, game_type
+),
+
+double_doubles AS (
+    SELECT
+        person_id,
+        game_type,
+        COUNT(*) FILTER (WHERE is_double_double) AS double_doubles,
+        COUNT(*) FILTER (WHERE is_triple_double) AS triple_doubles
+    FROM
+        player_games
+    GROUP BY
+        person_id, game_type
 ),
 
 advanced_career AS (
     SELECT
         person_id,
+        game_type,
         COUNT(DISTINCT game_id) AS games_with_advanced,
-        COUNT(CASE WHEN is_double_double THEN 1 END) AS double_doubles,
-        COUNT(CASE WHEN is_triple_double THEN 1 END) AS triple_doubles,
         SUM(offensive_rating * possessions)
         / NULLIF(SUM(possessions) FILTER (WHERE offensive_rating IS NOT NULL), 0) AS on_court_offensive_rating,
         SUM(defensive_rating * possessions)
@@ -88,23 +131,23 @@ advanced_career AS (
     WHERE
         person_id IS NOT NULL
         AND minutes_played > 0
-        AND game_type IN ('Regular Season', 'Playoffs', 'Play-in Tournament', 'NBA Cup Final')
     GROUP BY
-        person_id
+        person_id, game_type
 )
 
 SELECT
     b.person_id,
     p.first_name,
     p.last_name,
+    b.game_type,
     p.is_guard,
     p.is_forward,
     p.is_center,
     b.games_played,
     COALESCE(a.games_with_advanced, 0) AS games_with_advanced,
     ROUND(b.total_minutes / NULLIF(m.games_with_minutes, 0), 1) AS minutes_per_game,
-    COALESCE(a.double_doubles, 0) AS double_doubles,
-    COALESCE(a.triple_doubles, 0) AS triple_doubles,
+    COALESCE(d.double_doubles, 0) AS double_doubles,
+    COALESCE(d.triple_doubles, 0) AS triple_doubles,
     ROUND(b.usage_plays / NULLIF(b.usage_opportunity, 0), 3) AS usage_pct,
     ROUND({{ nba_ts('b.ts_points', 'b.ts_field_goals_attempted', 'b.ts_free_throws_attempted') }}, 3)
         AS true_shooting_pct,
@@ -123,12 +166,15 @@ FROM
     box_career b
 LEFT JOIN
     minute_games m
-    USING (person_id)
+    USING (person_id, game_type)
+LEFT JOIN
+    double_doubles d
+    USING (person_id, game_type)
 LEFT JOIN
     advanced_career a
-    USING (person_id)
+    USING (person_id, game_type)
 LEFT JOIN
     players p
     USING (person_id)
 ORDER BY
-    triple_doubles DESC, net_rating DESC
+    b.game_type DESC, triple_doubles DESC, net_rating DESC

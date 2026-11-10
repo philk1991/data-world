@@ -61,8 +61,7 @@ SELECT
     p.last_name,
     e.team_id,
     e.season_start_year,
-    e.season_start_year::VARCHAR || '-'
-    || RIGHT((e.season_start_year + 1)::VARCHAR, 2) AS season_label,
+    {{ nba_season_label('e.season_start_year') }} AS season_label,
     e.game_type,
     e.games_played,
     ROUND(e.minutes_played, 1) AS total_minutes,

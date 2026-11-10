@@ -111,7 +111,35 @@ NBA player identifier.
 {% enddocs %}
 
 {% docs nba__player_team_id %}
-Team the player played for. Null for many older games, where team ids were not recorded.
+Team the player played for. Where the raw box score leaves it blank (all of 2021-22 and a few thousand rows a season since 2003) it is recovered from the game's home or away team; is_team_inferred marks those rows.
+{% enddocs %}
+
+{% docs nba__team_name %}
+The team's name (e.g. SuperSonics) during the franchise era or season the row covers.
+{% enddocs %}
+
+{% docs nba__team_abbrev %}
+The team's abbreviation (e.g. SEA) during the franchise era or season the row covers.
+{% enddocs %}
+
+{% docs nba__is_team_inferred %}
+True when the raw box score had no team for the player and the team was recovered from the game's home or away team.
+{% enddocs %}
+
+{% docs nba__is_competitive %}
+True for the game types that count: Regular Season, Play-in Tournament, Playoffs and NBA Cup Final. False for Preseason and All-Star games.
+{% enddocs %}
+
+{% docs nba__starting_position %}
+Position the player started at (G, F or C); null when they came off the bench.
+{% enddocs %}
+
+{% docs nba__is_double_double %}
+True when the player reached double figures in at least two of points, rebounds, assists, steals and blocks. Counted from the box score, so it covers every era (steals and blocks only count from 1973-74); the one definition every NBA model uses.
+{% enddocs %}
+
+{% docs nba__is_triple_double %}
+True when the player reached double figures in at least three of points, rebounds, assists, steals and blocks. Counted from the box score, so it covers every era (steals and blocks only count from 1973-74); the one definition every NBA model uses.
 {% enddocs %}
 
 {% docs nba__first_name %}
@@ -163,11 +191,23 @@ True when the player is listed as a center.
 {% enddocs %}
 
 {% docs nba__first_game_date %}
-Date of the player's earliest competitive game (Regular Season, Playoffs, Play-in Tournament or NBA Cup Final) with recorded minutes in the dataset. Null for a handful of historical players whose box score rows carry no game date.
+Date of the player's earliest game with recorded minutes among the games the row covers (its game types and seasons).
 {% enddocs %}
 
 {% docs nba__last_game_date %}
-Date of the player's most recent competitive game (Regular Season, Playoffs, Play-in Tournament or NBA Cup Final) with recorded minutes in the dataset. Null for a handful of historical players whose box score rows carry no game date.
+Date of the player's most recent game with recorded minutes among the games the row covers (its game types and seasons).
+{% enddocs %}
+
+{% docs nba__first_season_start_year %}
+Season (start year) of the player's first game with recorded minutes among the games the row covers.
+{% enddocs %}
+
+{% docs nba__last_season_start_year %}
+Season (start year) of the player's latest game with recorded minutes among the games the row covers.
+{% enddocs %}
+
+{% docs nba__seasons_played %}
+Distinct seasons with at least one game with recorded minutes among the games the row covers.
 {% enddocs %}
 
 {% docs nba__games_played__player %}
@@ -403,7 +443,55 @@ Version of the metric formulas (dbt var nba_metrics_version; definitions in macr
 {% enddocs %}
 
 {% docs nba__primary_team_id %}
-Team the player played the most games for that season.
+Team the player played the most games for that season and game type (ties: most minutes, then the lower team id). Set by nba_player_season_stats; other player-season marts read it from there.
+{% enddocs %}
+
+{% docs nba__team_games_played %}
+Games of this type the player's primary team played that season, so games_played can be read as a share of the games available. Falls back to the most games any team played when the primary team has no team box scores. Differs from 82 in short or uneven seasons (1998-99: 50, 2011-12: 66, 2019-20: 64-75, 2020-21: 72). Null for All-Star games before 2025-26, which have no team box scores.
+{% enddocs %}
+
+{% docs nba__is_qualified %}
+True when the player appeared in at least 70% of team_games_played: the NBA's 58-of-82 per-game minimum scaled to the games the team actually played. The one qualification rule for player-season leaderboards, per-game and rate alike; a fixed games or minutes threshold is biased in short seasons. Null outside the Regular Season.
+{% enddocs %}
+
+{% docs nba__total_field_goals_made %}
+Field goals made, counted only in games where attempts were also recorded so it pairs with total_field_goals_attempted.
+{% enddocs %}
+
+{% docs nba__total_field_goals_attempted %}
+Field goals attempted; null when none of the games recorded attempts (common before the 1980s).
+{% enddocs %}
+
+{% docs nba__total_three_pointers_made %}
+Three pointers made, counted only in games where three-point attempts were also recorded; null before the three-point line (1979-80).
+{% enddocs %}
+
+{% docs nba__total_three_pointers_attempted %}
+Three pointers attempted; null before attempts were recorded.
+{% enddocs %}
+
+{% docs nba__total_free_throws_made %}
+Free throws made, counted only in games where attempts were also recorded so it pairs with total_free_throws_attempted.
+{% enddocs %}
+
+{% docs nba__total_free_throws_attempted %}
+Free throws attempted; null when none of the games recorded attempts.
+{% enddocs %}
+
+{% docs nba__ts_points %}
+True shooting input: points scored in games where both field goal and free throw attempts were recorded. True shooting % = ts_points / (2 × (ts_field_goals_attempted + 0.44 × ts_free_throws_attempted)); sum the three columns over any rows before dividing.
+{% enddocs %}
+
+{% docs nba__ts_field_goals_attempted %}
+True shooting input: field goals attempted in games where free throw attempts were also recorded. Pairs with ts_points.
+{% enddocs %}
+
+{% docs nba__ts_free_throws_attempted %}
+True shooting input: free throws attempted in games where field goal attempts were also recorded. Pairs with ts_points.
+{% enddocs %}
+
+{% docs nba__efg_three_pointers_made %}
+Effective field goal input: three pointers made in games where field goal attempts were recorded (0 before the three-point line). Effective FG % = (total_field_goals_made + 0.5 × efg_three_pointers_made) / total_field_goals_attempted, summed over any rows before dividing.
 {% enddocs %}
 
 {# ── Player metrics (box-score estimates; macros/nba_metrics.sql) ──────── #}

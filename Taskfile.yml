@@ -436,11 +436,12 @@ tasks:
       - ollama create nao-qwen3:14b -f Modelfile
 
   nao:sync:
-    desc: "Refresh nao's context from the lake's NBA marts (writes nao/databases/**), then add the marts' dbt descriptions and the generated column list in RULES.md (scripts/enrich_context.py). Reads the lake READ_ONLY, so it can run alongside dbt and ingest jobs."
+    desc: "Refresh nao's context from the lake's NBA marts (writes nao/databases/**), then add the marts' dbt descriptions, the generated column list in RULES.md and docs/nba/nba_marts.md (scripts/enrich_context.py, which reads dbt's manifest). Reads the lake READ_ONLY, so it can run alongside dbt and ingest jobs."
     dir: nao
     env:
       POSTHOG_DISABLED: "true"  # nao's usage analytics (CLI and chat server)
     cmds:
+      - task: dbt:parse
       - bash -c "source ../{{.VENV}} && nao sync"
       - bash -c "source ../{{.VENV}} && python scripts/enrich_context.py"
 

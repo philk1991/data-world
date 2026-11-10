@@ -1,3 +1,4 @@
+{% set possessions_start = nba_coverage_start('possessions') %}
 {% set shooting = [
     'points', 'field_goals_made', 'field_goals_attempted', 'three_pointers_made', 'three_pointers_attempted',
     'free_throws_made', 'free_throws_attempted', 'assists', 'rebounds_total', 'opp_rebounds_total',
@@ -47,7 +48,7 @@ season_totals AS (
         COUNT(*) FILTER (WHERE is_win) AS wins,
         COUNT(*) FILTER (WHERE NOT is_win) AS losses,
         COUNT(*) FILTER (WHERE counts_source <> 'none') AS games_with_counts,
-        COUNT(*) FILTER (WHERE has_full_box AND season_start_year >= 1973) AS games_with_full_box,
+        COUNT(*) FILTER (WHERE has_full_box AND season_start_year >= {{ possessions_start }}) AS games_with_full_box,
         SUM(points) AS total_points,
         SUM(opp_points) AS total_opp_points,
         -- Shooting sample: games with box counts.
@@ -56,7 +57,7 @@ season_totals AS (
         {% endfor %}
         -- Possession sample: games with a full box on both sides, 1973-74 on.
         {% for c in full %}
-        SUM({{ c }}) FILTER (WHERE has_full_box AND season_start_year >= 1973) AS f_{{ c }},
+        SUM({{ c }}) FILTER (WHERE has_full_box AND season_start_year >= {{ possessions_start }}) AS f_{{ c }},
         {% endfor %}
         SUM(points_in_the_paint) AS paint_points,
         SUM(points) FILTER (WHERE points_in_the_paint IS NOT NULL) AS paint_games_points,
@@ -99,8 +100,7 @@ metrics AS (
 SELECT
     m.team_id,
     m.season_start_year,
-    m.season_start_year::VARCHAR || '-'
-    || RIGHT((m.season_start_year + 1)::VARCHAR, 2) AS season_label,
+    {{ nba_season_label('m.season_start_year') }} AS season_label,
     m.game_type,
     m.games_played,
     m.wins,
@@ -117,7 +117,7 @@ SELECT
     ROUND({{ nba_tov_pct('m.f_turnovers', 'm.f_field_goals_attempted', 'm.f_free_throws_attempted') }}, 3)
         AS turnover_pct,
     CASE
-        WHEN m.season_start_year >= 1979
+        WHEN m.season_start_year >= {{ nba_coverage_start('three_pointers') }}
             THEN ROUND({{ nba_three_par('m.s_three_pointers_attempted', 'm.s_field_goals_attempted') }}, 3)
     END AS three_point_attempt_rate,
     ROUND(m.paint_points::DOUBLE / NULLIF(m.paint_games_points, 0), 3) AS points_in_paint_share,

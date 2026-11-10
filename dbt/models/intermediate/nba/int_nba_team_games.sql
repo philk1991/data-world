@@ -80,6 +80,8 @@ player_sums AS (
         COUNT(*) AS players
     FROM
         player_games
+    WHERE
+        is_competitive
     GROUP BY
         game_id, team_id
 ),
@@ -105,7 +107,7 @@ team_side AS (
         {% for c in counts %}
         {% if c.startswith('three_pointers') %}
         CASE
-            WHEN t.season_start_year < 1979 THEN 0
+            WHEN t.season_start_year < {{ nba_coverage_start('three_pointers') }} THEN 0
             ELSE COALESCE(t.{{ c }}, {{ player_sum(c) }})
         END AS {{ c }},
         {% elif c == 'rebounds_total' %}
@@ -130,7 +132,7 @@ team_side AS (
         player_sums p
         USING (game_id, team_id)
     WHERE
-        t.game_type IN ('Regular Season', 'Play-in Tournament', 'Playoffs', 'NBA Cup Final')
+        t.game_type IN {{ nba_competitive_game_types() }}
 ),
 
 checked AS (

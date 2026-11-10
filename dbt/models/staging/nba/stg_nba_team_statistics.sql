@@ -96,6 +96,8 @@ SELECT
 FROM
     source
 -- Postponed games leave a placeholder row (teamId 0, 0-0 score) next to the two
--- real rows once they are replayed.
+-- real rows once they are replayed. Games recorded 0-0 with no box score (two in
+-- 2024-25) have no result to report, so they are dropped too.
 WHERE
     teamId <> 0
+    AND NOT (teamScore = 0 AND opponentScore = 0)

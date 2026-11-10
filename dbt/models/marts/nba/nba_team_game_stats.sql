@@ -16,7 +16,7 @@ WITH team_games AS (
 gated AS (
     SELECT
         *,
-        CASE WHEN season_start_year >= 1973 THEN possessions END AS rated_possessions
+        CASE WHEN season_start_year >= {{ nba_coverage_start('possessions') }} THEN possessions END AS rated_possessions
     FROM
         team_games
 )
@@ -26,8 +26,7 @@ SELECT
     team_id,
     opponent_team_id,
     season_start_year,
-    season_start_year::VARCHAR || '-'
-    || RIGHT((season_start_year + 1)::VARCHAR, 2) AS season_label,
+    {{ nba_season_label('season_start_year') }} AS season_label,
     game_type,
     game_date,
     is_home,
@@ -86,7 +85,7 @@ SELECT
     ROUND({{ nba_reb_pct('rebounds_total', 'opp_rebounds_total') }}, 3) AS rebound_pct,
     -- The three-point line arrived in 1979-80; the rate is null, not 0, before it.
     CASE
-        WHEN season_start_year >= 1979
+        WHEN season_start_year >= {{ nba_coverage_start('three_pointers') }}
             THEN ROUND({{ nba_three_par('three_pointers_attempted', 'field_goals_attempted') }}, 3)
     END AS three_point_attempt_rate,
     ROUND({{ nba_ast_rate('assists', 'field_goals_made') }}, 3) AS assist_pct,

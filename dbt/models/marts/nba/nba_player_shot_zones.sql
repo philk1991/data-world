@@ -107,8 +107,7 @@ enriched AS (
         COALESCE(p.first_name, n.first_name) AS first_name,
         COALESCE(p.last_name, n.last_name) AS last_name,
         pz.season_start_year,
-        pz.season_start_year::VARCHAR || '-'
-        || RIGHT((pz.season_start_year + 1)::VARCHAR, 2) AS season_label,
+        {{ nba_season_label('pz.season_start_year') }} AS season_label,
         pz.game_type,
         pz.shot_zone,
         CASE pz.shot_zone

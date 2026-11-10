@@ -125,42 +125,43 @@ cubes:
         sql: first_game_date
         type: time
         description: >
-          Date of the player's earliest competitive game (Regular Season,
-          Playoffs, Play-in Tournament or NBA Cup Final) with recorded minutes
-          in the dataset. Null for a handful of historical players whose box
-          score rows carry no game date. Also null for players with no
-          competitive games.
+          Date of the player's earliest game with recorded minutes among the
+          games the row covers (its game types and seasons). Over every
+          competitive game (Regular Season, Playoffs, Play-in Tournament, NBA
+          Cup Final); null for players with none.
 
       - name: last_game_date
         sql: last_game_date
         type: time
         description: >
-          Date of the player's most recent competitive game (Regular Season,
-          Playoffs, Play-in Tournament or NBA Cup Final) with recorded minutes
-          in the dataset. Null for a handful of historical players whose box
-          score rows carry no game date. Also null for players with no
-          competitive games.
+          Date of the player's most recent game with recorded minutes among the
+          games the row covers (its game types and seasons). Over every
+          competitive game (Regular Season, Playoffs, Play-in Tournament, NBA
+          Cup Final); null for players with none.
 
       - name: first_season_start_year
         sql: first_season_start_year
         type: number
         description: >
-          Season (start year) of the player's first competitive game with
-          recorded minutes; null when they have none.
+          Season (start year) of the player's first game with recorded minutes
+          among the games the row covers. Over every competitive game; null when
+          they have none.
 
       - name: last_season_start_year
         sql: last_season_start_year
         type: number
         description: >
-          Season (start year) of the player's latest competitive game with
-          recorded minutes; null when they have none.
+          Season (start year) of the player's latest game with recorded minutes
+          among the games the row covers. Over every competitive game; null when
+          they have none.
 
       - name: seasons_played
         sql: seasons_played
         type: number
         description: >
-          Distinct seasons with at least one competitive game with recorded
-          minutes; null when they have none.
+          Distinct seasons with at least one game with recorded minutes among
+          the games the row covers. Over every competitive game; null when they
+          have none.
 
       - name: played_in_last_two_seasons
         sql: played_in_last_two_seasons
@@ -185,10 +186,18 @@ cubes:
           Age in completed years on last_game_date; null when birth_date or
           last_game_date is null.
 
+    segments:
+      - name: has_competitive_games
+        sql: "{CUBE}.first_game_date IS NOT NULL"
+        description: >
+          Players with at least one competitive game. The dimension also holds
+          players from the bio table who never played one (and some duplicate
+          ids), so apply this before counting players.
+
     measures:
       - name: count
         type: count
-        description: Number of players.
+        description: Number of players; apply has_competitive_games to count only players who played.
 
       - name: avg_height_inches
         sql: height_inches

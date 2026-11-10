@@ -1,4 +1,5 @@
 -- Staged NBA games. Renames/casts raw columns and derives home_team_won.
+-- Drops games recorded 0-0 (no result).
 -- game_type and season_start_year are decoded from the game id (see macros/nba_game_id.sql).
 WITH source AS (
     SELECT *
@@ -35,3 +36,6 @@ SELECT
     ingested_at::TIMESTAMP AS ingested_at
 FROM
     source
+-- Games recorded 0-0 with no box score (two in 2024-25) have no result to report.
+WHERE
+    NOT (homeScore = 0 AND awayScore = 0)
