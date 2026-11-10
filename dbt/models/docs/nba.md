@@ -454,6 +454,18 @@ Games of this type the player's primary team played that season, so games_played
 True when the player appeared in at least 70% of team_games_played: the NBA's 58-of-82 per-game minimum scaled to the games the team actually played. The one qualification rule for player-season leaderboards, per-game and rate alike; a fixed games or minutes threshold is biased in short seasons. Null outside the Regular Season.
 {% enddocs %}
 
+{% docs nba__is_fg_qualified %}
+True when the player made enough field goals to rank on a field goal, effective field goal or true shooting percentage leaderboard: the NBA's 300 made, scaled to team_games_played (300 x team_games_played / 82). It is the NBA's rule for these leaderboards, so use it in place of is_qualified for shooting rates; low-volume shooters who qualify on games then can't top the list. Null outside the Regular Season and when field goal attempts weren't recorded.
+{% enddocs %}
+
+{% docs nba__is_3p_qualified %}
+True when the player made enough threes to rank on a three-point percentage leaderboard: the NBA's 82 made, scaled to team_games_played (one per team game). Use it in place of is_qualified for three-point percentage. Null outside the Regular Season and before the three-point line (1979-80).
+{% enddocs %}
+
+{% docs nba__is_ft_qualified %}
+True when the player made enough free throws to rank on a free throw percentage leaderboard: the NBA's 125 made, scaled to team_games_played (125 x team_games_played / 82). Use it in place of is_qualified for free throw percentage. Null outside the Regular Season and when free throw attempts weren't recorded.
+{% enddocs %}
+
 {% docs nba__total_field_goals_made %}
 Field goals made, counted only in games where attempts were also recorded so it pairs with total_field_goals_attempted.
 {% enddocs %}

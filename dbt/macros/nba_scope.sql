@@ -44,3 +44,19 @@
     {%- endif -%}
     {{ starts[family] }}
 {%- endmacro %}
+
+{# True when a player made enough shots to rank on a shooting leaderboard: the NBA's
+   per-stat minimum (300 field goals, 82 threes, 125 free throws made since 2013-14),
+   scaled to the games the team played, as the league prorated 2019-20 and 2020-21.
+   Field goals also gate eFG% and true shooting. Null when the makes weren't recorded. #}
+{% macro nba_shooting_qualified(stat, makes, team_games) %}
+    {%- set minimums = {
+        'field_goals': 300,
+        'three_pointers': 82,
+        'free_throws': 125,
+    } -%}
+    {%- if stat not in minimums -%}
+        {{ exceptions.raise_compiler_error("nba_shooting_qualified: unknown stat '" ~ stat ~ "'") }}
+    {%- endif -%}
+    ({{ makes }} >= {{ minimums[stat] }} * {{ team_games }} / 82.0)
+{%- endmacro %}

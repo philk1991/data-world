@@ -252,7 +252,7 @@ Already started: Cube filters to seasons from 1954-55 through `nba_seasons_dim`,
 
 Found while doing Phases 1–2, to settle here:
 
-- [ ] **Shooting leaderboards need an attempts minimum.** With `qualified` + `completed_seasons`, the top true shooting seasons are low-volume centres who qualify on games but take few shots. Decide a scaled attempts threshold (Basketball-Reference uses one per stat) and put it in dbt as a flag, not in Cube or RULES.md.
+- [x] **Shooting leaderboards need an attempts minimum.** With `qualified` + `completed_seasons`, the top true shooting seasons were low-volume centres who qualify on games but take few shots. *Done 10 Nov:* the user chose the NBA's makes minimums (300 FG, 82 3P, 125 FT since 2013-14), scaled to the team's games like `is_qualified`. dbt flags `is_fg_qualified` (gates FG%, eFG%, TS%; also on season advanced), `is_3p_qualified` and `is_ft_qualified` come from the `nba_shooting_qualified` macro in `nba_scope.sql`. Cube segments are `fg_qualified`, `three_point_qualified` and `free_throw_qualified`, and nao's rules use the flags in place of `is_qualified` for shooting. Top completed-season TS is now Gobert 2021-22 (.732) in both the mart and Cube. Known trade-off: the modern minimums are strict for low-volume eras (1985-86 has one 3P-qualified player; 1960-61 has 23 FG-qualified). Basketball-Reference's era table would fix that if it matters later.
 - [ ] Career measures in Cube with measure-level `filters` (regular-season and playoff points), so a career needs no segment.
 
 - [ ] Add additive components to the player-game and team-game facts. Add a shot-event fact for zones and clutch.

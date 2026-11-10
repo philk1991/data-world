@@ -786,6 +786,12 @@ models:
                 where: "game_type <> 'All-Star Game'"
       - name: is_qualified
         description: "{{ doc('nba__is_qualified') }}"
+      - name: is_fg_qualified
+        description: "{{ doc('nba__is_fg_qualified') }}"
+      - name: is_3p_qualified
+        description: "{{ doc('nba__is_3p_qualified') }}"
+      - name: is_ft_qualified
+        description: "{{ doc('nba__is_ft_qualified') }}"
       - name: first_game_date
         description: "{{ doc('nba__first_game_date') }}"
         tests:
@@ -1827,7 +1833,8 @@ models:
       individual defensive rating is weighted by possessions). team_count and
       is_multi_team flag traded players. primary_team_id, team_games_played and
       is_qualified come from nba_player_season_stats. Filter game_type =
-      'Regular Season' and is_qualified for season leaderboards.
+      'Regular Season' and is_qualified for season leaderboards (is_fg_qualified
+      instead for true shooting).
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -1885,6 +1892,8 @@ models:
           - not_null
       - name: is_qualified
         description: "{{ doc('nba__is_qualified') }}"
+      - name: is_fg_qualified
+        description: "{{ doc('nba__is_fg_qualified') }}"
       - name: total_minutes
         description: "{{ doc('nba__total_minutes') }}"
       - name: total_points
@@ -1955,7 +1964,7 @@ models:
         relationships:
           decomposes_into:
             - "nba_player_stint_advanced: one row per team stint"
-            - "nba_player_season_stats: primary_team_id, team_games_played and is_qualified"
+            - "nba_player_season_stats: primary_team_id, team_games_played, is_qualified and is_fg_qualified"
           correlates_with:
             - "nba_player_season_stats: traditional totals at the same grain"
   - name: nba_seasons_dim

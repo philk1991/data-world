@@ -19,8 +19,9 @@
 -- points produced over total individual possessions, and individual defensive
 -- rating is the stints' ratings weighted by the possessions they cover.
 -- team_count and is_multi_team flag traded players. primary_team_id,
--- team_games_played and is_qualified come from nba_player_season_stats, so the
--- two marts share one primary-team rule and one qualification rule.
+-- team_games_played, is_qualified and is_fg_qualified come from
+-- nba_player_season_stats, so the two marts share one primary-team rule and one
+-- set of qualification rules.
 WITH stints AS (
     SELECT *
     FROM
@@ -46,7 +47,8 @@ season_stats AS (
         game_type,
         primary_team_id,
         team_games_played,
-        is_qualified
+        is_qualified,
+        is_fg_qualified
     FROM
         {{ ref('nba_player_season_stats') }}
 ),
@@ -111,6 +113,7 @@ SELECT
     e.games_played,
     ss.team_games_played,
     ss.is_qualified,
+    ss.is_fg_qualified,
     ROUND(e.minutes_played, 1) AS total_minutes,
     e.points AS total_points,
     {{ nba_player_metric_columns() }},

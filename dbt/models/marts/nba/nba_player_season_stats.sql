@@ -1,3 +1,4 @@
+{% set team_games = 'COALESCE(tg.team_games_played, lg.max_team_games_played)' %}
 -- One row per player per season per game type (Regular Season, Playoffs, etc.)
 -- of traditional box score totals, per-game averages and shooting splits,
 -- enriched with bio. Built on int_nba_player_games (the same played games as
@@ -12,7 +13,8 @@
 -- Cube can divide them at any grain (plans/adr/0002-dbt-cube-boundary.md).
 -- team_games_played and is_qualified make per-game leaderboards fair in short
 -- seasons (2019-20, 2020-21, lockouts), where a fixed games-played minimum is
--- biased.
+-- biased; the is_*_qualified flags do the same for shooting leaderboards with the
+-- league's makes minimums (macros/nba_scope.sql).
 WITH player_games AS (
     SELECT *
     FROM
@@ -144,13 +146,25 @@ SELECT
     s.game_type IN {{ nba_competitive_game_types() }} AS is_competitive,
     pt.primary_team_id,
     s.games_played,
-    COALESCE(tg.team_games_played, lg.max_team_games_played) AS team_games_played,
+    {{ team_games }} AS team_games_played,
     -- The 58-of-82 per-game minimum, scaled to the games the team actually played.
-    -- Only defined for the regular season.
+    -- Only defined for the regular season, like the shooting minimums.
     CASE
         WHEN s.game_type = 'Regular Season'
-            THEN s.games_played >= 0.7 * COALESCE(tg.team_games_played, lg.max_team_games_played)
+            THEN s.games_played >= 0.7 * {{ team_games }}
     END AS is_qualified,
+    CASE
+        WHEN s.game_type = 'Regular Season'
+            THEN {{ nba_shooting_qualified('field_goals', 's.total_field_goals_made', team_games) }}
+    END AS is_fg_qualified,
+    CASE
+        WHEN s.game_type = 'Regular Season'
+            THEN {{ nba_shooting_qualified('three_pointers', 's.total_three_pointers_made', team_games) }}
+    END AS is_3p_qualified,
+    CASE
+        WHEN s.game_type = 'Regular Season'
+            THEN {{ nba_shooting_qualified('free_throws', 's.total_free_throws_made', team_games) }}
+    END AS is_ft_qualified,
     s.first_game_date,
     s.last_game_date,
     ROUND(s.total_minutes, 1) AS total_minutes,

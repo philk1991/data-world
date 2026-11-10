@@ -129,6 +129,38 @@ cubes:
           leaderboards, per-game and rate alike; a fixed games or minutes
           threshold is biased in short seasons. Null outside the Regular Season.
 
+      - name: is_fg_qualified
+        sql: is_fg_qualified
+        type: boolean
+        description: >
+          True when the player made enough field goals to rank on a field goal,
+          effective field goal or true shooting percentage leaderboard: the
+          NBA's 300 made, scaled to team_games_played (300 x team_games_played /
+          82). It is the NBA's rule for these leaderboards, so use it in place
+          of is_qualified for shooting rates; low-volume shooters who qualify on
+          games then can't top the list. Null outside the Regular Season and
+          when field goal attempts weren't recorded.
+
+      - name: is_3p_qualified
+        sql: is_3p_qualified
+        type: boolean
+        description: >
+          True when the player made enough threes to rank on a three-point
+          percentage leaderboard: the NBA's 82 made, scaled to team_games_played
+          (one per team game). Use it in place of is_qualified for three-point
+          percentage. Null outside the Regular Season and before the three-point
+          line (1979-80).
+
+      - name: is_ft_qualified
+        sql: is_ft_qualified
+        type: boolean
+        description: >
+          True when the player made enough free throws to rank on a free throw
+          percentage leaderboard: the NBA's 125 made, scaled to
+          team_games_played (125 x team_games_played / 82). Use it in place of
+          is_qualified for free throw percentage. Null outside the Regular
+          Season and when free throw attempts weren't recorded.
+
     segments:
       - name: regular_season
         sql: "{CUBE}.game_type = 'Regular Season'"
@@ -157,8 +189,29 @@ cubes:
         sql: "{CUBE}.is_qualified"
         description: >
           Players who meet the per-game minimum (70% of team games, Regular
-          Season only). Apply this for per-game and percentage leaderboards
-          instead of a fixed games-played filter.
+          Season only). Apply this for per-game leaderboards instead of a fixed
+          games-played filter; for shooting percentages use the matching
+          shooting segment instead.
+
+      - name: fg_qualified
+        sql: "{CUBE}.is_fg_qualified"
+        description: >
+          Players with enough field goals made to rank on field goal, effective
+          field goal and true shooting percentage (300 made, scaled to the
+          team's games), the NBA's rule for those leaderboards. Use it instead of
+          qualified.
+
+      - name: three_point_qualified
+        sql: "{CUBE}.is_3p_qualified"
+        description: >
+          Players with enough threes made to rank on three-point percentage (82
+          made, scaled to the team's games). Use it instead of qualified.
+
+      - name: free_throw_qualified
+        sql: "{CUBE}.is_ft_qualified"
+        description: >
+          Players with enough free throws made to rank on free throw percentage
+          (125 made, scaled to the team's games). Use it instead of qualified.
 
     measures:
       - name: count
@@ -315,7 +368,7 @@ cubes:
       - name: true_shooting_pct
         sql: "SUM({CUBE}.ts_points) / NULLIF(2 * (SUM({CUBE}.ts_field_goals_attempted) + 0.44 * SUM({CUBE}.ts_free_throws_attempted)), 0)"
         type: number
-        description: Shooting efficiency accounting for twos, threes and free throws, PTS / (2 × (FGA + 0.44 × FTA)), over games with both attempt counts recorded, 0-1.
+        description: Shooting efficiency accounting for twos, threes and free throws, PTS / (2 × (FGA + 0.44 × FTA)), over games with both attempt counts recorded, 0-1. For leaderboards apply the fg_qualified segment.
 
       - name: assist_to_turnover_ratio
         sql: "SUM(CASE WHEN {CUBE}.total_turnovers IS NOT NULL THEN {CUBE}.total_assists END) * 1.0 / NULLIF(SUM({CUBE}.total_turnovers), 0)"

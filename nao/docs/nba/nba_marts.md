@@ -56,7 +56,7 @@ One row per player per game played (minutes recorded), from 1946-47 to the lates
 
 **Grain:** one row per (person_id, season_start_year, game_type).
 
-One row per player per season per game type: the metrics of nba_player_stint_advanced with a traded player's stints combined (rates re-divide the summed numerators and opportunities; individual offensive rating is total points produced over total individual possessions; individual defensive rating is weighted by possessions). team_count and is_multi_team flag traded players. primary_team_id, team_games_played and is_qualified come from nba_player_season_stats. Filter game_type = 'Regular Season' and is_qualified for season leaderboards.
+One row per player per season per game type: the metrics of nba_player_stint_advanced with a traded player's stints combined (rates re-divide the summed numerators and opportunities; individual offensive rating is total points produced over total individual possessions; individual defensive rating is weighted by possessions). team_count and is_multi_team flag traded players. primary_team_id, team_games_played and is_qualified come from nba_player_season_stats. Filter game_type = 'Regular Season' and is_qualified for season leaderboards (is_fg_qualified instead for true shooting).
 
 **Coverage:** Same coverage as nba_player_stint_advanced.
 

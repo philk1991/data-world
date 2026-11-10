@@ -55,8 +55,10 @@ staging tables.
   columns; never add or average two rates. Play-in and NBA Cup final games
   count toward neither.
 - **Season leaderboards**: `game_type = 'Regular Season'` and `is_qualified`
-  (on both `nba_player_season_stats` and `nba_player_season_advanced`). Don't
-  invent a games or minutes threshold.
+  (on both `nba_player_season_stats` and `nba_player_season_advanced`). For
+  shooting percentages use the makes minimum instead: `is_fg_qualified` for FG%,
+  eFG% and TS% (both marts), `is_3p_qualified` for 3P%, `is_ft_qualified` for FT%
+  (`nba_player_season_stats`). Don't invent a games, minutes or attempts threshold.
 - **Say where the number came from.** Your answers are SQL over the marts, not
   the defined metrics in the Cube semantic layer, so for a headline figure
   give the table and filters you used.
@@ -83,7 +85,7 @@ staging tables.
   `season_start_year`, `game_type`); a player's season advanced metrics
   (TS%, usage, AST%, rebound/steal/block %, per-100, Game Score, individual
   ratings), traded players' teams combined. **Filter `game_type = 'Regular
-  Season'` and `is_qualified`** before ranking rates.
+  Season'` and `is_qualified`** before ranking rates (`is_fg_qualified` for TS%).
 - `nba_player_stint_advanced` — the same per (`person_id`, `team_id`,
   `season_start_year`, `game_type`), one row per team a player played for.
 - `nba_player_season_stats` — one row per (`person_id`, `season_start_year`,
@@ -187,7 +189,9 @@ staging tables.
   `is_qualified` (at least 70% of `team_games_played`, Regular Season only, on
   both player season marts) rather than a fixed games or minutes minimum,
   which is biased in short seasons (1998-99: 50 games, 2011-12: 66, 2019-20:
-  64-75, 2020-21: 72).
+  64-75, 2020-21: 72). Shooting percentages use the makes flags instead
+  (`is_fg_qualified`, `is_3p_qualified`, `is_ft_qualified`), the NBA's 300 / 82 /
+  125 made scaled the same way.
 - **Neutral sites**: `nba_game_results.is_neutral_site` flags games with no real
   home court (2020 bubble, NBA Cup semifinals/finals, All-Star). Exclude them
   from home-advantage questions.
@@ -208,8 +212,8 @@ for what a column means.
 - `lake.marts.nba_player_career_stats`: person_id, first_name, last_name, game_type, is_guard, is_forward, is_center, draft_year, height_inches, has_games_before_coverage, seasons_played, first_season_start_year, last_season_start_year, first_game_date, last_game_date, games_played, total_minutes, total_points, total_rebounds, total_assists, total_steals, total_blocks, total_turnovers, total_field_goals_made, total_field_goals_attempted, total_three_pointers_made, total_three_pointers_attempted, total_free_throws_made, total_free_throws_attempted, ts_points, ts_field_goals_attempted, ts_free_throws_attempted, efg_three_pointers_made, points_per_game, rebounds_per_game, assists_per_game, career_field_goal_pct, career_three_point_pct, career_free_throw_pct, career_true_shooting_pct
 - `lake.marts.nba_player_clutch_stats`: person_id, first_name, last_name, season_start_year, season_label, game_type, clutch_games, clutch_points, clutch_points_per_game, clutch_field_goals_made, clutch_field_goals_attempted, clutch_field_goal_pct, clutch_three_pointers_made, clutch_three_pointers_attempted, clutch_three_point_pct, clutch_free_throws_made, clutch_free_throws_attempted, clutch_free_throw_pct, clutch_true_shooting_pct, true_shooting_pct, clutch_rebounds, clutch_turnovers, clutch_go_ahead_field_goals
 - `lake.marts.nba_player_game_stats`: person_id, game_id, first_name, last_name, game_date, season_start_year, season_label, game_type, is_competitive, player_team_id, opponent_team_id, is_team_inferred, is_home, is_win, is_starter, starting_position, minutes_played, points, rebounds_offensive, rebounds_defensive, rebounds_total, assists, steals, blocks, turnovers, fouls_personal, field_goals_made, field_goals_attempted, field_goal_pct, three_pointers_made, three_pointers_attempted, three_point_pct, free_throws_made, free_throws_attempted, free_throw_pct, plus_minus_points, game_score, usage_pct, true_shooting_pct, effective_field_goal_pct, offensive_rating, defensive_rating, net_rating, assist_pct, rebound_pct, player_impact_estimate, is_double_double, is_triple_double, formula_version
-- `lake.marts.nba_player_season_advanced`: person_id, first_name, last_name, season_start_year, season_label, game_type, primary_team_id, team_count, is_multi_team, games_played, team_games_played, is_qualified, total_minutes, total_points, true_shooting_pct, effective_field_goal_pct, three_point_attempt_rate, free_throw_rate, true_shooting_points_added, usage_pct, turnover_pct, assist_pct, offensive_rebound_pct, defensive_rebound_pct, rebound_pct, steal_pct, block_pct, player_possessions, points_per_100, rebounds_total_per_100, assists_per_100, steals_per_100, blocks_per_100, turnovers_per_100, game_score_per_game, rating_games, points_produced, individual_possessions, individual_offensive_rating, individual_defensive_rating, formula_version
-- `lake.marts.nba_player_season_stats`: person_id, first_name, last_name, season_start_year, season_label, game_type, is_competitive, primary_team_id, games_played, team_games_played, is_qualified, first_game_date, last_game_date, total_minutes, total_points, total_rebounds, total_assists, total_steals, total_blocks, total_turnovers, total_field_goals_made, total_field_goals_attempted, total_three_pointers_made, total_three_pointers_attempted, total_free_throws_made, total_free_throws_attempted, ts_points, ts_field_goals_attempted, ts_free_throws_attempted, efg_three_pointers_made, points_per_game, rebounds_per_game, assists_per_game, field_goal_pct, three_point_pct, free_throw_pct
+- `lake.marts.nba_player_season_advanced`: person_id, first_name, last_name, season_start_year, season_label, game_type, primary_team_id, team_count, is_multi_team, games_played, team_games_played, is_qualified, is_fg_qualified, total_minutes, total_points, true_shooting_pct, effective_field_goal_pct, three_point_attempt_rate, free_throw_rate, true_shooting_points_added, usage_pct, turnover_pct, assist_pct, offensive_rebound_pct, defensive_rebound_pct, rebound_pct, steal_pct, block_pct, player_possessions, points_per_100, rebounds_total_per_100, assists_per_100, steals_per_100, blocks_per_100, turnovers_per_100, game_score_per_game, rating_games, points_produced, individual_possessions, individual_offensive_rating, individual_defensive_rating, formula_version
+- `lake.marts.nba_player_season_stats`: person_id, first_name, last_name, season_start_year, season_label, game_type, is_competitive, primary_team_id, games_played, team_games_played, is_qualified, is_fg_qualified, is_3p_qualified, is_ft_qualified, first_game_date, last_game_date, total_minutes, total_points, total_rebounds, total_assists, total_steals, total_blocks, total_turnovers, total_field_goals_made, total_field_goals_attempted, total_three_pointers_made, total_three_pointers_attempted, total_free_throws_made, total_free_throws_attempted, ts_points, ts_field_goals_attempted, ts_free_throws_attempted, efg_three_pointers_made, points_per_game, rebounds_per_game, assists_per_game, field_goal_pct, three_point_pct, free_throw_pct
 - `lake.marts.nba_player_shot_zones`: person_id, first_name, last_name, season_start_year, season_label, game_type, shot_zone, shot_zone_order, field_goals_attempted, field_goals_made, field_goal_pct, field_goal_points, points_per_shot, share_of_attempts, avg_shot_distance_ft, league_field_goal_pct, league_points_per_shot, league_share_of_attempts, field_goal_pct_vs_league
 - `lake.marts.nba_player_stint_advanced`: person_id, first_name, last_name, team_id, season_start_year, season_label, game_type, games_played, total_minutes, total_points, true_shooting_pct, effective_field_goal_pct, three_point_attempt_rate, free_throw_rate, true_shooting_points_added, usage_pct, turnover_pct, assist_pct, offensive_rebound_pct, defensive_rebound_pct, rebound_pct, steal_pct, block_pct, player_possessions, points_per_100, rebounds_total_per_100, assists_per_100, steals_per_100, blocks_per_100, turnovers_per_100, game_score_per_game, rating_games, points_produced, individual_possessions, individual_offensive_rating, individual_defensive_rating, formula_version
 - `lake.marts.nba_players_dim`: person_id, first_name, last_name, player_name, has_bio_record, birth_date, height_inches, height_cm, height_feet_inches, body_weight_lbs, body_weight_kg, is_guard, is_forward, is_center, position, school, country, is_undrafted, draft_year, draft_round, draft_number, first_game_date, last_game_date, first_season_start_year, last_season_start_year, seasons_played, played_in_last_two_seasons, age_at_first_game, age_at_last_game
