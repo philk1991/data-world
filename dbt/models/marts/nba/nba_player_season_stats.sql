@@ -120,16 +120,10 @@ season_totals AS (
         SUM(three_pointers_attempted) AS total_three_pointers_attempted,
         SUM(free_throws_made) FILTER (WHERE free_throws_attempted IS NOT NULL) AS total_free_throws_made,
         SUM(free_throws_attempted) AS total_free_throws_attempted,
-        -- True shooting inputs: games with both attempt counts recorded.
-        SUM(points) FILTER (
-            WHERE field_goals_attempted IS NOT NULL AND free_throws_attempted IS NOT NULL
-        ) AS ts_points,
-        SUM(field_goals_attempted) FILTER (WHERE free_throws_attempted IS NOT NULL) AS ts_field_goals_attempted,
-        SUM(free_throws_attempted) FILTER (WHERE field_goals_attempted IS NOT NULL) AS ts_free_throws_attempted,
-        -- Effective field goal input: threes made in games with field goal attempts recorded
-        -- (0 before the line existed), to pair with total_field_goals_made and _attempted.
-        SUM(COALESCE(three_pointers_made, 0)) FILTER (WHERE field_goals_attempted IS NOT NULL)
-            AS efg_three_pointers_made
+        -- True shooting and effective field goal inputs (ts_*, efg_three_pointers_made:
+        -- threes made in games with field goal attempts recorded, 0 before the line
+        -- existed), the same matched pairs as the game and stint models.
+        {{ nba_shooting_components('SUM') }}
     FROM
         player_games
     GROUP BY

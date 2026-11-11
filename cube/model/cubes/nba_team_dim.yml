@@ -12,23 +12,23 @@ cubes:
 
     dimensions:
       - name: team_id
-        sql: team_id
+        sql: "{CUBE}.team_id"
         type: number
         primary_key: true
         description: Franchise identifier, stable across relocations and renames.
 
       - name: current_full_name
-        sql: current_full_name
+        sql: "{CUBE}.current_full_name"
         type: string
         description: City and name concatenated (e.g. "Los Angeles Lakers").
 
       - name: current_league
-        sql: current_league
+        sql: "{CUBE}.current_league"
         type: string
         description: League of the most recent era (NBA, BAA, ABA, etc.).
 
       - name: has_relocated_or_renamed
-        sql: has_relocated_or_renamed
+        sql: "{CUBE}.has_relocated_or_renamed"
         type: boolean
         description: True when the franchise has more than one era on record.
 

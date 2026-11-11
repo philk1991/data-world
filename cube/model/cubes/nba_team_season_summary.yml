@@ -30,14 +30,14 @@ cubes:
 
     dimensions:
       - name: team_id
-        sql: team_id
+        sql: "{CUBE}.team_id"
         type: number
         primary_key: true
         public: true
         description: Franchise identifier, stable across relocations and renames.
 
       - name: season_start_year
-        sql: season_start_year
+        sql: "{CUBE}.season_start_year"
         type: number
         primary_key: true
         public: true
@@ -47,7 +47,7 @@ cubes:
           bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
 
       - name: season_label
-        sql: season_label
+        sql: "{CUBE}.season_label"
         type: string
         description: Human-readable season label (e.g. "2023-24").
 
@@ -57,32 +57,32 @@ cubes:
         description: Number of team-seasons.
 
       - name: sum_games_played
-        sql: games_played
+        sql: "{CUBE}.games_played"
         type: sum
         description: Total regular season games played across matching team-seasons.
 
       - name: sum_wins
-        sql: wins
+        sql: "{CUBE}.wins"
         type: sum
         description: Total regular season wins across matching team-seasons.
 
       - name: sum_losses
-        sql: losses
+        sql: "{CUBE}.losses"
         type: sum
         description: Total regular season losses across matching team-seasons.
 
       - name: sum_home_wins
-        sql: home_wins
+        sql: "{CUBE}.home_wins"
         type: sum
         description: Total home wins across matching team-seasons.
 
       - name: sum_away_wins
-        sql: away_wins
+        sql: "{CUBE}.away_wins"
         type: sum
         description: Total away wins across matching team-seasons.
 
       - name: max_wins
-        sql: wins
+        sql: "{CUBE}.wins"
         type: max
         description: Most wins in a single season among matching team-seasons.
 
@@ -92,12 +92,12 @@ cubes:
         description: Wins divided by decided games across matching team-seasons, 0-1.
 
       - name: max_win_pct
-        sql: win_pct
+        sql: "{CUBE}.win_pct"
         type: max
         description: Best single-season win percentage among matching team-seasons.
 
       - name: min_win_pct
-        sql: win_pct
+        sql: "{CUBE}.win_pct"
         type: min
         description: Worst single-season win percentage among matching team-seasons.
 
@@ -122,6 +122,6 @@ cubes:
         description: Scoring margin per game (points for minus against) across matching team-seasons.
 
       - name: max_point_margin_per_game
-        sql: point_margin_per_game
+        sql: "{CUBE}.point_margin_per_game"
         type: max
         description: Best single-season scoring margin per game among matching team-seasons.

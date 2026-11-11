@@ -179,3 +179,98 @@ views:
     cubes:
       - join_path: nba_players_dim
         includes: "*"
+
+  - name: player_game
+    description: >
+      One row per player per game played (Regular Season by default), from
+      1954-55, with every player rate (shooting, usage, assist, rebound, steal,
+      block and turnover %, per 100 possessions) computed from additive
+      components, so they are correct over any set of games: a player's games
+      against one opponent, as a starter, in wins, or in a date range. Filter
+      game_type to change the default, as in player_season. team_name and
+      opponent_name are as of that season. Use player_season or player_career
+      for season leaderboards (qualification lives there). Team-context rates
+      start at each metric's coverage season (usage and TOV% 1977-78, ORB%,
+      DRB%, STL%, BLK% and per-100 1973-74, AST% and REB% 1964-65).
+    cubes:
+      - join_path: nba_player_game_stats
+        includes: "*"
+
+      - join_path: nba_player_game_stats.nba_team_seasons_dim
+        includes:
+          - team_name
+          - team_full_name
+          - team_abbrev
+
+      - join_path: nba_player_game_stats.nba_opponent_seasons_dim
+        includes:
+          - name: team_name
+            alias: opponent_name
+          - name: team_full_name
+            alias: opponent_full_name
+          - name: team_abbrev
+            alias: opponent_abbrev
+
+      - join_path: nba_player_game_stats.nba_players_dim
+        includes:
+          - position
+          - height_inches
+          - country
+          - draft_year
+    default_filters:
+      - member: game_type
+        operator: equals
+        values: ["Regular Season"]
+        unless: [game_type]
+
+  - name: team_game
+    description: >
+      One row per team per competitive game (Regular Season by default), from
+      1954-55, with ratings, pace, the Four Factors and shooting computed from
+      summed counts, so they are right over any set of games (a team's home
+      games, its games against one opponent, a month, a decade) and match
+      nba_team_advanced_profile at the team-season grain. Without a team filter
+      the measures are league-wide. Filter game_type to change the default.
+      Ratings and possession-based shares start in 1973-74. The *_vs_league
+      measures compare with the league average for the same seasons and game
+      types, weighted by the selection's possessions or attempts. team_name and
+      opponent_name are as of that season.
+    cubes:
+      - join_path: nba_team_game_stats
+        includes: "*"
+
+      - join_path: nba_team_game_stats.nba_team_seasons_dim
+        includes:
+          - team_name
+          - team_full_name
+          - team_abbrev
+
+      - join_path: nba_team_game_stats.nba_opponent_seasons_dim
+        includes:
+          - name: team_name
+            alias: opponent_name
+          - name: team_full_name
+            alias: opponent_full_name
+          - name: team_abbrev
+            alias: opponent_abbrev
+
+      - join_path: nba_team_game_stats.nba_team_dim
+        includes:
+          - name: current_full_name
+            alias: current_team_name
+    default_filters:
+      - member: game_type
+        operator: equals
+        values: ["Regular Season"]
+        unless: [game_type]
+
+  - name: league_season
+    description: >
+      One row per season and game type of league-average rates (pace, ratings,
+      shooting, Four Factors) and sample sizes, all seasons in the source. These
+      are season facts: read them per season and never average them across
+      seasons. For a league rate over several seasons, query team_game without a
+      team filter.
+    cubes:
+      - join_path: nba_league_season_baselines
+        includes: "*"

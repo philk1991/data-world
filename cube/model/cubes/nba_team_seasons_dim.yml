@@ -11,13 +11,13 @@ cubes:
 
     dimensions:
       - name: team_id
-        sql: team_id
+        sql: "{CUBE}.team_id"
         type: number
         primary_key: true
         description: Franchise identifier, stable across relocations and renames.
 
       - name: season_start_year
-        sql: season_start_year
+        sql: "{CUBE}.season_start_year"
         type: number
         primary_key: true
         description: >
@@ -26,24 +26,24 @@ cubes:
           bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
 
       - name: team_city
-        sql: team_city
+        sql: "{CUBE}.team_city"
         type: string
         description: The team's city that season.
 
       - name: team_name
-        sql: team_name
+        sql: "{CUBE}.team_name"
         type: string
         description: >
           The team's name (e.g. SuperSonics) during the franchise era or season
           the row covers.
 
       - name: team_full_name
-        sql: team_full_name
+        sql: "{CUBE}.team_full_name"
         type: string
         description: City and name that season (e.g. "Seattle SuperSonics" for 2007-08).
 
       - name: team_abbrev
-        sql: team_abbrev
+        sql: "{CUBE}.team_abbrev"
         type: string
         description: >
           The team's abbreviation (e.g. SEA) during the franchise era or season

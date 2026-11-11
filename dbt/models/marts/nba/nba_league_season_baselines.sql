@@ -11,7 +11,8 @@
 {% set full = [
     'points', 'field_goals_made', 'field_goals_attempted', 'free_throws_attempted', 'rebounds_offensive',
     'rebounds_defensive', 'turnovers', 'team_minutes', 'opp_field_goals_made', 'opp_field_goals_attempted',
-    'opp_free_throws_attempted', 'opp_rebounds_offensive', 'opp_rebounds_defensive', 'opp_turnovers'
+    'opp_free_throws_attempted', 'opp_rebounds_offensive', 'opp_rebounds_defensive', 'opp_turnovers',
+    'possessions'
 ] %}
 -- One row per season per game type: league totals and league-average rates,
 -- the baseline every relative and era-adjusted NBA metric compares against.
@@ -21,8 +22,9 @@
 -- recorded that count; otherwise it is null. Rates use the team games that
 -- recorded their inputs (shooting rates: games with box counts; possession,
 -- turnover and rebound rates: games with a full box on both sides), and the
--- sample sizes say how many that was. Possessions are estimated from the
--- season's summed counts, not by adding up per-game estimates.
+-- sample sizes say how many that was. Possessions are the sum of the per-game
+-- estimates (int_nba_team_games), the same additive component the team and
+-- player metrics and Cube sum, so every grain agrees.
 WITH team_games AS (
     SELECT *
     FROM
@@ -54,21 +56,6 @@ league AS (
         team_games
     GROUP BY
         season_start_year, game_type
-),
-
-possessions AS (
-    SELECT
-        *,
-        {{
-            nba_possessions(
-                'f_field_goals_attempted', 'f_free_throws_attempted', 'f_rebounds_offensive',
-                'f_rebounds_defensive', 'f_field_goals_made', 'f_turnovers',
-                'f_opp_field_goals_attempted', 'f_opp_free_throws_attempted', 'f_opp_rebounds_offensive',
-                'f_opp_rebounds_defensive', 'f_opp_field_goals_made', 'f_opp_turnovers'
-            )
-        }} AS f_possessions
-    FROM
-        league
 )
 
 SELECT
@@ -113,4 +100,4 @@ SELECT
     ROUND({{ nba_reb_pct('f_rebounds_offensive', 'f_opp_rebounds_defensive') }}, 3) AS lg_offensive_rebound_pct,
     '{{ var("nba_metrics_version") }}' AS formula_version
 FROM
-    possessions
+    league

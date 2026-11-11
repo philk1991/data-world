@@ -7,7 +7,8 @@
 {% set full = [
     'points', 'opp_points', 'team_minutes', 'field_goals_made', 'field_goals_attempted', 'free_throws_attempted',
     'rebounds_offensive', 'rebounds_defensive', 'turnovers', 'opp_field_goals_made', 'opp_field_goals_attempted',
-    'opp_free_throws_attempted', 'opp_rebounds_offensive', 'opp_rebounds_defensive', 'opp_turnovers'
+    'opp_free_throws_attempted', 'opp_rebounds_offensive', 'opp_rebounds_defensive', 'opp_turnovers',
+    'possessions'
 ] %}
 -- One row per team per season per game type (Regular Season, Play-in
 -- Tournament, Playoffs, NBA Cup Final) explaining how the team got its record:
@@ -15,7 +16,8 @@
 -- luck wins, SRS, and gaps to the league average. Covers every season from
 -- 1946-47; each metric is null where its inputs were not recorded.
 -- Every rate is computed from the season's summed counts with the formulas in
--- macros/nba_metrics.sql, never by averaging per-game rates. Possession metrics
+-- macros/nba_metrics.sql, never by averaging per-game rates; possessions are the
+-- sum of the per-game estimates, as in the league baselines and Cube. Possession metrics
 -- (ratings, pace, turnover and rebound shares) use the games with a full box on
 -- both sides, from 1973-74 on; shooting metrics use the games with box counts.
 -- coverage_flag says whether those samples were all of the team's games.
@@ -72,14 +74,7 @@ season_totals AS (
 rated AS (
     SELECT
         *,
-        {{
-            nba_possessions(
-                'f_field_goals_attempted', 'f_free_throws_attempted', 'f_rebounds_offensive',
-                'f_rebounds_defensive', 'f_field_goals_made', 'f_turnovers',
-                'f_opp_field_goals_attempted', 'f_opp_free_throws_attempted', 'f_opp_rebounds_offensive',
-                'f_opp_rebounds_defensive', 'f_opp_field_goals_made', 'f_opp_turnovers'
-            )
-        }} AS possessions
+        f_possessions AS possessions
     FROM
         season_totals
 ),

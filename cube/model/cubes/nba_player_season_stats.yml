@@ -44,13 +44,13 @@ cubes:
 
     dimensions:
       - name: person_id
-        sql: person_id
+        sql: "{CUBE}.person_id"
         type: number
         primary_key: true
         description: NBA player identifier.
 
       - name: first_name
-        sql: first_name
+        sql: "{CUBE}.first_name"
         type: string
         description: >
           Player first name. Missing for a couple of historical players. From
@@ -58,7 +58,7 @@ cubes:
           bio record.
 
       - name: last_name
-        sql: last_name
+        sql: "{CUBE}.last_name"
         type: string
         description: >
           Player last name. Missing for a couple of historical players. From the
@@ -71,7 +71,7 @@ cubes:
         description: Player full name (first and last name).
 
       - name: season_start_year
-        sql: season_start_year
+        sql: "{CUBE}.season_start_year"
         type: number
         primary_key: true
         public: true
@@ -81,12 +81,12 @@ cubes:
           bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
 
       - name: season_label
-        sql: season_label
+        sql: "{CUBE}.season_label"
         type: string
         description: Human-readable season label (e.g. "2023-24").
 
       - name: game_type
-        sql: game_type
+        sql: "{CUBE}.game_type"
         type: string
         primary_key: true
         public: true
@@ -106,7 +106,7 @@ cubes:
           the birth date is unknown (about a fifth of players).
 
       - name: primary_team_id
-        sql: primary_team_id
+        sql: "{CUBE}.primary_team_id"
         type: number
         description: >
           Team the player played the most games for that season and game type
@@ -114,7 +114,7 @@ cubes:
           nba_player_season_stats; other player-season marts read it from there.
 
       - name: team_games_played
-        sql: team_games_played
+        sql: "{CUBE}.team_games_played"
         type: number
         description: >
           Games of this type the player's primary team played that season, so
@@ -125,7 +125,7 @@ cubes:
           before 2025-26, which have no team box scores.
 
       - name: is_qualified
-        sql: is_qualified
+        sql: "{CUBE}.is_qualified"
         type: boolean
         description: >
           True when the player appeared in at least 70% of team_games_played:
@@ -135,7 +135,7 @@ cubes:
           threshold is biased in short seasons. Null outside the Regular Season.
 
       - name: is_fg_qualified
-        sql: is_fg_qualified
+        sql: "{CUBE}.is_fg_qualified"
         type: boolean
         description: >
           True when the player made enough field goals to rank on a field goal,
@@ -147,7 +147,7 @@ cubes:
           when field goal attempts weren't recorded.
 
       - name: is_3p_qualified
-        sql: is_3p_qualified
+        sql: "{CUBE}.is_3p_qualified"
         type: boolean
         description: >
           True when the player made enough threes to rank on a three-point
@@ -157,7 +157,7 @@ cubes:
           line (1979-80).
 
       - name: is_ft_qualified
-        sql: is_ft_qualified
+        sql: "{CUBE}.is_ft_qualified"
         type: boolean
         description: >
           True when the player made enough free throws to rank on a free throw
@@ -224,94 +224,94 @@ cubes:
         description: Number of player-season-game_type rows.
 
       - name: count_players
-        sql: person_id
+        sql: "{CUBE}.person_id"
         type: count_distinct
         description: Number of distinct players across matching rows (a player with Regular Season and Playoffs rows counts once).
 
       - name: count_seasons
-        sql: season_start_year
+        sql: "{CUBE}.season_start_year"
         type: count_distinct
         description: >
           Number of distinct seasons across matching rows. Grouped by player, the
           seasons they played in the filtered game types (a career's length).
 
       - name: first_season_start_year
-        sql: season_start_year
+        sql: "{CUBE}.season_start_year"
         type: min
         description: Earliest season_start_year across matching rows (grouped by player, their first season).
 
       - name: last_season_start_year
-        sql: season_start_year
+        sql: "{CUBE}.season_start_year"
         type: max
         description: Latest season_start_year across matching rows (grouped by player, their last season).
 
       - name: sum_games_played
-        sql: games_played
+        sql: "{CUBE}.games_played"
         type: sum
         description: Total games played across matching rows.
 
       - name: sum_total_points
-        sql: total_points
+        sql: "{CUBE}.total_points"
         type: sum
         description: Total points scored across matching rows.
 
       - name: max_total_points
-        sql: total_points
+        sql: "{CUBE}.total_points"
         type: max
         description: Highest single-season point total among matching rows.
 
       - name: sum_total_rebounds
-        sql: total_rebounds
+        sql: "{CUBE}.total_rebounds"
         type: sum
         description: Total rebounds across matching rows.
 
       - name: sum_total_assists
-        sql: total_assists
+        sql: "{CUBE}.total_assists"
         type: sum
         description: Total assists across matching rows.
 
       - name: sum_total_steals
-        sql: total_steals
+        sql: "{CUBE}.total_steals"
         type: sum
         description: Total steals across matching rows.
 
       - name: sum_total_blocks
-        sql: total_blocks
+        sql: "{CUBE}.total_blocks"
         type: sum
         description: Total blocks across matching rows.
 
       - name: sum_total_turnovers
-        sql: total_turnovers
+        sql: "{CUBE}.total_turnovers"
         type: sum
         description: Total turnovers across matching rows.
 
       - name: sum_field_goals_made
-        sql: total_field_goals_made
+        sql: "{CUBE}.total_field_goals_made"
         type: sum
         description: Total field goals made (in games with recorded attempts) across matching rows.
 
       - name: sum_field_goals_attempted
-        sql: total_field_goals_attempted
+        sql: "{CUBE}.total_field_goals_attempted"
         type: sum
         description: Total field goals attempted across matching rows.
 
       - name: sum_three_pointers_made
-        sql: total_three_pointers_made
+        sql: "{CUBE}.total_three_pointers_made"
         type: sum
         description: Total three pointers made (in games with recorded attempts) across matching rows.
 
       - name: sum_three_pointers_attempted
-        sql: total_three_pointers_attempted
+        sql: "{CUBE}.total_three_pointers_attempted"
         type: sum
         description: Total three pointers attempted across matching rows.
 
       - name: sum_free_throws_made
-        sql: total_free_throws_made
+        sql: "{CUBE}.total_free_throws_made"
         type: sum
         description: Total free throws made (in games with recorded attempts) across matching rows.
 
       - name: sum_free_throws_attempted
-        sql: total_free_throws_attempted
+        sql: "{CUBE}.total_free_throws_attempted"
         type: sum
         description: Total free throws attempted across matching rows.
 
@@ -346,17 +346,17 @@ cubes:
         description: Turnovers per game across matching rows, counting only seasons where turnovers were recorded.
 
       - name: max_points_per_game
-        sql: points_per_game
+        sql: "{CUBE}.points_per_game"
         type: max
         description: Highest single-season points-per-game average among matching rows.
 
       - name: max_rebounds_per_game
-        sql: rebounds_per_game
+        sql: "{CUBE}.rebounds_per_game"
         type: max
         description: Highest single-season rebounds-per-game average among matching rows.
 
       - name: max_assists_per_game
-        sql: assists_per_game
+        sql: "{CUBE}.assists_per_game"
         type: max
         description: Highest single-season assists-per-game average among matching rows.
 

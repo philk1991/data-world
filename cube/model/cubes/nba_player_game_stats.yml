@@ -1,0 +1,438 @@
+cubes:
+  - name: nba_player_game_stats
+    public: false
+    # Seasons from 1954-55 only, like the other NBA cubes (plans/adr/0003-coverage-cutoff.md).
+    sql: >
+      SELECT g.*
+      FROM marts.nba_player_game_stats g
+      INNER JOIN marts.nba_seasons_dim d USING (season_start_year)
+      WHERE d.is_in_coverage
+    meta:
+      dbt_model: nba_player_game_stats
+    description: >
+      One row per player per game played, from 1954-55: the box score plus the
+      additive components every player rate divides (true shooting, usage,
+      assist, rebound, steal and block %, turnover %, per 100 possessions), so
+      the rates here are correct over any set of games and match the season
+      and career numbers. Team-context rates are null outside competitive games
+      and before each metric's coverage season (usage and TOV% 1977-78; AST%
+      and REB% 1964-65; ORB%, DRB%, STL%, BLK% and per-100 1973-74). Published
+      through the player_game view.
+
+    joins:
+      - name: nba_players_dim
+        sql: "{CUBE}.person_id = {nba_players_dim}.person_id"
+        relationship: many_to_one
+
+      - name: nba_team_seasons_dim
+        sql: "{CUBE}.player_team_id = {nba_team_seasons_dim}.team_id AND {CUBE}.season_start_year = {nba_team_seasons_dim}.season_start_year"
+        relationship: many_to_one
+
+      - name: nba_opponent_seasons_dim
+        sql: "{CUBE}.opponent_team_id = {nba_opponent_seasons_dim}.team_id AND {CUBE}.season_start_year = {nba_opponent_seasons_dim}.season_start_year"
+        relationship: many_to_one
+
+    dimensions:
+      - name: person_id
+        sql: "{CUBE}.person_id"
+        type: number
+        primary_key: true
+        public: true
+        description: NBA player identifier.
+
+      - name: game_id
+        sql: "{CUBE}.game_id"
+        type: number
+        primary_key: true
+        public: true
+        description: >
+          NBA game identifier. Encodes the game type and season (00TYYNNNNN,
+          stored without the leading zeros); game_type and season_start_year are
+          decoded from it.
+
+      - name: first_name
+        sql: "{CUBE}.first_name"
+        type: string
+        description: >
+          Player first name. Missing for a couple of historical players. From
+          the bio table, falling back to the box score when the player has no
+          bio record.
+
+      - name: last_name
+        sql: "{CUBE}.last_name"
+        type: string
+        description: >
+          Player last name. Missing for a couple of historical players. From the
+          bio table, falling back to the box score when the player has no bio
+          record.
+
+      - name: player_name
+        sql: "CONCAT_WS(' ', {CUBE}.first_name, {CUBE}.last_name)"
+        type: string
+        description: "Player full name (first and last name)."
+
+      - name: game_date
+        sql: "{CUBE}.game_date"
+        type: time
+        description: Calendar date of the game.
+
+      - name: season_start_year
+        sql: "{CUBE}.season_start_year"
+        type: number
+        description: >
+          Calendar year the season started (e.g. 2023 for 2023-24), decoded from
+          the game id. Follows the league's own season assignment, so the 2020
+          bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
+
+      - name: season_label
+        sql: "{CUBE}.season_label"
+        type: string
+        description: Human-readable season label (e.g. "2023-24").
+
+      - name: game_type
+        sql: "{CUBE}.game_type"
+        type: string
+        description: >
+          Type of game, decoded from the game id: Regular Season, Playoffs,
+          Play-in Tournament, Preseason, All-Star Game or NBA Cup Final. NBA Cup
+          group and knockout games are Regular Season; only the Cup final, which
+          does not count toward the standings, is separate.
+
+      - name: is_competitive
+        sql: "{CUBE}.is_competitive"
+        type: boolean
+        description: >
+          True for the game types that count: Regular Season, Play-in
+          Tournament, Playoffs and NBA Cup Final. False for Preseason and
+          All-Star games.
+
+      - name: player_team_id
+        sql: "{CUBE}.player_team_id"
+        type: number
+        description: >
+          Team the player played for. Where the raw box score leaves it blank
+          (all of 2021-22 and a few thousand rows a season since 2003) it is
+          recovered from the game's home or away team; is_team_inferred marks
+          those rows. Null for a few All-Star rows with no game record.
+
+      - name: opponent_team_id
+        sql: "{CUBE}.opponent_team_id"
+        type: number
+        description: Franchise identifier of the opposing team.
+
+      - name: is_home
+        sql: "{CUBE}.is_home"
+        type: boolean
+        description: True when the team in this row (for a player, their team) was the home side.
+
+      - name: is_win
+        sql: "{CUBE}.is_win"
+        type: boolean
+        description: >
+          True when the team in this row (for a player, their team) won. Null
+          when the result is unknown.
+
+      - name: is_starter
+        sql: "{CUBE}.is_starter"
+        type: boolean
+        description: >
+          True when the player started the game (starting_position is set),
+          false when they came off the bench.
+
+      - name: minutes_played
+        sql: "{CUBE}.minutes_played"
+        type: number
+        description: >
+          Minutes played in the game. Null where no player in the game has
+          minutes recorded (most games before 1964-65).
+
+      - name: points
+        sql: "{CUBE}.points"
+        type: number
+        description: Points scored in the game.
+
+      - name: rebounds_total
+        sql: "{CUBE}.rebounds_total"
+        type: number
+        description: Total rebounds.
+
+      - name: assists
+        sql: "{CUBE}.assists"
+        type: number
+        description: Assists.
+
+      - name: steals
+        sql: "{CUBE}.steals"
+        type: number
+        description: Steals; null before the league tracked them (1973-74).
+
+      - name: blocks
+        sql: "{CUBE}.blocks"
+        type: number
+        description: Blocks; null before the league tracked them (1973-74).
+
+      - name: game_score
+        sql: "{CUBE}.game_score"
+        type: number
+        description: >
+          Hollinger's Game Score: PTS + 0.4 FG − 0.7 FGA − 0.4 (FTA − FT) + 0.7
+          ORB + 0.3 DRB + STL + 0.7 AST + 0.7 BLK − 0.4 PF − TOV. Null where any
+          input was not recorded.
+
+      - name: is_double_double
+        sql: "{CUBE}.is_double_double"
+        type: boolean
+        description: >
+          True when the player reached double figures in at least two of points,
+          rebounds, assists, steals and blocks. Counted from the box score, so
+          it covers every era (steals and blocks only count from 1973-74); the
+          one definition every NBA model uses.
+
+      - name: is_triple_double
+        sql: "{CUBE}.is_triple_double"
+        type: boolean
+        description: >
+          True when the player reached double figures in at least three of
+          points, rebounds, assists, steals and blocks. Counted from the box
+          score, so it covers every era (steals and blocks only count from
+          1973-74); the one definition every NBA model uses.
+
+    segments:
+      - name: starters
+        sql: "{CUBE}.is_starter"
+        description: "Games the player started."
+
+    measures:
+      - name: count
+        type: count
+        description: "Number of player-games (games played) across matching rows."
+
+      - name: count_players
+        sql: "{CUBE}.person_id"
+        type: count_distinct
+        description: "Number of distinct players across matching rows."
+
+      - name: wins
+        sql: "CASE WHEN {CUBE}.is_win THEN 1 END"
+        type: count
+        description: "Games the player's team won."
+
+      - name: win_pct
+        sql: "{wins} * 1.0 / NULLIF({count}, 0)"
+        type: number
+        description: "Share of the player's games that their team won, 0-1."
+
+      - name: count_double_doubles
+        sql: "CASE WHEN {CUBE}.is_double_double THEN 1 END"
+        type: count
+        description: "Double-doubles (10+ in two of points, rebounds, assists, steals, blocks)."
+
+      - name: count_triple_doubles
+        sql: "CASE WHEN {CUBE}.is_triple_double THEN 1 END"
+        type: count
+        description: "Triple-doubles (10+ in three of points, rebounds, assists, steals, blocks)."
+
+      - name: sum_minutes
+        sql: "{CUBE}.minutes_played"
+        type: sum
+        description: "Total minutes played (not recorded before 1964-65)."
+
+      - name: sum_points
+        sql: "{CUBE}.points"
+        type: sum
+        description: "Total points."
+
+      - name: sum_rebounds
+        sql: "{CUBE}.rebounds_total"
+        type: sum
+        description: "Total rebounds."
+
+      - name: sum_assists
+        sql: "{CUBE}.assists"
+        type: sum
+        description: "Total assists."
+
+      - name: sum_steals
+        sql: "{CUBE}.steals"
+        type: sum
+        description: "Total steals (1973-74 on)."
+
+      - name: sum_blocks
+        sql: "{CUBE}.blocks"
+        type: sum
+        description: "Total blocks (1973-74 on)."
+
+      - name: sum_turnovers
+        sql: "{CUBE}.turnovers"
+        type: sum
+        description: "Total turnovers (1977-78 on)."
+
+      - name: max_points
+        sql: "{CUBE}.points"
+        type: max
+        description: "Most points in one game across matching rows (grouped by player, their single-game high)."
+
+      - name: sum_field_goals_made
+        sql: "CASE WHEN {CUBE}.field_goals_attempted IS NOT NULL THEN {CUBE}.field_goals_made END"
+        type: sum
+        description: "Field goals made, counted only in games where the attempts were recorded."
+
+      - name: sum_field_goals_attempted
+        sql: "{CUBE}.field_goals_attempted"
+        type: sum
+        description: "Field goals attempted."
+
+      - name: sum_three_pointers_made
+        sql: "CASE WHEN {CUBE}.three_pointers_attempted IS NOT NULL THEN {CUBE}.three_pointers_made END"
+        type: sum
+        description: "Three pointers made, counted only in games where the attempts were recorded."
+
+      - name: sum_three_pointers_attempted
+        sql: "{CUBE}.three_pointers_attempted"
+        type: sum
+        description: "Three pointers attempted."
+
+      - name: sum_free_throws_made
+        sql: "CASE WHEN {CUBE}.free_throws_attempted IS NOT NULL THEN {CUBE}.free_throws_made END"
+        type: sum
+        description: "Free throws made, counted only in games where the attempts were recorded."
+
+      - name: sum_free_throws_attempted
+        sql: "{CUBE}.free_throws_attempted"
+        type: sum
+        description: "Free throws attempted."
+
+      - name: points_per_game
+        sql: "{sum_points} * 1.0 / NULLIF({count}, 0)"
+        type: number
+        description: "Points per game: total points over games played."
+
+      - name: minutes_per_game
+        sql: "SUM({CUBE}.minutes_played) * 1.0 / NULLIF(COUNT({CUBE}.minutes_played), 0)"
+        type: number
+        description: "Minutes per game, over the games where minutes were recorded."
+
+      - name: rebounds_per_game
+        sql: "SUM({CUBE}.rebounds_total) * 1.0 / NULLIF(COUNT({CUBE}.rebounds_total), 0)"
+        type: number
+        description: "Rebounds per game, over the games where rebounds were recorded."
+
+      - name: assists_per_game
+        sql: "SUM({CUBE}.assists) * 1.0 / NULLIF(COUNT({CUBE}.assists), 0)"
+        type: number
+        description: "Assists per game, over the games where assists were recorded."
+
+      - name: steals_per_game
+        sql: "SUM({CUBE}.steals) * 1.0 / NULLIF(COUNT({CUBE}.steals), 0)"
+        type: number
+        description: "Steals per game, over the games where steals were recorded."
+
+      - name: blocks_per_game
+        sql: "SUM({CUBE}.blocks) * 1.0 / NULLIF(COUNT({CUBE}.blocks), 0)"
+        type: number
+        description: "Blocks per game, over the games where blocks were recorded."
+
+      - name: turnovers_per_game
+        sql: "SUM({CUBE}.turnovers) * 1.0 / NULLIF(COUNT({CUBE}.turnovers), 0)"
+        type: number
+        description: "Turnovers per game, over the games where turnovers were recorded."
+
+      - name: field_goal_pct
+        sql: "{sum_field_goals_made} * 1.0 / NULLIF({sum_field_goals_attempted}, 0)"
+        type: number
+        description: "Field goal percentage, total made over total attempted, 0-1."
+
+      - name: three_point_pct
+        sql: "{sum_three_pointers_made} * 1.0 / NULLIF({sum_three_pointers_attempted}, 0)"
+        type: number
+        description: "Three point percentage, total made over total attempted, 0-1."
+
+      - name: free_throw_pct
+        sql: "{sum_free_throws_made} * 1.0 / NULLIF({sum_free_throws_attempted}, 0)"
+        type: number
+        description: "Free throw percentage, total made over total attempted, 0-1."
+
+      - name: effective_field_goal_pct
+        sql: "(SUM(CASE WHEN {CUBE}.field_goals_attempted IS NOT NULL THEN {CUBE}.field_goals_made END) + 0.5 * SUM({CUBE}.efg_three_pointers_made)) / NULLIF(SUM({CUBE}.field_goals_attempted), 0)"
+        type: number
+        description: "Field goal percentage adjusted for the extra value of a three, (FGM + 0.5 × 3PM) / FGA, over games with field goal attempts recorded, 0-1."
+
+      - name: true_shooting_pct
+        sql: "SUM({CUBE}.ts_points) / NULLIF(2 * (SUM({CUBE}.ts_field_goals_attempted) + 0.44 * SUM({CUBE}.ts_free_throws_attempted)), 0)"
+        type: number
+        description: "Shooting efficiency accounting for twos, threes and free throws, PTS / (2 × (FGA + 0.44 × FTA)), over games with both attempt counts recorded, 0-1."
+
+      - name: usage_pct
+        sql: "SUM({CUBE}.usage_opportunity_numerator) / NULLIF(SUM({CUBE}.usage_opportunity), 0)"
+        type: number
+        description: "Share of team plays the player used while on the floor (1977-78 on), 0-1."
+
+      - name: assist_pct
+        sql: "SUM({CUBE}.assist_opportunity_numerator) / NULLIF(SUM({CUBE}.assist_opportunity), 0)"
+        type: number
+        description: "Share of teammates' field goals the player assisted while on the floor (1964-65 on), 0-1."
+
+      - name: offensive_rebound_pct
+        sql: "SUM({CUBE}.offensive_rebound_opportunity_numerator) / NULLIF(SUM({CUBE}.offensive_rebound_opportunity), 0)"
+        type: number
+        description: "Share of available offensive rebounds the player grabbed while on the floor (1973-74 on), 0-1."
+
+      - name: defensive_rebound_pct
+        sql: "SUM({CUBE}.defensive_rebound_opportunity_numerator) / NULLIF(SUM({CUBE}.defensive_rebound_opportunity), 0)"
+        type: number
+        description: "Share of available defensive rebounds the player grabbed while on the floor (1973-74 on), 0-1."
+
+      - name: rebound_pct
+        sql: "SUM({CUBE}.rebound_opportunity_numerator) / NULLIF(SUM({CUBE}.rebound_opportunity), 0)"
+        type: number
+        description: "Share of available rebounds the player grabbed while on the floor (1964-65 on), 0-1."
+
+      - name: steal_pct
+        sql: "SUM({CUBE}.steal_opportunity_numerator) / NULLIF(SUM({CUBE}.steal_opportunity), 0)"
+        type: number
+        description: "Steals per opponent possession while on the floor (1973-74 on), 0-1."
+
+      - name: block_pct
+        sql: "SUM({CUBE}.block_opportunity_numerator) / NULLIF(SUM({CUBE}.block_opportunity), 0)"
+        type: number
+        description: "Share of opponent two-point attempts the player blocked while on the floor (1973-74 on), 0-1."
+
+      - name: turnover_pct
+        sql: "SUM({CUBE}.tov_pct_turnovers) * 1.0 / NULLIF(SUM({CUBE}.tov_pct_plays), 0)"
+        type: number
+        description: "Turnovers per play used, TOV / (FGA + 0.44 × FTA + TOV) (1977-78 on), 0-1."
+
+      - name: sum_player_possessions
+        sql: "{CUBE}.player_possessions"
+        type: sum
+        description: "Team possessions while the player was on the floor (1973-74 on)."
+
+      - name: points_per_100
+        sql: "100.0 * SUM({CUBE}.per_100_points) / NULLIF(SUM({CUBE}.per_100_points_possessions), 0)"
+        type: number
+        description: "Points per 100 possessions the player was on the floor for (1973-74 on)."
+
+      - name: rebounds_per_100
+        sql: "100.0 * SUM({CUBE}.per_100_rebounds_total) / NULLIF(SUM({CUBE}.per_100_rebounds_total_possessions), 0)"
+        type: number
+        description: "Rebounds per 100 possessions the player was on the floor for (1973-74 on)."
+
+      - name: assists_per_100
+        sql: "100.0 * SUM({CUBE}.per_100_assists) / NULLIF(SUM({CUBE}.per_100_assists_possessions), 0)"
+        type: number
+        description: "Assists per 100 possessions the player was on the floor for (1973-74 on)."
+
+      - name: steals_per_100
+        sql: "100.0 * SUM({CUBE}.per_100_steals) / NULLIF(SUM({CUBE}.per_100_steals_possessions), 0)"
+        type: number
+        description: "Steals per 100 possessions the player was on the floor for (1973-74 on)."
+
+      - name: blocks_per_100
+        sql: "100.0 * SUM({CUBE}.per_100_blocks) / NULLIF(SUM({CUBE}.per_100_blocks_possessions), 0)"
+        type: number
+        description: "Blocks per 100 possessions the player was on the floor for (1973-74 on)."
+
+      - name: turnovers_per_100
+        sql: "100.0 * SUM({CUBE}.per_100_turnovers) / NULLIF(SUM({CUBE}.per_100_turnovers_possessions), 0)"
+        type: number
+        description: "Turnovers per 100 possessions the player was on the floor for (1973-74 on)."

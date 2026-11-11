@@ -8,7 +8,8 @@ Claude (via the Cube MCP server), the Playground and the dbt docs all say the
 same thing. dbt is the source of truth; this script writes it into the cube
 YAML so the description stays visible where the cube is defined.
 
-Synced: dimensions whose sql is a bare column name of the cube's mart.
+Synced: dimensions whose sql is a bare column name of the cube's mart
+(optionally qualified as {CUBE}.column).
 Left alone: computed dimensions (sql is an expression, e.g. player_name) and
 all measures, which are Cube definitions with no dbt column behind them.
 
@@ -31,7 +32,8 @@ ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / "dbt" / "target" / "manifest.json"
 CUBES_DIR = ROOT / "cube" / "model" / "cubes"
 
-BARE_COLUMN = re.compile(r"\w+")
+# A mart column as-is: season_start_year or {CUBE}.season_start_year.
+BARE_COLUMN = re.compile(r"(?:\{CUBE\}\.)?(\w+)")
 INDENT = " " * 8  # dimension keys sit at 8 spaces in the cube files
 WIDTH = 80
 
@@ -98,9 +100,10 @@ def main() -> int:
             if not mart:
                 continue
             for dim in cube.get("dimensions", []):
-                column = str(dim.get("sql", ""))
-                if not BARE_COLUMN.fullmatch(column):
+                match = BARE_COLUMN.fullmatch(str(dim.get("sql", "")))
+                if not match:
                     continue
+                column = match.group(1)
                 wanted = normalise(mart["columns"].get(column, {}).get("description"))
                 if not wanted:
                     missing.append(f"{cube['name']}.{dim['name']}: {mart['name']}.{column} has no dbt description")

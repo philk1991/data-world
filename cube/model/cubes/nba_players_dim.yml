@@ -16,114 +16,114 @@ cubes:
 
     dimensions:
       - name: person_id
-        sql: person_id
+        sql: "{CUBE}.person_id"
         type: number
         primary_key: true
         public: true
         description: NBA player identifier.
 
       - name: player_name
-        sql: player_name
+        sql: "{CUBE}.player_name"
         type: string
         description: First and last name joined with a space; null when both are missing.
 
       - name: has_bio_record
-        sql: has_bio_record
+        sql: "{CUBE}.has_bio_record"
         type: boolean
         description: >
           True when the player has a row in the bio table. False for players who
           only appear in the box scores, whose bio columns are all null.
 
       - name: birth_date
-        sql: birth_date
+        sql: "{CUBE}.birth_date"
         type: time
         description: >
           Date of birth; null when unknown or when the source carries a
           placeholder date (1900-01-01, 1995-01-01, April 1905).
 
       - name: height_inches
-        sql: height_inches
+        sql: "{CUBE}.height_inches"
         type: number
         description: Listed height in inches; null when unknown.
 
       - name: height_cm
-        sql: height_cm
+        sql: "{CUBE}.height_cm"
         type: number
         description: height_inches converted to centimetres, rounded to 0.1.
 
       - name: height_feet_inches
-        sql: height_feet_inches
+        sql: "{CUBE}.height_feet_inches"
         type: string
         description: Height as feet-inches (e.g. "6-9"), the way NBA rosters list it.
 
       - name: body_weight_lbs
-        sql: body_weight_lbs
+        sql: "{CUBE}.body_weight_lbs"
         type: number
         description: >
           Listed weight in pounds; null when unknown. A single current listing,
           not a per-season weight.
 
       - name: body_weight_kg
-        sql: body_weight_kg
+        sql: "{CUBE}.body_weight_kg"
         type: number
         description: body_weight_lbs converted to kilograms, rounded to 0.1.
 
       - name: is_guard
-        sql: is_guard
+        sql: "{CUBE}.is_guard"
         type: boolean
         description: True when the player is listed as a guard.
 
       - name: is_forward
-        sql: is_forward
+        sql: "{CUBE}.is_forward"
         type: boolean
         description: True when the player is listed as a forward.
 
       - name: is_center
-        sql: is_center
+        sql: "{CUBE}.is_center"
         type: boolean
         description: True when the player is listed as a center.
 
       - name: position
-        sql: position
+        sql: "{CUBE}.position"
         type: string
         description: >
           Listed positions combined from the guard/forward/center flags in that
           order (G, F, C, G-F, F-C); null when no position is listed.
 
       - name: school
-        sql: school
+        sql: "{CUBE}.school"
         type: string
         description: College or school the player came from; null when unknown.
 
       - name: country
-        sql: country
+        sql: "{CUBE}.country"
         type: string
         description: Country the player is from; null when unknown.
 
       - name: is_undrafted
-        sql: is_undrafted
+        sql: "{CUBE}.is_undrafted"
         type: boolean
         description: >
           True when the player went undrafted, false when drafted, null when
           draft status is unknown.
 
       - name: draft_year
-        sql: draft_year
+        sql: "{CUBE}.draft_year"
         type: number
         description: Year the player was drafted; null if undrafted or unknown.
 
       - name: draft_round
-        sql: draft_round
+        sql: "{CUBE}.draft_round"
         type: number
         description: Round the player was drafted in; null if undrafted or unknown.
 
       - name: draft_number
-        sql: draft_number
+        sql: "{CUBE}.draft_number"
         type: number
         description: Overall pick number the player was drafted with; null if undrafted or unknown.
 
       - name: first_game_date
-        sql: first_game_date
+        sql: "{CUBE}.first_game_date"
         type: time
         description: >
           Date of the player's earliest game with recorded minutes among the
@@ -132,7 +132,7 @@ cubes:
           Cup Final); null for players with none.
 
       - name: last_game_date
-        sql: last_game_date
+        sql: "{CUBE}.last_game_date"
         type: time
         description: >
           Date of the player's most recent game with recorded minutes among the
@@ -141,7 +141,7 @@ cubes:
           Cup Final); null for players with none.
 
       - name: first_season_start_year
-        sql: first_season_start_year
+        sql: "{CUBE}.first_season_start_year"
         type: number
         description: >
           Season (start year) of the player's first game with recorded minutes
@@ -149,7 +149,7 @@ cubes:
           they have none.
 
       - name: last_season_start_year
-        sql: last_season_start_year
+        sql: "{CUBE}.last_season_start_year"
         type: number
         description: >
           Season (start year) of the player's latest game with recorded minutes
@@ -157,7 +157,7 @@ cubes:
           they have none.
 
       - name: seasons_played
-        sql: seasons_played
+        sql: "{CUBE}.seasons_played"
         type: number
         description: >
           Distinct seasons with at least one game with recorded minutes among
@@ -165,7 +165,7 @@ cubes:
           have none.
 
       - name: played_in_last_two_seasons
-        sql: played_in_last_two_seasons
+        sql: "{CUBE}.played_in_last_two_seasons"
         type: boolean
         description: >
           True when the player's last competitive game is in the latest season
@@ -174,14 +174,14 @@ cubes:
           games.
 
       - name: age_at_first_game
-        sql: age_at_first_game
+        sql: "{CUBE}.age_at_first_game"
         type: number
         description: >
           Age in completed years on first_game_date; null when birth_date or
           first_game_date is null.
 
       - name: age_at_last_game
-        sql: age_at_last_game
+        sql: "{CUBE}.age_at_last_game"
         type: number
         description: >
           Age in completed years on last_game_date; null when birth_date or
@@ -201,42 +201,42 @@ cubes:
         description: Number of players; apply has_competitive_games to count only players who played.
 
       - name: avg_height_inches
-        sql: height_inches
+        sql: "{CUBE}.height_inches"
         type: avg
         description: Average listed height in inches across matching players.
 
       - name: avg_height_cm
-        sql: height_cm
+        sql: "{CUBE}.height_cm"
         type: avg
         description: Average listed height in centimetres across matching players.
 
       - name: avg_body_weight_lbs
-        sql: body_weight_lbs
+        sql: "{CUBE}.body_weight_lbs"
         type: avg
         description: Average listed weight in pounds across matching players.
 
       - name: avg_body_weight_kg
-        sql: body_weight_kg
+        sql: "{CUBE}.body_weight_kg"
         type: avg
         description: Average listed weight in kilograms across matching players.
 
       - name: avg_age_at_first_game
-        sql: age_at_first_game
+        sql: "{CUBE}.age_at_first_game"
         type: avg
         description: Average age at first competitive game across matching players with a known birth date.
 
       - name: avg_age_at_last_game
-        sql: age_at_last_game
+        sql: "{CUBE}.age_at_last_game"
         type: avg
         description: Average age at most recent competitive game across matching players with a known birth date.
 
       - name: avg_seasons_played
-        sql: seasons_played
+        sql: "{CUBE}.seasons_played"
         type: avg
         description: Average number of seasons with a competitive game across matching players.
 
       - name: max_seasons_played
-        sql: seasons_played
+        sql: "{CUBE}.seasons_played"
         type: max
         description: Highest number of seasons with a competitive game among matching players.
 

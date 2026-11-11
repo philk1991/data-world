@@ -58,7 +58,7 @@ Scope agreed with the user:
 
 **Calculation choices**
 
-- **Season possessions are estimated once from season totals,** not by summing game estimates. The same applies to league possessions.
+- ~~**Season possessions are estimated once from season totals,** not by summing game estimates. The same applies to league possessions.~~ *Reversed 10 Nov 2026 (staff AE project, ADR 0002):* season and league possessions are now the **sum of the per-game estimates**. A season-total estimate isn't additive, so Cube (which sums components) and dbt disagreed on team ratings by up to 0.5 points a regular season (1.8 in the playoffs). Player metrics already summed per-game possessions. The cost is a small departure from Basketball-Reference's season-total convention: league ORtg moved by 0.06 points on average. The possession formula now lives only in `int_nba_team_games`.
 - **Ratings, pace and possession-based shares start in 1973-74.** They use only games with a full box on both sides (`has_full_box`, which also requires team minutes). Shooting rates use games with box counts. `coverage_flag` and the `games_with_*` columns show the samples.
 - **SRS is regular season only.** The iteration oscillates on playoff brackets and disconnected play-in pairs (checked: 500 iterations without converging). Basketball-Reference also publishes regular-season SRS only. It is solved in a DuckDB recursive CTE that holds each season's ratings as a list; regular seasons converge in about 11–16 iterations.
 - **Game types:** Regular Season, Play-in Tournament, Playoffs and NBA Cup Final are each computed separately. Preseason and All-Star games are excluded. The Cup Final is never part of regular-season totals or baselines.

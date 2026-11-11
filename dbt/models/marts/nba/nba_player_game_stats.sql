@@ -6,6 +6,12 @@
 -- attempts were recorded. game_score is Hollinger's Game Score
 -- (macros/nba_metrics.sql), null where any of its inputs was not recorded.
 -- Double-doubles come from int_nba_player_games.
+-- The component columns (ts_*, efg_three_pointers_made, the *_opportunity pairs,
+-- tov_pct_*, player_possessions, per_100_*) are the additive inputs every player
+-- rate divides, from the same macros as the season and stint models, so Cube can
+-- sum them over any games (plans/adr/0002-dbt-cube-boundary.md). The team-context
+-- ones come from int_nba_player_game_context and are null outside competitive
+-- games and wherever an input wasn't recorded.
 WITH player_games AS (
     SELECT *
     FROM
@@ -22,6 +28,31 @@ players AS (
     SELECT *
     FROM
         {{ ref('stg_nba_players') }}
+),
+
+game_context AS (
+    SELECT *
+    FROM
+        {{ ref('int_nba_player_game_context') }}
+),
+
+-- Transform
+shooting_components AS (
+    SELECT
+        game_id,
+        person_id,
+        {{ nba_shooting_components() }}
+    FROM
+        player_games
+),
+
+rate_components AS (
+    SELECT
+        game_id,
+        person_id,
+        {{ nba_player_rate_components() }}
+    FROM
+        game_context
 )
 
 SELECT
@@ -81,6 +112,8 @@ SELECT
     ROUND(a.player_impact_estimate, 3) AS player_impact_estimate,
     b.is_double_double,
     b.is_triple_double,
+    s.* EXCLUDE (game_id, person_id),
+    r.* EXCLUDE (game_id, person_id),
     '{{ var("nba_metrics_version") }}' AS formula_version
 FROM
     player_games b
@@ -89,6 +122,12 @@ LEFT JOIN
     USING (person_id)
 LEFT JOIN
     player_advanced a
+    USING (game_id, person_id)
+LEFT JOIN
+    shooting_components s
+    USING (game_id, person_id)
+LEFT JOIN
+    rate_components r
     USING (game_id, person_id)
 ORDER BY
     b.game_date DESC, b.game_id ASC, b.points DESC

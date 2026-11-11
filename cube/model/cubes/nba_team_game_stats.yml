@@ -1,0 +1,272 @@
+cubes:
+  - name: nba_team_game_stats
+    public: false
+    # Seasons from 1954-55 only, like the other NBA cubes (plans/adr/0003-coverage-cutoff.md).
+    sql: >
+      SELECT g.*
+      FROM marts.nba_team_game_stats g
+      INNER JOIN marts.nba_seasons_dim d USING (season_start_year)
+      WHERE d.is_in_coverage
+    meta:
+      dbt_model: nba_team_game_stats
+    description: >
+      One row per team per competitive game, from 1954-55, with both sides'
+      box counts and the game's possession estimate. Ratings, pace and
+      possession-based shares divide sums over games with a full box on both
+      sides (1973-74 on); shooting rates use games with box counts, the same
+      samples as nba_team_advanced_profile and nba_league_season_baselines, so
+      the numbers match them at the team-season and league-season grain. Team
+      three-point attempts are 0 before the line (1979-80), so the attempt rate
+      reads 0 there. Published through the team_game view.
+
+    joins:
+      - name: nba_team_seasons_dim
+        sql: "{CUBE}.team_id = {nba_team_seasons_dim}.team_id AND {CUBE}.season_start_year = {nba_team_seasons_dim}.season_start_year"
+        relationship: many_to_one
+
+      - name: nba_opponent_seasons_dim
+        sql: "{CUBE}.opponent_team_id = {nba_opponent_seasons_dim}.team_id AND {CUBE}.season_start_year = {nba_opponent_seasons_dim}.season_start_year"
+        relationship: many_to_one
+
+      - name: nba_team_dim
+        sql: "{CUBE}.team_id = {nba_team_dim}.team_id"
+        relationship: many_to_one
+
+      - name: nba_league_season_baselines
+        sql: "{CUBE}.season_start_year = {nba_league_season_baselines}.season_start_year AND {CUBE}.game_type = {nba_league_season_baselines}.game_type"
+        relationship: many_to_one
+
+    dimensions:
+      - name: game_id
+        sql: "{CUBE}.game_id"
+        type: number
+        primary_key: true
+        public: true
+        description: >
+          NBA game identifier. Encodes the game type and season (00TYYNNNNN,
+          stored without the leading zeros); game_type and season_start_year are
+          decoded from it.
+      - name: team_id
+        sql: "{CUBE}.team_id"
+        type: number
+        primary_key: true
+        public: true
+        description: Franchise identifier, stable across relocations and renames.
+      - name: opponent_team_id
+        sql: "{CUBE}.opponent_team_id"
+        type: number
+        description: Franchise identifier of the opposing team.
+      - name: season_start_year
+        sql: "{CUBE}.season_start_year"
+        type: number
+        description: >
+          Calendar year the season started (e.g. 2023 for 2023-24), decoded from
+          the game id. Follows the league's own season assignment, so the 2020
+          bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
+      - name: season_label
+        sql: "{CUBE}.season_label"
+        type: string
+        description: Human-readable season label (e.g. "2023-24").
+      - name: game_type
+        sql: "{CUBE}.game_type"
+        type: string
+        description: >
+          Type of game, decoded from the game id: Regular Season, Playoffs,
+          Play-in Tournament, Preseason, All-Star Game or NBA Cup Final. NBA Cup
+          group and knockout games are Regular Season; only the Cup final, which
+          does not count toward the standings, is separate.
+      - name: game_date
+        sql: "{CUBE}.game_date"
+        type: time
+        description: Calendar date of the game.
+      - name: is_home
+        sql: "{CUBE}.is_home"
+        type: boolean
+        description: True when the team in this row (for a player, their team) was the home side.
+      - name: is_win
+        sql: "{CUBE}.is_win"
+        type: boolean
+        description: >
+          True when the team in this row (for a player, their team) won. Null
+          when the result is unknown.
+      - name: overtime_periods
+        sql: "{CUBE}.overtime_periods"
+        type: number
+        description: >
+          Overtime periods played, from team_minutes; null where team minutes
+          were not recorded.
+      - name: points
+        sql: "{CUBE}.points"
+        type: number
+        description: Points scored in the game.
+      - name: opp_points
+        sql: "{CUBE}.opp_points"
+        type: number
+        description: Points the opponent scored.
+      - name: point_margin
+        sql: "{CUBE}.point_margin"
+        type: number
+        description: Points minus opponent points. Positive means the team won.
+      - name: counts_source
+        sql: "{CUBE}.counts_source"
+        type: string
+        description: >
+          Where the box counts came from: team_box (the team box score),
+          player_sum (summed from complete player box scores, before 1983-84;
+          leaves out team rebounds and team turnovers) or none (not recorded).
+      - name: has_full_box
+        sql: "{CUBE}.has_full_box"
+        type: boolean
+        description: >
+          True when both teams recorded FGA, FTA, offensive and defensive
+          rebounds and turnovers and the team's minutes are known, so
+          possessions and pace can be estimated.
+    measures:
+      - name: count
+        type: count
+        description: "Number of team-games across matching rows."
+
+      - name: wins
+        sql: "CASE WHEN {CUBE}.is_win THEN 1 END"
+        type: count
+        description: "Games won."
+
+      - name: losses
+        sql: "CASE WHEN NOT {CUBE}.is_win THEN 1 END"
+        type: count
+        description: "Games lost."
+
+      - name: win_pct
+        sql: "{wins} * 1.0 / NULLIF({count}, 0)"
+        type: number
+        description: "Wins over games played, 0-1."
+
+      - name: sum_points
+        sql: "{CUBE}.points"
+        type: sum
+        description: "Points scored."
+
+      - name: sum_opp_points
+        sql: "{CUBE}.opp_points"
+        type: sum
+        description: "Points allowed."
+
+      - name: points_per_game
+        sql: "{sum_points} * 1.0 / NULLIF({count}, 0)"
+        type: number
+        description: "Points scored per game."
+
+      - name: opp_points_per_game
+        sql: "{sum_opp_points} * 1.0 / NULLIF({count}, 0)"
+        type: number
+        description: "Points allowed per game."
+
+      - name: point_margin_per_game
+        sql: "({sum_points} - {sum_opp_points}) * 1.0 / NULLIF({count}, 0)"
+        type: number
+        description: "Average point margin per game."
+
+      - name: sum_possessions
+        sql: "{CUBE}.possessions"
+        type: sum
+        description: "Possessions (box estimate, summed per game) in games with a full box on both sides, 1973-74 on."
+
+      - name: offensive_rating
+        sql: "100.0 * SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.points END) / NULLIF(SUM({CUBE}.possessions), 0)"
+        type: number
+        description: "Points scored per 100 possessions, over games with a full box on both sides (1973-74 on)."
+
+      - name: defensive_rating
+        sql: "100.0 * SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.opp_points END) / NULLIF(SUM({CUBE}.possessions), 0)"
+        type: number
+        description: "Points allowed per 100 possessions, over games with a full box on both sides (1973-74 on)."
+
+      - name: net_rating
+        sql: "{offensive_rating} - {defensive_rating}"
+        type: number
+        description: "Offensive minus defensive rating."
+
+      - name: pace
+        sql: "48.0 * SUM({CUBE}.possessions) / NULLIF(SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.team_minutes END) / 5.0, 0)"
+        type: number
+        description: "Possessions per 48 minutes, over games with a full box on both sides (1973-74 on)."
+
+      - name: effective_field_goal_pct
+        sql: "(SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.field_goals_made END) + 0.5 * SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.three_pointers_made END)) / NULLIF(SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.field_goals_attempted END), 0)"
+        type: number
+        description: "(FGM + 0.5 × 3PM) / FGA, over games with box counts, 0-1."
+
+      - name: true_shooting_pct
+        sql: "SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.points END) / NULLIF(2 * (SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.field_goals_attempted END) + 0.44 * SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.free_throws_attempted END)), 0)"
+        type: number
+        description: "PTS / (2 × (FGA + 0.44 × FTA)), over games with box counts, 0-1."
+
+      - name: free_throw_rate
+        sql: "SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.free_throws_made END) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.field_goals_attempted END), 0)"
+        type: number
+        description: "Free throws made per field goal attempt, over games with box counts."
+
+      - name: three_point_attempt_rate
+        sql: "SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.three_pointers_attempted END) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.field_goals_attempted END), 0)"
+        type: number
+        description: "Share of field goal attempts taken from three, over games with box counts, 0-1 (0 before 1979-80)."
+
+      - name: assist_pct
+        sql: "SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.assists END) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.field_goals_made END), 0)"
+        type: number
+        description: "Share of made field goals that were assisted, over games with box counts, 0-1."
+
+      - name: turnover_pct
+        sql: "SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.turnovers END) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.field_goals_attempted END) + 0.44 * SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.free_throws_attempted END) + SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.turnovers END), 0)"
+        type: number
+        description: "Turnovers per play, TOV / (FGA + 0.44 × FTA + TOV), over games with a full box (1973-74 on), 0-1."
+
+      - name: offensive_rebound_pct
+        sql: "SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.rebounds_offensive END) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.rebounds_offensive END) + SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.opp_rebounds_defensive END), 0)"
+        type: number
+        description: "Share of available offensive rebounds grabbed, over games with a full box (1973-74 on), 0-1."
+
+      - name: defensive_rebound_pct
+        sql: "SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.rebounds_defensive END) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.rebounds_defensive END) + SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.opp_rebounds_offensive END), 0)"
+        type: number
+        description: "Share of available defensive rebounds grabbed, over games with a full box (1973-74 on), 0-1."
+
+      - name: opp_effective_field_goal_pct
+        sql: "(SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.opp_field_goals_made END) + 0.5 * SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.opp_three_pointers_made END)) / NULLIF(SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.opp_field_goals_attempted END), 0)"
+        type: number
+        description: "Opponents' effective field goal percentage, over games with box counts, 0-1."
+
+      - name: opp_turnover_pct
+        sql: "SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.opp_turnovers END) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.opp_field_goals_attempted END) + 0.44 * SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.opp_free_throws_attempted END) + SUM(CASE WHEN {CUBE}.possessions IS NOT NULL THEN {CUBE}.opp_turnovers END), 0)"
+        type: number
+        description: "Opponents' turnovers per play, over games with a full box (1973-74 on), 0-1."
+
+      - name: opp_free_throw_rate
+        sql: "SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.opp_free_throws_made END) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.opp_field_goals_attempted END), 0)"
+        type: number
+        description: "Opponents' free throws made per field goal attempt, over games with box counts."
+
+      - name: league_offensive_rating
+        sql: "SUM({CUBE}.possessions * {nba_league_season_baselines.lg_offensive_rating}) / NULLIF(SUM(CASE WHEN {nba_league_season_baselines.lg_offensive_rating} IS NOT NULL THEN {CUBE}.possessions END), 0)"
+        type: number
+        description: "League-average offensive rating for the same seasons and game types, weighted by this selection's possessions (1973-74 on)."
+
+      - name: offensive_rating_vs_league
+        sql: "{offensive_rating} - {league_offensive_rating}"
+        type: number
+        description: "Offensive rating minus the league average for the same seasons and game types (positive is better)."
+
+      - name: defensive_rating_vs_league
+        sql: "{defensive_rating} - {league_offensive_rating}"
+        type: number
+        description: "Defensive rating minus the league average (negative is better: fewer points allowed than average)."
+
+      - name: league_true_shooting_pct
+        sql: "SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN 2 * ({CUBE}.field_goals_attempted + 0.44 * {CUBE}.free_throws_attempted) * {nba_league_season_baselines.lg_true_shooting_pct} END) / NULLIF(SUM(CASE WHEN {CUBE}.counts_source <> 'none' AND {nba_league_season_baselines.lg_true_shooting_pct} IS NOT NULL THEN 2 * ({CUBE}.field_goals_attempted + 0.44 * {CUBE}.free_throws_attempted) END), 0)"
+        type: number
+        description: "League-average true shooting for the same seasons and game types, weighted by this selection's shot attempts."
+
+      - name: true_shooting_pct_vs_league
+        sql: "{true_shooting_pct} - {league_true_shooting_pct}"
+        type: number
+        description: "True shooting minus the league average for the same seasons and game types, 0-1 scale."

@@ -1011,6 +1011,72 @@ models:
         description: "{{ doc('nba__is_triple_double') }}"
         tests:
           - not_null
+      - name: ts_points
+        description: "{{ doc('nba__ts_points') }}"
+      - name: ts_field_goals_attempted
+        description: "{{ doc('nba__ts_field_goals_attempted') }}"
+      - name: ts_free_throws_attempted
+        description: "{{ doc('nba__ts_free_throws_attempted') }}"
+      - name: efg_three_pointers_made
+        description: "{{ doc('nba__efg_three_pointers_made') }} On this mart, pair it with field_goals_made and field_goals_attempted."
+      - name: tov_pct_turnovers
+        description: "Turnover % input: turnovers in games where tov_pct_plays exists. Turnover % = SUM(tov_pct_turnovers) / SUM(tov_pct_plays)."
+      - name: tov_pct_plays
+        description: "Turnover % input: plays used, FGA + 0.44 × FTA + TOV; null where any count is missing, before 1977-78 or outside competitive games."
+      - name: usage_opportunity_numerator
+        description: "Usage % input: plays used, FGA + 0.44 × FTA + TOV, set only where usage_opportunity exists. Usage % = SUM(usage_opportunity_numerator) / SUM(usage_opportunity)."
+      - name: usage_opportunity
+        description: "Usage % input: the team's plays while the player was on the floor (on-court share × team counts). Null outside competitive games, before the metric's coverage season, where an input wasn't recorded, or where recorded minutes cover under 95% of the game."
+      - name: assist_opportunity_numerator
+        description: "Assist % input: assists, set only where assist_opportunity exists. Assist % = SUM(assist_opportunity_numerator) / SUM(assist_opportunity)."
+      - name: assist_opportunity
+        description: "Assist % input: teammates' field goals made while the player was on the floor (on-court share × team counts). Null outside competitive games, before the metric's coverage season, where an input wasn't recorded, or where recorded minutes cover under 95% of the game."
+      - name: offensive_rebound_opportunity_numerator
+        description: "Offensive rebound % input: offensive rebounds, set only where offensive_rebound_opportunity exists. Offensive rebound % = SUM(offensive_rebound_opportunity_numerator) / SUM(offensive_rebound_opportunity)."
+      - name: offensive_rebound_opportunity
+        description: "Offensive rebound % input: offensive rebounds available while the player was on the floor (on-court share × team counts). Null outside competitive games, before the metric's coverage season, where an input wasn't recorded, or where recorded minutes cover under 95% of the game."
+      - name: defensive_rebound_opportunity_numerator
+        description: "Defensive rebound % input: defensive rebounds, set only where defensive_rebound_opportunity exists. Defensive rebound % = SUM(defensive_rebound_opportunity_numerator) / SUM(defensive_rebound_opportunity)."
+      - name: defensive_rebound_opportunity
+        description: "Defensive rebound % input: defensive rebounds available while the player was on the floor (on-court share × team counts). Null outside competitive games, before the metric's coverage season, where an input wasn't recorded, or where recorded minutes cover under 95% of the game."
+      - name: rebound_opportunity_numerator
+        description: "Rebound % input: rebounds, set only where rebound_opportunity exists. Rebound % = SUM(rebound_opportunity_numerator) / SUM(rebound_opportunity)."
+      - name: rebound_opportunity
+        description: "Rebound % input: rebounds available while the player was on the floor (on-court share × team counts). Null outside competitive games, before the metric's coverage season, where an input wasn't recorded, or where recorded minutes cover under 95% of the game."
+      - name: steal_opportunity_numerator
+        description: "Steal % input: steals, set only where steal_opportunity exists. Steal % = SUM(steal_opportunity_numerator) / SUM(steal_opportunity)."
+      - name: steal_opportunity
+        description: "Steal % input: opponent possessions while the player was on the floor (on-court share × team counts). Null outside competitive games, before the metric's coverage season, where an input wasn't recorded, or where recorded minutes cover under 95% of the game."
+      - name: block_opportunity_numerator
+        description: "Block % input: blocks, set only where block_opportunity exists. Block % = SUM(block_opportunity_numerator) / SUM(block_opportunity)."
+      - name: block_opportunity
+        description: "Block % input: opponent two-point attempts while the player was on the floor (on-court share × team counts). Null outside competitive games, before the metric's coverage season, where an input wasn't recorded, or where recorded minutes cover under 95% of the game."
+      - name: player_possessions
+        description: "{{ doc('nba__player_possessions') }} Null outside competitive games."
+      - name: per_100_points
+        description: "Per-100 input: points in games where player_possessions exists. Per 100 = 100 × SUM(per_100_points) / SUM(per_100_points_possessions)."
+      - name: per_100_points_possessions
+        description: "Per-100 input: player_possessions in games where points was recorded."
+      - name: per_100_rebounds_total
+        description: "Per-100 input: rebounds total in games where player_possessions exists. Per 100 = 100 × SUM(per_100_rebounds_total) / SUM(per_100_rebounds_total_possessions)."
+      - name: per_100_rebounds_total_possessions
+        description: "Per-100 input: player_possessions in games where rebounds total was recorded."
+      - name: per_100_assists
+        description: "Per-100 input: assists in games where player_possessions exists. Per 100 = 100 × SUM(per_100_assists) / SUM(per_100_assists_possessions)."
+      - name: per_100_assists_possessions
+        description: "Per-100 input: player_possessions in games where assists was recorded."
+      - name: per_100_steals
+        description: "Per-100 input: steals in games where player_possessions exists. Per 100 = 100 × SUM(per_100_steals) / SUM(per_100_steals_possessions)."
+      - name: per_100_steals_possessions
+        description: "Per-100 input: player_possessions in games where steals was recorded."
+      - name: per_100_blocks
+        description: "Per-100 input: blocks in games where player_possessions exists. Per 100 = 100 × SUM(per_100_blocks) / SUM(per_100_blocks_possessions)."
+      - name: per_100_blocks_possessions
+        description: "Per-100 input: player_possessions in games where blocks was recorded."
+      - name: per_100_turnovers
+        description: "Per-100 input: turnovers in games where player_possessions exists. Per 100 = 100 × SUM(per_100_turnovers) / SUM(per_100_turnovers_possessions)."
+      - name: per_100_turnovers_possessions
+        description: "Per-100 input: player_possessions in games where turnovers was recorded."
       - name: formula_version
         description: "{{ doc('nba__formula_version') }}"
         tests:

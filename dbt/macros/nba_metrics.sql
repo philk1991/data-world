@@ -212,3 +212,59 @@
     {%- endset -%}
     ({{ tm_drtg }} + 0.2 * (100 * {{ d_pts_per_scposs }} * (1 - {{ stop_pct }}) - {{ tm_drtg }}))
 {% endmacro %}
+
+{# ── Additive player components ──────────────────────────────────────────
+   The matched numerator/denominator pairs every player rate divides, defined
+   once. Each part is set only in games where its partner was recorded, so a
+   rate over any games is SUM(part) / SUM(partner) (plans/adr/0002). Called
+   per game (agg=none: nba_player_game_stats) or summed (agg='SUM':
+   nba_player_season_stats, int_nba_player_stints). #}
+{% macro _nba_agg(agg, expr) -%}
+    {%- if agg -%}{{ agg }}({{ expr }}){%- else -%}{{ expr }}{%- endif -%}
+{%- endmacro %}
+
+{# True shooting and effective field goal inputs, over player box scores. #}
+{% macro nba_shooting_components(agg=none) %}
+    {%- set parts = [
+        ('points', 'field_goals_attempted IS NOT NULL AND free_throws_attempted IS NOT NULL', 'ts_points'),
+        ('field_goals_attempted', 'free_throws_attempted IS NOT NULL', 'ts_field_goals_attempted'),
+        ('free_throws_attempted', 'field_goals_attempted IS NOT NULL', 'ts_free_throws_attempted'),
+        ('COALESCE(three_pointers_made, 0)', 'field_goals_attempted IS NOT NULL', 'efg_three_pointers_made'),
+    ] -%}
+    {%- for value, recorded, name in parts %}
+    {{ _nba_agg(agg, 'CASE WHEN ' ~ recorded ~ ' THEN ' ~ value ~ ' END') }} AS {{ name }}{{ ',' if not loop.last }}
+    {%- endfor %}
+{% endmacro %}
+
+{# Team-context rates (usage, assist, rebound, steal, block %), turnover % and per-100
+   inputs, over int_nba_player_game_context (needs season_start_year). Each pair is
+   null before its metric's coverage start (macros/nba_scope.sql), so no consumer
+   repeats the years. #}
+{% macro nba_player_rate_components(agg=none) %}
+    {%- set pairs = [
+        ('usage_plays', 'usage_opportunity', 'turnovers'),
+        ('assists', 'assist_opportunity', 'assists'),
+        ('rebounds_offensive', 'offensive_rebound_opportunity', 'rebound_split'),
+        ('rebounds_defensive', 'defensive_rebound_opportunity', 'rebound_split'),
+        ('rebounds_total', 'rebound_opportunity', 'total_rebounds'),
+        ('steals', 'steal_opportunity', 'steals_blocks'),
+        ('blocks', 'block_opportunity', 'steals_blocks'),
+    ] -%}
+    {%- set per_100 = ['points', 'rebounds_total', 'assists', 'steals', 'blocks', 'turnovers'] -%}
+    {%- set in_turnover_era = 'season_start_year >= ' ~ nba_coverage_start('turnovers') -%}
+    {{ _nba_agg(agg, 'CASE WHEN ' ~ in_turnover_era ~ ' AND usage_plays IS NOT NULL THEN turnovers END') }}
+        AS tov_pct_turnovers,
+    {{ _nba_agg(agg, 'CASE WHEN ' ~ in_turnover_era ~ ' THEN usage_plays END') }} AS tov_pct_plays,
+    {%- for num, opp, family in pairs %}
+    {%- set covered = 'season_start_year >= ' ~ nba_coverage_start(family) %}
+    {{ _nba_agg(agg, 'CASE WHEN ' ~ covered ~ ' AND ' ~ opp ~ ' IS NOT NULL THEN ' ~ num ~ ' END') }}
+        AS {{ opp }}_numerator,
+    {{ _nba_agg(agg, 'CASE WHEN ' ~ covered ~ ' THEN ' ~ opp ~ ' END') }} AS {{ opp }},
+    {%- endfor %}
+    {{ _nba_agg(agg, 'player_possessions') }} AS player_possessions,
+    {%- for c in per_100 %}
+    {{ _nba_agg(agg, 'CASE WHEN player_possessions IS NOT NULL THEN ' ~ c ~ ' END') }} AS per_100_{{ c }},
+    {{ _nba_agg(agg, 'CASE WHEN ' ~ c ~ ' IS NOT NULL THEN player_possessions END') }} AS per_100_{{ c }}_possessions
+    {{- ',' if not loop.last }}
+    {%- endfor %}
+{% endmacro %}

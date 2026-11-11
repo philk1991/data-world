@@ -37,8 +37,8 @@ CONTINUE_WAIT_TIMEOUT_S = 60
 INSTRUCTIONS = """\
 Answers questions from the Cube semantic layer over the data-world lake (NBA and
 Spotify marts). Work in this order:
-1. Call describe_model once to see the views (NBA: player_season, player_career,
-   team_season, game, player) and cubes, with their measures and dimensions. Read
+1. Call describe_model once to see the views (NBA: player_game, player_season,
+   player_career, team_game, team_season, league_season, game, player) and cubes, with their measures and dimensions. Read
    the descriptions: they state the grain, the default scope (player views
    default to the Regular Season until you filter game_type) and when stats were
    not recorded.

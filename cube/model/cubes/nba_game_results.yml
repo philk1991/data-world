@@ -25,7 +25,7 @@ cubes:
 
     dimensions:
       - name: game_id
-        sql: game_id
+        sql: "{CUBE}.game_id"
         type: number
         primary_key: true
         description: >
@@ -34,12 +34,12 @@ cubes:
           decoded from it.
 
       - name: game_date
-        sql: game_date
+        sql: "{CUBE}.game_date"
         type: time
         description: Calendar date of the game.
 
       - name: season_start_year
-        sql: season_start_year
+        sql: "{CUBE}.season_start_year"
         type: number
         description: >
           Calendar year the season started (e.g. 2023 for 2023-24), decoded from
@@ -52,7 +52,7 @@ cubes:
         description: Human-readable season label (e.g. "2023-24").
 
       - name: game_type
-        sql: game_type
+        sql: "{CUBE}.game_type"
         type: string
         description: >
           Type of game, decoded from the game id: Regular Season, Playoffs,
@@ -61,37 +61,37 @@ cubes:
           does not count toward the standings, is separate.
 
       - name: home_team_id
-        sql: home_team_id
+        sql: "{CUBE}.home_team_id"
         type: number
         description: Franchise identifier of the home side.
 
       - name: home_team_name
-        sql: home_team_name
+        sql: "{CUBE}.home_team_name"
         type: string
         description: Name of the home team.
 
       - name: away_team_id
-        sql: away_team_id
+        sql: "{CUBE}.away_team_id"
         type: number
         description: Franchise identifier of the away side.
 
       - name: away_team_name
-        sql: away_team_name
+        sql: "{CUBE}.away_team_name"
         type: string
         description: Name of the away team.
 
       - name: arena_name
-        sql: arena_name
+        sql: "{CUBE}.arena_name"
         type: string
         description: Name of the arena the game was played in.
 
       - name: home_team_won
-        sql: home_team_won
+        sql: "{CUBE}.home_team_won"
         type: boolean
         description: True when the home team won.
 
       - name: is_neutral_site
-        sql: is_neutral_site
+        sql: "{CUBE}.is_neutral_site"
         type: boolean
         description: >
           True for games with no real home court: the 2020 Orlando bubble
@@ -121,7 +121,7 @@ cubes:
         description: Number of games.
 
       - name: avg_point_margin
-        sql: point_margin
+        sql: "{CUBE}.point_margin"
         type: avg
         description: Average home score minus away score. Positive favours the home team.
 
@@ -136,12 +136,12 @@ cubes:
         description: Largest winning margin among matching games.
 
       - name: avg_home_score
-        sql: home_score
+        sql: "{CUBE}.home_score"
         type: avg
         description: Average final points scored by the home team.
 
       - name: avg_away_score
-        sql: away_score
+        sql: "{CUBE}.away_score"
         type: avg
         description: Average final points scored by the away team.
 
@@ -186,41 +186,41 @@ cubes:
         description: Average three pointers made per team per game across matching games (from 1979-80, when the line was introduced).
 
       - name: avg_home_assists
-        sql: home_assists
+        sql: "{CUBE}.home_assists"
         type: avg
         description: Average assists by the home team across matching games.
 
       - name: avg_away_assists
-        sql: away_assists
+        sql: "{CUBE}.away_assists"
         type: avg
         description: Average assists by the away team across matching games.
 
       - name: avg_home_rebounds
-        sql: home_rebounds_total
+        sql: "{CUBE}.home_rebounds_total"
         type: avg
         description: Average total rebounds by the home team across matching games.
 
       - name: avg_away_rebounds
-        sql: away_rebounds_total
+        sql: "{CUBE}.away_rebounds_total"
         type: avg
         description: Average total rebounds by the away team across matching games.
 
       - name: avg_home_turnovers
-        sql: home_turnovers
+        sql: "{CUBE}.home_turnovers"
         type: avg
         description: Average turnovers by the home team across matching games.
 
       - name: avg_away_turnovers
-        sql: away_turnovers
+        sql: "{CUBE}.away_turnovers"
         type: avg
         description: Average turnovers by the away team across matching games.
 
       - name: avg_home_points_in_the_paint
-        sql: home_points_in_the_paint
+        sql: "{CUBE}.home_points_in_the_paint"
         type: avg
         description: Average points in the paint by the home team across matching games.
 
       - name: avg_away_points_in_the_paint
-        sql: away_points_in_the_paint
+        sql: "{CUBE}.away_points_in_the_paint"
         type: avg
         description: Average points in the paint by the away team across matching games.

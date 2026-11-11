@@ -1,14 +1,4 @@
 {% set turnovers_start = nba_coverage_start('turnovers') %}
-{% set rate_pairs = [
-    ('usage_plays', 'usage_opportunity'),
-    ('assists', 'assist_opportunity'),
-    ('rebounds_offensive', 'offensive_rebound_opportunity'),
-    ('rebounds_defensive', 'defensive_rebound_opportunity'),
-    ('rebounds_total', 'rebound_opportunity'),
-    ('steals', 'steal_opportunity'),
-    ('blocks', 'block_opportunity')
-] %}
-{% set per_100 = ['points', 'rebounds_total', 'assists', 'steals', 'blocks', 'turnovers'] %}
 {% set oliver = {
     'min': ('minutes_played', 'team_player_minutes', 'team_player_minutes'),
     'pts': ('points', 'team_points', 'opp_points'),
@@ -72,30 +62,16 @@ stints AS (
         COUNT(*) AS games_played,
         SUM(minutes_played) AS minutes_played,
         SUM(points) AS points,
+        -- Shooting and rate inputs, matched pairs from macros/nba_metrics.sql.
+        {{ nba_shooting_components('SUM') }},
+        {{ nba_player_rate_components('SUM') }},
         -- Shooting: made shots only where the attempts were recorded.
-        SUM(points) FILTER (
-            WHERE field_goals_attempted IS NOT NULL AND free_throws_attempted IS NOT NULL
-        ) AS ts_points,
-        SUM(field_goals_attempted) FILTER (WHERE free_throws_attempted IS NOT NULL) AS ts_field_goals_attempted,
-        SUM(free_throws_attempted) FILTER (WHERE field_goals_attempted IS NOT NULL) AS ts_free_throws_attempted,
         SUM(field_goals_made) FILTER (WHERE field_goals_attempted IS NOT NULL) AS field_goals_made,
         SUM(field_goals_attempted) AS field_goals_attempted,
         SUM(three_pointers_made) FILTER (WHERE field_goals_attempted IS NOT NULL) AS three_pointers_made,
         SUM(three_pointers_attempted) FILTER (WHERE field_goals_attempted IS NOT NULL) AS three_pointers_attempted,
         SUM(free_throws_made) FILTER (WHERE field_goals_attempted IS NOT NULL) AS ft_rate_free_throws_made,
         SUM(field_goals_attempted) FILTER (WHERE free_throws_made IS NOT NULL) AS ft_rate_field_goals_attempted,
-        -- Turnover %: turnovers per play, no team context.
-        SUM(turnovers) FILTER (WHERE usage_plays IS NOT NULL) AS tov_pct_turnovers,
-        SUM(usage_plays) AS tov_pct_plays,
-        {% for num, opp in rate_pairs %}
-        SUM({{ num }}) FILTER (WHERE {{ opp }} IS NOT NULL) AS {{ opp }}_numerator,
-        SUM({{ opp }}) AS {{ opp }},
-        {% endfor %}
-        SUM(player_possessions) AS player_possessions,
-        {% for c in per_100 %}
-        SUM({{ c }}) FILTER (WHERE player_possessions IS NOT NULL) AS per_100_{{ c }},
-        SUM(player_possessions) FILTER (WHERE {{ c }} IS NOT NULL) AS per_100_{{ c }}_possessions,
-        {% endfor %}
         SUM(game_score) AS game_score,
         COUNT(game_score) AS game_score_games,
         -- Oliver rating inputs.

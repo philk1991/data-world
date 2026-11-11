@@ -64,7 +64,8 @@ SELECT
     opp_blocks,
     opp_turnovers,
     opp_fouls_personal,
-    ROUND(rated_possessions, 1) AS possessions,
+    -- Unrounded: possessions is an additive component (summed for season ratings).
+    rated_possessions AS possessions,
     ROUND({{ nba_pace('rated_possessions', 'rated_possessions', 'team_minutes') }}, 1) AS pace,
     ROUND({{ nba_rating('points', 'rated_possessions') }}, 1) AS offensive_rating,
     ROUND({{ nba_rating('opp_points', 'rated_possessions') }}, 1) AS defensive_rating,

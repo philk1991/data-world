@@ -1,0 +1,94 @@
+cubes:
+  - name: nba_league_season_baselines
+    public: false
+    sql_table: marts.nba_league_season_baselines
+    description: >
+      One row per season and game type of league totals and league-average
+      rates (non-additive: never average these across seasons; for a
+      multi-season league rate query team_game without a team filter). The
+      baseline the vs-league measures on team_game compare against.
+
+    dimensions:
+      - name: season_start_year
+        sql: "{CUBE}.season_start_year"
+        type: number
+        primary_key: true
+        public: true
+        description: >
+          Calendar year the season started (e.g. 2023 for 2023-24), decoded from
+          the game id. Follows the league's own season assignment, so the 2020
+          bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
+      - name: game_type
+        sql: "{CUBE}.game_type"
+        type: string
+        primary_key: true
+        public: true
+        description: >
+          Type of game, decoded from the game id: Regular Season, Playoffs,
+          Play-in Tournament, Preseason, All-Star Game or NBA Cup Final. NBA Cup
+          group and knockout games are Regular Season; only the Cup final, which
+          does not count toward the standings, is separate.
+      - name: season_label
+        sql: "{CUBE}.season_label"
+        type: string
+        description: Human-readable season label (e.g. "2023-24").
+      - name: team_games
+        sql: "{CUBE}.team_games"
+        type: number
+        description: Team games played (two per game).
+      - name: team_games_with_counts
+        sql: "{CUBE}.team_games_with_counts"
+        type: number
+        description: Team games with box counts; the sample for the shooting rates.
+      - name: team_games_with_full_box
+        sql: "{CUBE}.team_games_with_full_box"
+        type: number
+        description: >
+          Team games from 1973-74 with a full box on both sides; the sample for
+          possessions, ratings, pace, turnover and rebound rates.
+      - name: lg_points_per_game
+        sql: "{CUBE}.lg_points_per_game"
+        type: number
+        description: Points per team game, over every team game.
+      - name: lg_pace
+        sql: "{CUBE}.lg_pace"
+        type: number
+        description: League pace (possessions per 48 minutes) over team_games_with_full_box.
+      - name: lg_points_per_possession
+        sql: "{CUBE}.lg_points_per_possession"
+        type: number
+        description: League points per possession over team_games_with_full_box.
+      - name: lg_offensive_rating
+        sql: "{CUBE}.lg_offensive_rating"
+        type: number
+        description: >
+          League points per 100 possessions over team_games_with_full_box; also
+          the league defensive rating.
+      - name: lg_true_shooting_pct
+        sql: "{CUBE}.lg_true_shooting_pct"
+        type: number
+        description: League true shooting percentage over team_games_with_counts.
+      - name: lg_effective_field_goal_pct
+        sql: "{CUBE}.lg_effective_field_goal_pct"
+        type: number
+        description: League effective field goal percentage over team_games_with_counts.
+      - name: lg_three_point_attempt_rate
+        sql: "{CUBE}.lg_three_point_attempt_rate"
+        type: number
+        description: League 3PA / FGA over team_games_with_counts; null before 1979-80.
+      - name: lg_free_throw_rate
+        sql: "{CUBE}.lg_free_throw_rate"
+        type: number
+        description: League FT / FGA over team_games_with_counts.
+      - name: lg_turnover_pct
+        sql: "{CUBE}.lg_turnover_pct"
+        type: number
+        description: League turnovers per play over team_games_with_full_box.
+      - name: lg_offensive_rebound_pct
+        sql: "{CUBE}.lg_offensive_rebound_pct"
+        type: number
+        description: League offensive rebound share over team_games_with_full_box.
+    measures:
+      - name: count
+        type: count
+        description: "Number of season-game_type rows."

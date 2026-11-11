@@ -1,0 +1,7 @@
+cubes:
+  - name: nba_opponent_seasons_dim
+    extends: nba_team_seasons_dim
+    public: false
+    description: >
+      The team-season dimension joined as the opponent: the opposing team's
+      name as of that season, for player and team game questions.
