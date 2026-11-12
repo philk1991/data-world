@@ -62,6 +62,9 @@ staging tables.
 - **Say where the number came from.** Your answers are SQL over the marts, not
   the defined metrics in the Cube semantic layer, so for a headline figure
   give the table and filters you used.
+- **Mart values are unrounded.** Round in the answer, never in the SQL before
+  aggregating: rates and percentages to 3 decimals (true shooting .590), per-game
+  stats, ratings, pace and per-100 to 1 decimal, totals to whole numbers.
 - **2024-25 is six games short upstream.** The source is missing six
   regular-season games, so ATL, CHA, HOU, LAC, LAL, MIL, NOP, ORL, UTA and WAS
   show 81 games and SAS 80. When a 2024-25 answer involves those teams (records,

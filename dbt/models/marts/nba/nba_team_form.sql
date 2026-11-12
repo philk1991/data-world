@@ -95,22 +95,16 @@ SELECT
     w.game_type,
     w.game_date,
     w.last_10_games,
-    ROUND(
-        {{ nba_rating('w.last_10_points', 'w.last_10_possessions') }}
-        - {{ nba_rating('w.last_10_opp_points', 'w.last_10_possessions') }}, 1
-    ) AS last_10_net_rating,
+    {{ nba_rating('w.last_10_points', 'w.last_10_possessions') }}
+    - {{ nba_rating('w.last_10_opp_points', 'w.last_10_possessions') }} AS last_10_net_rating,
     w.last_20_games,
-    ROUND(
-        {{ nba_rating('w.last_20_points', 'w.last_20_possessions') }}
-        - {{ nba_rating('w.last_20_opp_points', 'w.last_20_possessions') }}, 1
-    ) AS last_20_net_rating,
+    {{ nba_rating('w.last_20_points', 'w.last_20_possessions') }}
+    - {{ nba_rating('w.last_20_opp_points', 'w.last_20_possessions') }} AS last_20_net_rating,
     w.season_games AS season_to_date_games,
-    ROUND(
-        {{ nba_rating('w.season_points', 'w.season_possessions') }}
-        - {{ nba_rating('w.season_opp_points', 'w.season_possessions') }}, 1
-    ) AS season_to_date_net_rating,
-    ROUND({{ nba_rating('l.points', 'l.possessions') }}, 1) AS league_to_date_offensive_rating,
-    ROUND({{ nba_pace('l.possessions', 'l.possessions', 'l.team_minutes') }}, 1) AS league_to_date_pace,
+    {{ nba_rating('w.season_points', 'w.season_possessions') }}
+    - {{ nba_rating('w.season_opp_points', 'w.season_possessions') }} AS season_to_date_net_rating,
+    {{ nba_rating('l.points', 'l.possessions') }} AS league_to_date_offensive_rating,
+    {{ nba_pace('l.possessions', 'l.possessions', 'l.team_minutes') }} AS league_to_date_pace,
     '{{ var("nba_metrics_version") }}' AS formula_version
 FROM
     windows w

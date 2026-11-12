@@ -32,13 +32,11 @@ SELECT
     COUNT(DISTINCT game_id) AS games_played,
     COUNT(CASE WHEN is_win THEN 1 END) AS wins,
     COUNT(CASE WHEN is_win = FALSE THEN 1 END) AS losses,
-    ROUND(
-        COUNT(CASE WHEN is_win THEN 1 END)::DOUBLE
-        / NULLIF(COUNT(CASE WHEN is_win IS NOT NULL THEN 1 END), 0), 3
-    ) AS win_pct,
-    ROUND(AVG(team_score), 1) AS avg_points_for,
-    ROUND(AVG(opponent_score), 1) AS avg_points_against,
-    ROUND(AVG(team_score - opponent_score), 1) AS avg_point_margin,
+    COUNT(CASE WHEN is_win THEN 1 END)::DOUBLE
+    / NULLIF(COUNT(CASE WHEN is_win IS NOT NULL THEN 1 END), 0) AS win_pct,
+    AVG(team_score) AS avg_points_for,
+    AVG(opponent_score) AS avg_points_against,
+    AVG(team_score - opponent_score) AS avg_point_margin,
     MIN(game_date) AS first_meeting_date,
     MAX(game_date) AS last_meeting_date
 FROM

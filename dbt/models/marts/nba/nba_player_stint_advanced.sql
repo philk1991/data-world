@@ -64,7 +64,7 @@ SELECT
     {{ nba_season_label('e.season_start_year') }} AS season_label,
     e.game_type,
     e.games_played,
-    ROUND(e.minutes_played, 1) AS total_minutes,
+    e.minutes_played AS total_minutes,
     e.points AS total_points,
     {{ nba_player_metric_columns() }},
     '{{ var("nba_metrics_version") }}' AS formula_version

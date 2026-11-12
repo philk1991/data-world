@@ -35,4 +35,5 @@ cubes:
     measures:
       - name: count
         type: count
+        format: ",.0f"
         description: Number of franchises.

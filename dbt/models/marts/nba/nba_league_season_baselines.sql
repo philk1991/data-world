@@ -82,22 +82,22 @@ SELECT
     lg_fouls_personal,
     lg_team_minutes,
     -- League possessions: a total only when every team game had a full box.
-    CASE WHEN team_games_with_full_box = team_games THEN ROUND(f_possessions, 1) END AS lg_possessions,
-    ROUND(all_points::DOUBLE / NULLIF(team_games, 0), 1) AS lg_points_per_game,
-    ROUND({{ nba_pace('f_possessions', 'f_possessions', 'f_team_minutes') }}, 1) AS lg_pace,
-    ROUND(f_points / NULLIF(f_possessions, 0), 4) AS lg_points_per_possession,
-    ROUND({{ nba_rating('f_points', 'f_possessions') }}, 1) AS lg_offensive_rating,
-    ROUND({{ nba_ts('s_points', 's_field_goals_attempted', 's_free_throws_attempted') }}, 3) AS lg_true_shooting_pct,
-    ROUND({{ nba_efg('s_field_goals_made', 's_three_pointers_made', 's_field_goals_attempted') }}, 3)
+    CASE WHEN team_games_with_full_box = team_games THEN f_possessions END AS lg_possessions,
+    all_points::DOUBLE / NULLIF(team_games, 0) AS lg_points_per_game,
+    {{ nba_pace('f_possessions', 'f_possessions', 'f_team_minutes') }} AS lg_pace,
+    f_points / NULLIF(f_possessions, 0) AS lg_points_per_possession,
+    {{ nba_rating('f_points', 'f_possessions') }} AS lg_offensive_rating,
+    {{ nba_ts('s_points', 's_field_goals_attempted', 's_free_throws_attempted') }} AS lg_true_shooting_pct,
+    {{ nba_efg('s_field_goals_made', 's_three_pointers_made', 's_field_goals_attempted') }}
         AS lg_effective_field_goal_pct,
     CASE
         WHEN season_start_year >= {{ nba_coverage_start('three_pointers') }}
-            THEN ROUND({{ nba_three_par('s_three_pointers_attempted', 's_field_goals_attempted') }}, 3)
+            THEN {{ nba_three_par('s_three_pointers_attempted', 's_field_goals_attempted') }}
     END AS lg_three_point_attempt_rate,
-    ROUND({{ nba_ft_rate('s_free_throws_made', 's_field_goals_attempted') }}, 3) AS lg_free_throw_rate,
-    ROUND({{ nba_tov_pct('f_turnovers', 'f_field_goals_attempted', 'f_free_throws_attempted') }}, 3)
+    {{ nba_ft_rate('s_free_throws_made', 's_field_goals_attempted') }} AS lg_free_throw_rate,
+    {{ nba_tov_pct('f_turnovers', 'f_field_goals_attempted', 'f_free_throws_attempted') }}
         AS lg_turnover_pct,
-    ROUND({{ nba_reb_pct('f_rebounds_offensive', 'f_opp_rebounds_defensive') }}, 3) AS lg_offensive_rebound_pct,
+    {{ nba_reb_pct('f_rebounds_offensive', 'f_opp_rebounds_defensive') }} AS lg_offensive_rebound_pct,
     '{{ var("nba_metrics_version") }}' AS formula_version
 FROM
     league

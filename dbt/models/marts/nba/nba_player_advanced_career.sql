@@ -145,22 +145,22 @@ SELECT
     p.is_center,
     b.games_played,
     COALESCE(a.games_with_advanced, 0) AS games_with_advanced,
-    ROUND(b.total_minutes / NULLIF(m.games_with_minutes, 0), 1) AS minutes_per_game,
+    b.total_minutes / NULLIF(m.games_with_minutes, 0) AS minutes_per_game,
     COALESCE(d.double_doubles, 0) AS double_doubles,
     COALESCE(d.triple_doubles, 0) AS triple_doubles,
-    ROUND(b.usage_plays / NULLIF(b.usage_opportunity, 0), 3) AS usage_pct,
-    ROUND({{ nba_ts('b.ts_points', 'b.ts_field_goals_attempted', 'b.ts_free_throws_attempted') }}, 3)
+    b.usage_plays / NULLIF(b.usage_opportunity, 0) AS usage_pct,
+    {{ nba_ts('b.ts_points', 'b.ts_field_goals_attempted', 'b.ts_free_throws_attempted') }}
         AS true_shooting_pct,
-    ROUND({{ nba_efg('b.field_goals_made', 'b.three_pointers_made', 'b.field_goals_attempted') }}, 3)
+    {{ nba_efg('b.field_goals_made', 'b.three_pointers_made', 'b.field_goals_attempted') }}
         AS effective_field_goal_pct,
-    ROUND(a.on_court_offensive_rating, 1) AS offensive_rating,
-    ROUND(a.on_court_defensive_rating, 1) AS defensive_rating,
-    ROUND(a.on_court_offensive_rating - a.on_court_defensive_rating, 1) AS net_rating,
-    ROUND(b.assists / NULLIF(b.assist_opportunity, 0), 3) AS assist_pct,
-    ROUND(b.rebounds / NULLIF(b.rebound_opportunity, 0), 3) AS rebound_pct,
-    ROUND(a.w_pie, 3) AS player_impact_estimate,
-    ROUND(100 * b.points_produced / NULLIF(b.individual_possessions, 0), 1) AS individual_offensive_rating,
-    ROUND(b.individual_defensive_rating, 1) AS individual_defensive_rating,
+    a.on_court_offensive_rating AS offensive_rating,
+    a.on_court_defensive_rating AS defensive_rating,
+    a.on_court_offensive_rating - a.on_court_defensive_rating AS net_rating,
+    b.assists / NULLIF(b.assist_opportunity, 0) AS assist_pct,
+    b.rebounds / NULLIF(b.rebound_opportunity, 0) AS rebound_pct,
+    a.w_pie AS player_impact_estimate,
+    100 * b.points_produced / NULLIF(b.individual_possessions, 0) AS individual_offensive_rating,
+    b.individual_defensive_rating,
     '{{ var("nba_metrics_version") }}' AS formula_version
 FROM
     box_career b

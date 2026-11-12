@@ -35,60 +35,74 @@ cubes:
       - name: team_games
         sql: "{CUBE}.team_games"
         type: number
+        format: ",.0f"
         description: Team games played (two per game).
       - name: team_games_with_counts
         sql: "{CUBE}.team_games_with_counts"
         type: number
+        format: ",.0f"
         description: Team games with box counts; the sample for the shooting rates.
       - name: team_games_with_full_box
         sql: "{CUBE}.team_games_with_full_box"
         type: number
+        format: ",.0f"
         description: >
           Team games from 1973-74 with a full box on both sides; the sample for
           possessions, ratings, pace, turnover and rebound rates.
       - name: lg_points_per_game
         sql: "{CUBE}.lg_points_per_game"
         type: number
+        format: ".1f"
         description: Points per team game, over every team game.
       - name: lg_pace
         sql: "{CUBE}.lg_pace"
         type: number
+        format: ".1f"
         description: League pace (possessions per 48 minutes) over team_games_with_full_box.
       - name: lg_points_per_possession
         sql: "{CUBE}.lg_points_per_possession"
         type: number
+        format: ".3f"
         description: League points per possession over team_games_with_full_box.
       - name: lg_offensive_rating
         sql: "{CUBE}.lg_offensive_rating"
         type: number
+        format: ".1f"
         description: >
           League points per 100 possessions over team_games_with_full_box; also
           the league defensive rating.
       - name: lg_true_shooting_pct
         sql: "{CUBE}.lg_true_shooting_pct"
         type: number
+        format: ".3f"
         description: League true shooting percentage over team_games_with_counts.
       - name: lg_effective_field_goal_pct
         sql: "{CUBE}.lg_effective_field_goal_pct"
         type: number
+        format: ".3f"
         description: League effective field goal percentage over team_games_with_counts.
       - name: lg_three_point_attempt_rate
         sql: "{CUBE}.lg_three_point_attempt_rate"
         type: number
+        format: ".3f"
         description: League 3PA / FGA over team_games_with_counts; null before 1979-80.
       - name: lg_free_throw_rate
         sql: "{CUBE}.lg_free_throw_rate"
         type: number
+        format: ".3f"
         description: League FT / FGA over team_games_with_counts.
       - name: lg_turnover_pct
         sql: "{CUBE}.lg_turnover_pct"
         type: number
+        format: ".3f"
         description: League turnovers per play over team_games_with_full_box.
       - name: lg_offensive_rebound_pct
         sql: "{CUBE}.lg_offensive_rebound_pct"
         type: number
+        format: ".3f"
         description: League offensive rebound share over team_games_with_full_box.
     measures:
       - name: count
         type: count
+        format: ",.0f"
         description: "Number of season-game_type rows."

@@ -120,25 +120,19 @@ enriched AS (
         END AS shot_zone_order,
         pz.field_goals_attempted,
         pz.field_goals_made,
-        ROUND(pz.field_goals_made / pz.field_goals_attempted, 3) AS field_goal_pct,
+        pz.field_goals_made / pz.field_goals_attempted AS field_goal_pct,
         pz.field_goal_points,
-        ROUND(pz.field_goal_points / pz.field_goals_attempted, 3) AS points_per_shot,
-        ROUND(
-            pz.field_goals_attempted
-            / SUM(pz.field_goals_attempted) OVER (
-                PARTITION BY pz.person_id, pz.season_start_year, pz.game_type
-            ),
-            3
+        pz.field_goal_points / pz.field_goals_attempted AS points_per_shot,
+        pz.field_goals_attempted
+        / SUM(pz.field_goals_attempted) OVER (
+            PARTITION BY pz.person_id, pz.season_start_year, pz.game_type
         ) AS share_of_attempts,
-        ROUND(pz.avg_shot_distance_ft, 1) AS avg_shot_distance_ft,
-        ROUND(lz.league_field_goals_made / lz.league_field_goals_attempted, 3) AS league_field_goal_pct,
-        ROUND(lz.league_field_goal_points / lz.league_field_goals_attempted, 3) AS league_points_per_shot,
-        ROUND(lz.league_share_of_attempts, 3) AS league_share_of_attempts,
-        ROUND(
-            pz.field_goals_made / pz.field_goals_attempted
-            - lz.league_field_goals_made / lz.league_field_goals_attempted,
-            3
-        ) AS field_goal_pct_vs_league
+        pz.avg_shot_distance_ft,
+        lz.league_field_goals_made / lz.league_field_goals_attempted AS league_field_goal_pct,
+        lz.league_field_goal_points / lz.league_field_goals_attempted AS league_points_per_shot,
+        lz.league_share_of_attempts,
+        pz.field_goals_made / pz.field_goals_attempted
+        - lz.league_field_goals_made / lz.league_field_goals_attempted AS field_goal_pct_vs_league
     FROM
         player_zones pz
     INNER JOIN

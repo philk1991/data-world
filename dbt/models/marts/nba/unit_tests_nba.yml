@@ -91,7 +91,7 @@ unit_tests:
       primary team; made shots counted only in games where the matching
       attempts were recorded; the ts_* and efg_* inputs summed over the same
       games as the stints (ts_points only where both attempt counts exist);
-      per-game averages and rounded shooting percentages; and the box-score
+      per-game averages and shooting percentages; and the box-score
       name used when the player has no bio record.
     given:
       - input: ref('stg_nba_players')
@@ -374,8 +374,8 @@ unit_tests:
       Asserts one row per ordered (team_id, opponent_team_id) pair, each from
       that team's own perspective: team 10's record against 20 and team 20's
       record against 10 are mirror images. Regular season, playoff, play-in and
-      NBA Cup final meetings all count; averages round to 1 decimal place and
-      win_pct to 3.
+      NBA Cup final meetings all count. The mart stores unrounded values; the
+      expectations are written to 1 decimal place (win_pct to 3).
     given:
       - input: ref('stg_nba_team_statistics')
         rows:
@@ -476,8 +476,8 @@ unit_tests:
     description: >
       Asserts a game with a null is_win counts in games_played and the per-game
       averages but in neither wins, losses, the home/away win split nor the
-      win_pct denominator (wins + losses). Averages round to 1 decimal place
-      and win_pct to 3.
+      win_pct denominator (wins + losses). The mart stores unrounded values;
+      the expectations are written to 1 decimal place (win_pct to 3).
     given:
       - input: ref('stg_nba_team_statistics')
         rows:

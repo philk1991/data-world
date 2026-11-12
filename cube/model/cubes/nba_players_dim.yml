@@ -198,49 +198,59 @@ cubes:
     measures:
       - name: count
         type: count
+        format: ",.0f"
         description: Number of players; apply has_competitive_games to count only players who played.
 
       - name: avg_height_inches
         sql: "{CUBE}.height_inches"
         type: avg
+        format: ".1f"
         description: Average listed height in inches across matching players.
 
       - name: avg_height_cm
         sql: "{CUBE}.height_cm"
         type: avg
+        format: ".1f"
         description: Average listed height in centimetres across matching players.
 
       - name: avg_body_weight_lbs
         sql: "{CUBE}.body_weight_lbs"
         type: avg
+        format: ".1f"
         description: Average listed weight in pounds across matching players.
 
       - name: avg_body_weight_kg
         sql: "{CUBE}.body_weight_kg"
         type: avg
+        format: ".1f"
         description: Average listed weight in kilograms across matching players.
 
       - name: avg_age_at_first_game
         sql: "{CUBE}.age_at_first_game"
         type: avg
+        format: ".1f"
         description: Average age at first competitive game across matching players with a known birth date.
 
       - name: avg_age_at_last_game
         sql: "{CUBE}.age_at_last_game"
         type: avg
+        format: ".1f"
         description: Average age at most recent competitive game across matching players with a known birth date.
 
       - name: avg_seasons_played
         sql: "{CUBE}.seasons_played"
         type: avg
+        format: ".1f"
         description: Average number of seasons with a competitive game across matching players.
 
       - name: max_seasons_played
         sql: "{CUBE}.seasons_played"
         type: max
+        format: ",.0f"
         description: Highest number of seasons with a competitive game among matching players.
 
       - name: undrafted_rate
         sql: "CASE WHEN {CUBE}.is_undrafted THEN 1.0 WHEN {CUBE}.is_undrafted = FALSE THEN 0.0 END"
         type: avg
+        format: ".3f"
         description: Share of players in this slice who went undrafted, among players whose draft status is known.

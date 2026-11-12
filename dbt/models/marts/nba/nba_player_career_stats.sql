@@ -87,7 +87,7 @@ SELECT
     c.first_game_date,
     c.last_game_date,
     c.games_played,
-    ROUND(c.total_minutes, 1) AS total_minutes,
+    c.total_minutes,
     c.total_points,
     c.total_rebounds,
     c.total_assists,
@@ -104,14 +104,14 @@ SELECT
     c.ts_field_goals_attempted,
     c.ts_free_throws_attempted,
     c.efg_three_pointers_made,
-    ROUND(c.total_points::DOUBLE / NULLIF(c.games_played, 0), 1) AS points_per_game,
-    ROUND(c.total_rebounds::DOUBLE / NULLIF(c.games_played, 0), 1) AS rebounds_per_game,
-    ROUND(c.total_assists::DOUBLE / NULLIF(c.games_played, 0), 1) AS assists_per_game,
-    ROUND(c.total_field_goals_made::DOUBLE / NULLIF(c.total_field_goals_attempted, 0), 3) AS career_field_goal_pct,
-    ROUND(c.total_three_pointers_made::DOUBLE / NULLIF(c.total_three_pointers_attempted, 0), 3)
+    c.total_points::DOUBLE / NULLIF(c.games_played, 0) AS points_per_game,
+    c.total_rebounds::DOUBLE / NULLIF(c.games_played, 0) AS rebounds_per_game,
+    c.total_assists::DOUBLE / NULLIF(c.games_played, 0) AS assists_per_game,
+    c.total_field_goals_made::DOUBLE / NULLIF(c.total_field_goals_attempted, 0) AS career_field_goal_pct,
+    c.total_three_pointers_made::DOUBLE / NULLIF(c.total_three_pointers_attempted, 0)
         AS career_three_point_pct,
-    ROUND(c.total_free_throws_made::DOUBLE / NULLIF(c.total_free_throws_attempted, 0), 3) AS career_free_throw_pct,
-    ROUND({{ nba_ts('c.ts_points', 'c.ts_field_goals_attempted', 'c.ts_free_throws_attempted') }}, 3)
+    c.total_free_throws_made::DOUBLE / NULLIF(c.total_free_throws_attempted, 0) AS career_free_throw_pct,
+    {{ nba_ts('c.ts_points', 'c.ts_field_goals_attempted', 'c.ts_free_throws_attempted') }}
         AS career_true_shooting_pct
 FROM
     career c

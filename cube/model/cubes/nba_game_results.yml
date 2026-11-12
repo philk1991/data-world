@@ -118,109 +118,131 @@ cubes:
     measures:
       - name: count
         type: count
+        format: ",.0f"
         description: Number of games.
 
       - name: avg_point_margin
         sql: "{CUBE}.point_margin"
         type: avg
+        format: ".1f"
         description: Average home score minus away score. Positive favours the home team.
 
       - name: avg_abs_point_margin
         sql: "ABS({CUBE}.point_margin)"
         type: avg
+        format: ".1f"
         description: Average winning margin regardless of side across matching games — lower means more competitive games.
 
       - name: max_abs_point_margin
         sql: "ABS({CUBE}.point_margin)"
         type: max
+        format: ".1f"
         description: Largest winning margin among matching games.
 
       - name: avg_home_score
         sql: "{CUBE}.home_score"
         type: avg
+        format: ".1f"
         description: Average final points scored by the home team.
 
       - name: avg_away_score
         sql: "{CUBE}.away_score"
         type: avg
+        format: ".1f"
         description: Average final points scored by the away team.
 
       - name: avg_total_points
         sql: "{CUBE}.home_score + {CUBE}.away_score"
         type: avg
+        format: ".1f"
         description: Average combined points scored by both teams across matching games.
 
       - name: max_total_points
         sql: "{CUBE}.home_score + {CUBE}.away_score"
         type: max
+        format: ",.0f"
         description: Highest combined points scored by both teams among matching games.
 
       - name: home_win_rate
         sql: "CASE WHEN {CUBE}.home_team_won THEN 1.0 ELSE 0.0 END"
         type: avg
+        format: ".3f"
         description: Share of games in this slice won by the home team.
 
       - name: close_game_rate
         sql: "CASE WHEN ABS({CUBE}.point_margin) <= 5 THEN 1.0 ELSE 0.0 END"
         type: avg
+        format: ".3f"
         description: Share of games in this slice decided by 5 points or fewer.
 
       - name: blowout_rate
         sql: "CASE WHEN ABS({CUBE}.point_margin) >= 20 THEN 1.0 ELSE 0.0 END"
         type: avg
+        format: ".3f"
         description: Share of games in this slice decided by 20 points or more.
 
       - name: home_field_goal_pct
         sql: "SUM(CASE WHEN {CUBE}.home_field_goals_attempted IS NOT NULL THEN {CUBE}.home_field_goals_made END) * 1.0 / NULLIF(SUM({CUBE}.home_field_goals_attempted), 0)"
         type: number
+        format: ".3f"
         description: Home teams' field goal percentage across matching games with recorded attempts — total made over total attempted, 0-1.
 
       - name: away_field_goal_pct
         sql: "SUM(CASE WHEN {CUBE}.away_field_goals_attempted IS NOT NULL THEN {CUBE}.away_field_goals_made END) * 1.0 / NULLIF(SUM({CUBE}.away_field_goals_attempted), 0)"
         type: number
+        format: ".3f"
         description: Away teams' field goal percentage across matching games with recorded attempts — total made over total attempted, 0-1.
 
       - name: avg_three_pointers_made_per_team
         sql: "({CUBE}.home_three_pointers_made + {CUBE}.away_three_pointers_made) / 2.0"
         type: avg
+        format: ".1f"
         description: Average three pointers made per team per game across matching games (from 1979-80, when the line was introduced).
 
       - name: avg_home_assists
         sql: "{CUBE}.home_assists"
         type: avg
+        format: ".1f"
         description: Average assists by the home team across matching games.
 
       - name: avg_away_assists
         sql: "{CUBE}.away_assists"
         type: avg
+        format: ".1f"
         description: Average assists by the away team across matching games.
 
       - name: avg_home_rebounds
         sql: "{CUBE}.home_rebounds_total"
         type: avg
+        format: ".1f"
         description: Average total rebounds by the home team across matching games.
 
       - name: avg_away_rebounds
         sql: "{CUBE}.away_rebounds_total"
         type: avg
+        format: ".1f"
         description: Average total rebounds by the away team across matching games.
 
       - name: avg_home_turnovers
         sql: "{CUBE}.home_turnovers"
         type: avg
+        format: ".1f"
         description: Average turnovers by the home team across matching games.
 
       - name: avg_away_turnovers
         sql: "{CUBE}.away_turnovers"
         type: avg
+        format: ".1f"
         description: Average turnovers by the away team across matching games.
 
       - name: avg_home_points_in_the_paint
         sql: "{CUBE}.home_points_in_the_paint"
         type: avg
+        format: ".1f"
         description: Average points in the paint by the home team across matching games.
 
       - name: avg_away_points_in_the_paint
         sql: "{CUBE}.away_points_in_the_paint"
         type: avg
+        format: ".1f"
         description: Average points in the paint by the away team across matching games.

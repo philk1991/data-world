@@ -48,7 +48,9 @@ Spotify marts). Work in this order:
 3. Query one view at a time; outside the views, only combine members from cubes
    that share a join_group.
 4. When answering, state the filters you applied (season, game type) and any
-   data-coverage caveat from the descriptions.
+   data-coverage caveat from the descriptions. Values come back unrounded:
+   display them at the member's format (a d3 specifier: ".3f" for rates such as
+   true shooting, ".1f" for per-game stats and ratings).
 """
 
 QUERY_FORMAT = """\
@@ -108,6 +110,9 @@ def _member(member: dict[str, Any]) -> dict[str, Any]:
         entry["type"] = member["type"]
     if member.get("description"):
         entry["description"] = member["description"]
+    fmt = member.get("format")  # e.g. {"type": "custom-numeric", "value": ".3f"}
+    if fmt:
+        entry["format"] = fmt.get("value", fmt) if isinstance(fmt, dict) else fmt
     return entry
 
 

@@ -84,32 +84,30 @@ SELECT
     b.fouls_personal,
     b.field_goals_made,
     b.field_goals_attempted,
-    ROUND(b.field_goals_made / NULLIF(b.field_goals_attempted, 0), 3) AS field_goal_pct,
+    b.field_goals_made / NULLIF(b.field_goals_attempted, 0) AS field_goal_pct,
     b.three_pointers_made,
     b.three_pointers_attempted,
-    ROUND(b.three_pointers_made / NULLIF(b.three_pointers_attempted, 0), 3) AS three_point_pct,
+    b.three_pointers_made / NULLIF(b.three_pointers_attempted, 0) AS three_point_pct,
     b.free_throws_made,
     b.free_throws_attempted,
-    ROUND(b.free_throws_made / NULLIF(b.free_throws_attempted, 0), 3) AS free_throw_pct,
+    b.free_throws_made / NULLIF(b.free_throws_attempted, 0) AS free_throw_pct,
     b.plus_minus_points,
-    ROUND(
-        {{
-            nba_game_score(
-                'b.points', 'b.field_goals_made', 'b.field_goals_attempted', 'b.free_throws_made',
-                'b.free_throws_attempted', 'b.rebounds_offensive', 'b.rebounds_defensive', 'b.steals',
-                'b.assists', 'b.blocks', 'b.fouls_personal', 'b.turnovers'
-            )
-        }}, 1
-    ) AS game_score,
-    ROUND(a.usage_percentage, 3) AS usage_pct,
-    ROUND(a.true_shooting_percentage, 3) AS true_shooting_pct,
-    ROUND(a.effective_field_goal_percentage, 3) AS effective_field_goal_pct,
-    ROUND(a.offensive_rating, 1) AS offensive_rating,
-    ROUND(a.defensive_rating, 1) AS defensive_rating,
-    ROUND(a.net_rating, 1) AS net_rating,
-    ROUND(a.assist_percentage, 3) AS assist_pct,
-    ROUND(a.rebound_percentage, 3) AS rebound_pct,
-    ROUND(a.player_impact_estimate, 3) AS player_impact_estimate,
+    {{
+        nba_game_score(
+            'b.points', 'b.field_goals_made', 'b.field_goals_attempted', 'b.free_throws_made',
+            'b.free_throws_attempted', 'b.rebounds_offensive', 'b.rebounds_defensive', 'b.steals',
+            'b.assists', 'b.blocks', 'b.fouls_personal', 'b.turnovers'
+        )
+    }} AS game_score,
+    a.usage_percentage AS usage_pct,
+    a.true_shooting_percentage AS true_shooting_pct,
+    a.effective_field_goal_percentage AS effective_field_goal_pct,
+    a.offensive_rating,
+    a.defensive_rating,
+    a.net_rating,
+    a.assist_percentage AS assist_pct,
+    a.rebound_percentage AS rebound_pct,
+    a.player_impact_estimate,
     b.is_double_double,
     b.is_triple_double,
     s.* EXCLUDE (game_id, person_id),

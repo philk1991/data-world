@@ -50,16 +50,12 @@ SELECT
     away_wins,
     total_points_for,
     total_points_against,
-    ROUND(wins::DOUBLE / NULLIF(wins + losses, 0), 3) AS win_pct,
-    ROUND(total_points_for::DOUBLE / NULLIF(games_played, 0), 1) AS points_for_per_game,
-    ROUND(
-        total_points_against::DOUBLE
-        / NULLIF(games_played, 0), 1
-    ) AS points_against_per_game,
-    ROUND(
-        (total_points_for - total_points_against)::DOUBLE
-        / NULLIF(games_played, 0), 1
-    ) AS point_margin_per_game
+    wins::DOUBLE / NULLIF(wins + losses, 0) AS win_pct,
+    total_points_for::DOUBLE / NULLIF(games_played, 0) AS points_for_per_game,
+    total_points_against::DOUBLE
+    / NULLIF(games_played, 0) AS points_against_per_game,
+    (total_points_for - total_points_against)::DOUBLE
+    / NULLIF(games_played, 0) AS point_margin_per_game
 FROM
     team_season
 ORDER BY

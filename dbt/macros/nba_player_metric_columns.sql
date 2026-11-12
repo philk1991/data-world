@@ -19,40 +19,39 @@
         ('steal_pct', 'steal_opportunity', nba_coverage_start('steals_blocks')),
         ('block_pct', 'block_opportunity', nba_coverage_start('steals_blocks'))
     ] -%}
-    ROUND({{ nba_ts('ts_points', 'ts_field_goals_attempted', 'ts_free_throws_attempted') }}, 3) AS true_shooting_pct,
-    ROUND({{ nba_efg('field_goals_made', 'three_pointers_made', 'field_goals_attempted') }}, 3)
+    {{ nba_ts('ts_points', 'ts_field_goals_attempted', 'ts_free_throws_attempted') }} AS true_shooting_pct,
+    {{ nba_efg('field_goals_made', 'three_pointers_made', 'field_goals_attempted') }}
         AS effective_field_goal_pct,
     CASE
         WHEN season_start_year >= {{ nba_coverage_start('three_pointers') }}
-            THEN ROUND({{ nba_three_par('three_pointers_attempted', 'field_goals_attempted') }}, 3)
+            THEN {{ nba_three_par('three_pointers_attempted', 'field_goals_attempted') }}
     END AS three_point_attempt_rate,
-    ROUND({{ nba_ft_rate('ft_rate_free_throws_made', 'ft_rate_field_goals_attempted') }}, 3) AS free_throw_rate,
+    {{ nba_ft_rate('ft_rate_free_throws_made', 'ft_rate_field_goals_attempted') }} AS free_throw_rate,
     -- Points above what league-average true shooting would score on the same attempts.
-    ROUND(
-        ts_points - 2 * lg_true_shooting_pct * (ts_field_goals_attempted + 0.44 * ts_free_throws_attempted), 1
-    ) AS true_shooting_points_added,
+    ts_points - 2 * lg_true_shooting_pct * (ts_field_goals_attempted + 0.44 * ts_free_throws_attempted)
+        AS true_shooting_points_added,
     CASE
         WHEN season_start_year >= {{ nba_coverage_start('turnovers') }}
-            THEN ROUND(usage_opportunity_numerator / NULLIF(usage_opportunity, 0), 3)
+            THEN usage_opportunity_numerator / NULLIF(usage_opportunity, 0)
     END AS usage_pct,
     CASE
         WHEN season_start_year >= {{ nba_coverage_start('turnovers') }}
-            THEN ROUND(tov_pct_turnovers::DOUBLE / NULLIF(tov_pct_plays, 0), 3)
+            THEN tov_pct_turnovers::DOUBLE / NULLIF(tov_pct_plays, 0)
     END AS turnover_pct,
     {% for name, opp, start in rates %}
     CASE
         WHEN season_start_year >= {{ start }}
-            THEN ROUND({{ opp }}_numerator / NULLIF({{ opp }}, 0), 3)
+            THEN {{ opp }}_numerator / NULLIF({{ opp }}, 0)
     END AS {{ name }},
     {% endfor %}
-    ROUND(player_possessions, 1) AS player_possessions,
+    player_possessions,
     {% for c in ['points', 'rebounds_total', 'assists', 'steals', 'blocks', 'turnovers'] %}
-    ROUND(100 * per_100_{{ c }} / NULLIF(per_100_{{ c }}_possessions, 0), 1) AS {{ c }}_per_100,
+    100 * per_100_{{ c }} / NULLIF(per_100_{{ c }}_possessions, 0) AS {{ c }}_per_100,
     {% endfor %}
-    ROUND(game_score / NULLIF(game_score_games, 0), 1) AS game_score_per_game,
+    game_score / NULLIF(game_score_games, 0) AS game_score_per_game,
     rating_games,
-    ROUND(points_produced, 1) AS points_produced,
-    ROUND(individual_possessions, 1) AS individual_possessions,
-    ROUND(100 * points_produced / NULLIF(individual_possessions, 0), 1) AS individual_offensive_rating,
-    ROUND(individual_defensive_rating, 1) AS individual_defensive_rating
+    points_produced,
+    individual_possessions,
+    100 * points_produced / NULLIF(individual_possessions, 0) AS individual_offensive_rating,
+    individual_defensive_rating
 {% endmacro %}

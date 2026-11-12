@@ -161,7 +161,7 @@ SELECT
     END AS is_ft_qualified,
     s.first_game_date,
     s.last_game_date,
-    ROUND(s.total_minutes, 1) AS total_minutes,
+    s.total_minutes,
     s.total_points,
     s.total_rebounds,
     s.total_assists,
@@ -178,12 +178,12 @@ SELECT
     s.ts_field_goals_attempted,
     s.ts_free_throws_attempted,
     s.efg_three_pointers_made,
-    ROUND(s.total_points::DOUBLE / NULLIF(s.games_played, 0), 1) AS points_per_game,
-    ROUND(s.total_rebounds::DOUBLE / NULLIF(s.games_played, 0), 1) AS rebounds_per_game,
-    ROUND(s.total_assists::DOUBLE / NULLIF(s.games_played, 0), 1) AS assists_per_game,
-    ROUND(s.total_field_goals_made::DOUBLE / NULLIF(s.total_field_goals_attempted, 0), 3) AS field_goal_pct,
-    ROUND(s.total_three_pointers_made::DOUBLE / NULLIF(s.total_three_pointers_attempted, 0), 3) AS three_point_pct,
-    ROUND(s.total_free_throws_made::DOUBLE / NULLIF(s.total_free_throws_attempted, 0), 3) AS free_throw_pct
+    s.total_points::DOUBLE / NULLIF(s.games_played, 0) AS points_per_game,
+    s.total_rebounds::DOUBLE / NULLIF(s.games_played, 0) AS rebounds_per_game,
+    s.total_assists::DOUBLE / NULLIF(s.games_played, 0) AS assists_per_game,
+    s.total_field_goals_made::DOUBLE / NULLIF(s.total_field_goals_attempted, 0) AS field_goal_pct,
+    s.total_three_pointers_made::DOUBLE / NULLIF(s.total_three_pointers_attempted, 0) AS three_point_pct,
+    s.total_free_throws_made::DOUBLE / NULLIF(s.total_free_throws_attempted, 0) AS free_throw_pct
 FROM
     season_totals s
 LEFT JOIN

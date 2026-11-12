@@ -120,26 +120,20 @@ enriched AS (
         ps.game_type,
         ps.clutch_games,
         ps.clutch_points,
-        ROUND(ps.clutch_points / ps.clutch_games, 2) AS clutch_points_per_game,
+        ps.clutch_points / ps.clutch_games AS clutch_points_per_game,
         ps.clutch_field_goals_made,
         ps.clutch_field_goals_attempted,
-        ROUND(ps.clutch_field_goals_made / NULLIF(ps.clutch_field_goals_attempted, 0), 3) AS clutch_field_goal_pct,
+        ps.clutch_field_goals_made / NULLIF(ps.clutch_field_goals_attempted, 0) AS clutch_field_goal_pct,
         ps.clutch_three_pointers_made,
         ps.clutch_three_pointers_attempted,
-        ROUND(
-            ps.clutch_three_pointers_made / NULLIF(ps.clutch_three_pointers_attempted, 0), 3
-        ) AS clutch_three_point_pct,
+        ps.clutch_three_pointers_made / NULLIF(ps.clutch_three_pointers_attempted, 0) AS clutch_three_point_pct,
         ps.clutch_free_throws_made,
         ps.clutch_free_throws_attempted,
-        ROUND(ps.clutch_free_throws_made / NULLIF(ps.clutch_free_throws_attempted, 0), 3) AS clutch_free_throw_pct,
-        ROUND(
-            ps.clutch_points
-            / NULLIF(2 * (ps.clutch_field_goals_attempted + 0.44 * ps.clutch_free_throws_attempted), 0),
-            3
-        ) AS clutch_true_shooting_pct,
-        ROUND(
-            ps.points / NULLIF(2 * (ps.field_goals_attempted + 0.44 * ps.free_throws_attempted), 0), 3
-        ) AS true_shooting_pct,
+        ps.clutch_free_throws_made / NULLIF(ps.clutch_free_throws_attempted, 0) AS clutch_free_throw_pct,
+        ps.clutch_points
+        / NULLIF(2 * (ps.clutch_field_goals_attempted + 0.44 * ps.clutch_free_throws_attempted), 0)
+            AS clutch_true_shooting_pct,
+        ps.points / NULLIF(2 * (ps.field_goals_attempted + 0.44 * ps.free_throws_attempted), 0) AS true_shooting_pct,
         ps.clutch_rebounds,
         ps.clutch_turnovers,
         ps.clutch_go_ahead_field_goals

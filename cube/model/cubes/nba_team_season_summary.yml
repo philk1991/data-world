@@ -54,74 +54,89 @@ cubes:
     measures:
       - name: count
         type: count
+        format: ",.0f"
         description: Number of team-seasons.
 
       - name: sum_games_played
         sql: "{CUBE}.games_played"
         type: sum
+        format: ",.0f"
         description: Total regular season games played across matching team-seasons.
 
       - name: sum_wins
         sql: "{CUBE}.wins"
         type: sum
+        format: ",.0f"
         description: Total regular season wins across matching team-seasons.
 
       - name: sum_losses
         sql: "{CUBE}.losses"
         type: sum
+        format: ",.0f"
         description: Total regular season losses across matching team-seasons.
 
       - name: sum_home_wins
         sql: "{CUBE}.home_wins"
         type: sum
+        format: ",.0f"
         description: Total home wins across matching team-seasons.
 
       - name: sum_away_wins
         sql: "{CUBE}.away_wins"
         type: sum
+        format: ",.0f"
         description: Total away wins across matching team-seasons.
 
       - name: max_wins
         sql: "{CUBE}.wins"
         type: max
+        format: ",.0f"
         description: Most wins in a single season among matching team-seasons.
 
       - name: win_pct
         sql: "{sum_wins} * 1.0 / NULLIF({sum_wins} + {sum_losses}, 0)"
         type: number
+        format: ".3f"
         description: Wins divided by decided games across matching team-seasons, 0-1.
 
       - name: max_win_pct
         sql: "{CUBE}.win_pct"
         type: max
+        format: ".3f"
         description: Best single-season win percentage among matching team-seasons.
 
       - name: min_win_pct
         sql: "{CUBE}.win_pct"
         type: min
+        format: ".3f"
         description: Worst single-season win percentage among matching team-seasons.
 
       - name: away_win_share
         sql: "{sum_away_wins} * 1.0 / NULLIF({sum_wins}, 0)"
         type: number
+        format: ".3f"
         description: Share of wins that came on the road across matching team-seasons, 0-1.
 
       - name: points_for_per_game
         sql: "SUM({CUBE}.total_points_for) * 1.0 / NULLIF({sum_games_played}, 0)"
         type: number
+        format: ".1f"
         description: Points scored per game across matching team-seasons — total points over total games.
 
       - name: points_against_per_game
         sql: "SUM({CUBE}.total_points_against) * 1.0 / NULLIF({sum_games_played}, 0)"
         type: number
+        format: ".1f"
         description: Points conceded per game across matching team-seasons — total points over total games.
 
       - name: point_margin_per_game
         sql: "SUM({CUBE}.total_points_for - {CUBE}.total_points_against) * 1.0 / NULLIF({sum_games_played}, 0)"
         type: number
+        format: ".1f"
         description: Scoring margin per game (points for minus against) across matching team-seasons.
 
       - name: max_point_margin_per_game
         sql: "{CUBE}.point_margin_per_game"
         type: max
+        format: ".1f"
         description: Best single-season scoring margin per game among matching team-seasons.

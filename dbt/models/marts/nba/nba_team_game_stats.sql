@@ -64,33 +64,31 @@ SELECT
     opp_blocks,
     opp_turnovers,
     opp_fouls_personal,
-    -- Unrounded: possessions is an additive component (summed for season ratings).
+    -- An additive component: season and league ratings sum it.
     rated_possessions AS possessions,
-    ROUND({{ nba_pace('rated_possessions', 'rated_possessions', 'team_minutes') }}, 1) AS pace,
-    ROUND({{ nba_rating('points', 'rated_possessions') }}, 1) AS offensive_rating,
-    ROUND({{ nba_rating('opp_points', 'rated_possessions') }}, 1) AS defensive_rating,
-    ROUND(
-        {{ nba_rating('points', 'rated_possessions') }} - {{ nba_rating('opp_points', 'rated_possessions') }}, 1
-    ) AS net_rating,
-    ROUND({{ nba_efg('field_goals_made', 'three_pointers_made', 'field_goals_attempted') }}, 3)
+    {{ nba_pace('rated_possessions', 'rated_possessions', 'team_minutes') }} AS pace,
+    {{ nba_rating('points', 'rated_possessions') }} AS offensive_rating,
+    {{ nba_rating('opp_points', 'rated_possessions') }} AS defensive_rating,
+    {{ nba_rating('points', 'rated_possessions') }} - {{ nba_rating('opp_points', 'rated_possessions') }} AS net_rating,
+    {{ nba_efg('field_goals_made', 'three_pointers_made', 'field_goals_attempted') }}
         AS effective_field_goal_pct,
-    ROUND({{ nba_tov_pct('turnovers', 'field_goals_attempted', 'free_throws_attempted') }}, 3) AS turnover_pct,
-    ROUND({{ nba_reb_pct('rebounds_offensive', 'opp_rebounds_defensive') }}, 3) AS offensive_rebound_pct,
-    ROUND({{ nba_ft_rate('free_throws_made', 'field_goals_attempted') }}, 3) AS free_throw_rate,
-    ROUND({{ nba_efg('opp_field_goals_made', 'opp_three_pointers_made', 'opp_field_goals_attempted') }}, 3)
+    {{ nba_tov_pct('turnovers', 'field_goals_attempted', 'free_throws_attempted') }} AS turnover_pct,
+    {{ nba_reb_pct('rebounds_offensive', 'opp_rebounds_defensive') }} AS offensive_rebound_pct,
+    {{ nba_ft_rate('free_throws_made', 'field_goals_attempted') }} AS free_throw_rate,
+    {{ nba_efg('opp_field_goals_made', 'opp_three_pointers_made', 'opp_field_goals_attempted') }}
         AS opp_effective_field_goal_pct,
-    ROUND({{ nba_tov_pct('opp_turnovers', 'opp_field_goals_attempted', 'opp_free_throws_attempted') }}, 3)
+    {{ nba_tov_pct('opp_turnovers', 'opp_field_goals_attempted', 'opp_free_throws_attempted') }}
         AS opp_turnover_pct,
-    ROUND({{ nba_reb_pct('rebounds_defensive', 'opp_rebounds_offensive') }}, 3) AS defensive_rebound_pct,
-    ROUND({{ nba_ft_rate('opp_free_throws_made', 'opp_field_goals_attempted') }}, 3) AS opp_free_throw_rate,
-    ROUND({{ nba_reb_pct('rebounds_total', 'opp_rebounds_total') }}, 3) AS rebound_pct,
+    {{ nba_reb_pct('rebounds_defensive', 'opp_rebounds_offensive') }} AS defensive_rebound_pct,
+    {{ nba_ft_rate('opp_free_throws_made', 'opp_field_goals_attempted') }} AS opp_free_throw_rate,
+    {{ nba_reb_pct('rebounds_total', 'opp_rebounds_total') }} AS rebound_pct,
     -- The three-point line arrived in 1979-80; the rate is null, not 0, before it.
     CASE
         WHEN season_start_year >= {{ nba_coverage_start('three_pointers') }}
-            THEN ROUND({{ nba_three_par('three_pointers_attempted', 'field_goals_attempted') }}, 3)
+            THEN {{ nba_three_par('three_pointers_attempted', 'field_goals_attempted') }}
     END AS three_point_attempt_rate,
-    ROUND({{ nba_ast_rate('assists', 'field_goals_made') }}, 3) AS assist_pct,
-    ROUND({{ nba_ts('points', 'field_goals_attempted', 'free_throws_attempted') }}, 3) AS true_shooting_pct,
+    {{ nba_ast_rate('assists', 'field_goals_made') }} AS assist_pct,
+    {{ nba_ts('points', 'field_goals_attempted', 'free_throws_attempted') }} AS true_shooting_pct,
     counts_source,
     has_full_box,
     '{{ var("nba_metrics_version") }}' AS formula_version

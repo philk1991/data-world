@@ -114,7 +114,7 @@ SELECT
     ss.team_games_played,
     ss.is_qualified,
     ss.is_fg_qualified,
-    ROUND(e.minutes_played, 1) AS total_minutes,
+    e.minutes_played AS total_minutes,
     e.points AS total_points,
     {{ nba_player_metric_columns() }},
     '{{ var("nba_metrics_version") }}' AS formula_version

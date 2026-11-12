@@ -205,234 +205,281 @@ cubes:
     measures:
       - name: count
         type: count
+        format: ",.0f"
         description: "Number of player-games (games played) across matching rows."
 
       - name: count_players
         sql: "{CUBE}.person_id"
         type: count_distinct
+        format: ",.0f"
         description: "Number of distinct players across matching rows."
 
       - name: wins
         sql: "CASE WHEN {CUBE}.is_win THEN 1 END"
         type: count
+        format: ",.0f"
         description: "Games the player's team won."
 
       - name: win_pct
         sql: "{wins} * 1.0 / NULLIF({count}, 0)"
         type: number
+        format: ".3f"
         description: "Share of the player's games that their team won, 0-1."
 
       - name: count_double_doubles
         sql: "CASE WHEN {CUBE}.is_double_double THEN 1 END"
         type: count
+        format: ",.0f"
         description: "Double-doubles (10+ in two of points, rebounds, assists, steals, blocks)."
 
       - name: count_triple_doubles
         sql: "CASE WHEN {CUBE}.is_triple_double THEN 1 END"
         type: count
+        format: ",.0f"
         description: "Triple-doubles (10+ in three of points, rebounds, assists, steals, blocks)."
 
       - name: sum_minutes
         sql: "{CUBE}.minutes_played"
         type: sum
+        format: ",.0f"
         description: "Total minutes played (not recorded before 1964-65)."
 
       - name: sum_points
         sql: "{CUBE}.points"
         type: sum
+        format: ",.0f"
         description: "Total points."
 
       - name: sum_rebounds
         sql: "{CUBE}.rebounds_total"
         type: sum
+        format: ",.0f"
         description: "Total rebounds."
 
       - name: sum_assists
         sql: "{CUBE}.assists"
         type: sum
+        format: ",.0f"
         description: "Total assists."
 
       - name: sum_steals
         sql: "{CUBE}.steals"
         type: sum
+        format: ",.0f"
         description: "Total steals (1973-74 on)."
 
       - name: sum_blocks
         sql: "{CUBE}.blocks"
         type: sum
+        format: ",.0f"
         description: "Total blocks (1973-74 on)."
 
       - name: sum_turnovers
         sql: "{CUBE}.turnovers"
         type: sum
+        format: ",.0f"
         description: "Total turnovers (1977-78 on)."
 
       - name: max_points
         sql: "{CUBE}.points"
         type: max
+        format: ",.0f"
         description: "Most points in one game across matching rows (grouped by player, their single-game high)."
 
       - name: sum_field_goals_made
         sql: "CASE WHEN {CUBE}.field_goals_attempted IS NOT NULL THEN {CUBE}.field_goals_made END"
         type: sum
+        format: ",.0f"
         description: "Field goals made, counted only in games where the attempts were recorded."
 
       - name: sum_field_goals_attempted
         sql: "{CUBE}.field_goals_attempted"
         type: sum
+        format: ",.0f"
         description: "Field goals attempted."
 
       - name: sum_three_pointers_made
         sql: "CASE WHEN {CUBE}.three_pointers_attempted IS NOT NULL THEN {CUBE}.three_pointers_made END"
         type: sum
+        format: ",.0f"
         description: "Three pointers made, counted only in games where the attempts were recorded."
 
       - name: sum_three_pointers_attempted
         sql: "{CUBE}.three_pointers_attempted"
         type: sum
+        format: ",.0f"
         description: "Three pointers attempted."
 
       - name: sum_free_throws_made
         sql: "CASE WHEN {CUBE}.free_throws_attempted IS NOT NULL THEN {CUBE}.free_throws_made END"
         type: sum
+        format: ",.0f"
         description: "Free throws made, counted only in games where the attempts were recorded."
 
       - name: sum_free_throws_attempted
         sql: "{CUBE}.free_throws_attempted"
         type: sum
+        format: ",.0f"
         description: "Free throws attempted."
 
       - name: points_per_game
         sql: "{sum_points} * 1.0 / NULLIF({count}, 0)"
         type: number
+        format: ".1f"
         description: "Points per game: total points over games played."
 
       - name: minutes_per_game
         sql: "SUM({CUBE}.minutes_played) * 1.0 / NULLIF(COUNT({CUBE}.minutes_played), 0)"
         type: number
+        format: ".1f"
         description: "Minutes per game, over the games where minutes were recorded."
 
       - name: rebounds_per_game
         sql: "SUM({CUBE}.rebounds_total) * 1.0 / NULLIF(COUNT({CUBE}.rebounds_total), 0)"
         type: number
+        format: ".1f"
         description: "Rebounds per game, over the games where rebounds were recorded."
 
       - name: assists_per_game
         sql: "SUM({CUBE}.assists) * 1.0 / NULLIF(COUNT({CUBE}.assists), 0)"
         type: number
+        format: ".1f"
         description: "Assists per game, over the games where assists were recorded."
 
       - name: steals_per_game
         sql: "SUM({CUBE}.steals) * 1.0 / NULLIF(COUNT({CUBE}.steals), 0)"
         type: number
+        format: ".1f"
         description: "Steals per game, over the games where steals were recorded."
 
       - name: blocks_per_game
         sql: "SUM({CUBE}.blocks) * 1.0 / NULLIF(COUNT({CUBE}.blocks), 0)"
         type: number
+        format: ".1f"
         description: "Blocks per game, over the games where blocks were recorded."
 
       - name: turnovers_per_game
         sql: "SUM({CUBE}.turnovers) * 1.0 / NULLIF(COUNT({CUBE}.turnovers), 0)"
         type: number
+        format: ".1f"
         description: "Turnovers per game, over the games where turnovers were recorded."
 
       - name: field_goal_pct
         sql: "{sum_field_goals_made} * 1.0 / NULLIF({sum_field_goals_attempted}, 0)"
         type: number
+        format: ".3f"
         description: "Field goal percentage, total made over total attempted, 0-1."
 
       - name: three_point_pct
         sql: "{sum_three_pointers_made} * 1.0 / NULLIF({sum_three_pointers_attempted}, 0)"
         type: number
+        format: ".3f"
         description: "Three point percentage, total made over total attempted, 0-1."
 
       - name: free_throw_pct
         sql: "{sum_free_throws_made} * 1.0 / NULLIF({sum_free_throws_attempted}, 0)"
         type: number
+        format: ".3f"
         description: "Free throw percentage, total made over total attempted, 0-1."
 
       - name: effective_field_goal_pct
         sql: "(SUM(CASE WHEN {CUBE}.field_goals_attempted IS NOT NULL THEN {CUBE}.field_goals_made END) + 0.5 * SUM({CUBE}.efg_three_pointers_made)) / NULLIF(SUM({CUBE}.field_goals_attempted), 0)"
         type: number
+        format: ".3f"
         description: "Field goal percentage adjusted for the extra value of a three, (FGM + 0.5 × 3PM) / FGA, over games with field goal attempts recorded, 0-1."
 
       - name: true_shooting_pct
         sql: "SUM({CUBE}.ts_points) / NULLIF(2 * (SUM({CUBE}.ts_field_goals_attempted) + 0.44 * SUM({CUBE}.ts_free_throws_attempted)), 0)"
         type: number
+        format: ".3f"
         description: "Shooting efficiency accounting for twos, threes and free throws, PTS / (2 × (FGA + 0.44 × FTA)), over games with both attempt counts recorded, 0-1."
 
       - name: usage_pct
         sql: "SUM({CUBE}.usage_opportunity_numerator) / NULLIF(SUM({CUBE}.usage_opportunity), 0)"
         type: number
+        format: ".3f"
         description: "Share of team plays the player used while on the floor (1977-78 on), 0-1."
 
       - name: assist_pct
         sql: "SUM({CUBE}.assist_opportunity_numerator) / NULLIF(SUM({CUBE}.assist_opportunity), 0)"
         type: number
+        format: ".3f"
         description: "Share of teammates' field goals the player assisted while on the floor (1964-65 on), 0-1."
 
       - name: offensive_rebound_pct
         sql: "SUM({CUBE}.offensive_rebound_opportunity_numerator) / NULLIF(SUM({CUBE}.offensive_rebound_opportunity), 0)"
         type: number
+        format: ".3f"
         description: "Share of available offensive rebounds the player grabbed while on the floor (1973-74 on), 0-1."
 
       - name: defensive_rebound_pct
         sql: "SUM({CUBE}.defensive_rebound_opportunity_numerator) / NULLIF(SUM({CUBE}.defensive_rebound_opportunity), 0)"
         type: number
+        format: ".3f"
         description: "Share of available defensive rebounds the player grabbed while on the floor (1973-74 on), 0-1."
 
       - name: rebound_pct
         sql: "SUM({CUBE}.rebound_opportunity_numerator) / NULLIF(SUM({CUBE}.rebound_opportunity), 0)"
         type: number
+        format: ".3f"
         description: "Share of available rebounds the player grabbed while on the floor (1964-65 on), 0-1."
 
       - name: steal_pct
         sql: "SUM({CUBE}.steal_opportunity_numerator) / NULLIF(SUM({CUBE}.steal_opportunity), 0)"
         type: number
+        format: ".3f"
         description: "Steals per opponent possession while on the floor (1973-74 on), 0-1."
 
       - name: block_pct
         sql: "SUM({CUBE}.block_opportunity_numerator) / NULLIF(SUM({CUBE}.block_opportunity), 0)"
         type: number
+        format: ".3f"
         description: "Share of opponent two-point attempts the player blocked while on the floor (1973-74 on), 0-1."
 
       - name: turnover_pct
         sql: "SUM({CUBE}.tov_pct_turnovers) * 1.0 / NULLIF(SUM({CUBE}.tov_pct_plays), 0)"
         type: number
+        format: ".3f"
         description: "Turnovers per play used, TOV / (FGA + 0.44 × FTA + TOV) (1977-78 on), 0-1."
 
       - name: sum_player_possessions
         sql: "{CUBE}.player_possessions"
         type: sum
+        format: ",.0f"
         description: "Team possessions while the player was on the floor (1973-74 on)."
 
       - name: points_per_100
         sql: "100.0 * SUM({CUBE}.per_100_points) / NULLIF(SUM({CUBE}.per_100_points_possessions), 0)"
         type: number
+        format: ".1f"
         description: "Points per 100 possessions the player was on the floor for (1973-74 on)."
 
       - name: rebounds_per_100
         sql: "100.0 * SUM({CUBE}.per_100_rebounds_total) / NULLIF(SUM({CUBE}.per_100_rebounds_total_possessions), 0)"
         type: number
+        format: ".1f"
         description: "Rebounds per 100 possessions the player was on the floor for (1973-74 on)."
 
       - name: assists_per_100
         sql: "100.0 * SUM({CUBE}.per_100_assists) / NULLIF(SUM({CUBE}.per_100_assists_possessions), 0)"
         type: number
+        format: ".1f"
         description: "Assists per 100 possessions the player was on the floor for (1973-74 on)."
 
       - name: steals_per_100
         sql: "100.0 * SUM({CUBE}.per_100_steals) / NULLIF(SUM({CUBE}.per_100_steals_possessions), 0)"
         type: number
+        format: ".1f"
         description: "Steals per 100 possessions the player was on the floor for (1973-74 on)."
 
       - name: blocks_per_100
         sql: "100.0 * SUM({CUBE}.per_100_blocks) / NULLIF(SUM({CUBE}.per_100_blocks_possessions), 0)"
         type: number
+        format: ".1f"
         description: "Blocks per 100 possessions the player was on the floor for (1973-74 on)."
 
       - name: turnovers_per_100
         sql: "100.0 * SUM({CUBE}.per_100_turnovers) / NULLIF(SUM({CUBE}.per_100_turnovers_possessions), 0)"
         type: number
+        format: ".1f"
         description: "Turnovers per 100 possessions the player was on the floor for (1973-74 on)."
