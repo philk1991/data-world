@@ -10,6 +10,8 @@ scope and which table answers which question.
 
 One row per NBA game combining game metadata and result with both teams' traditional box score lines, pivoted onto a home/away axis. Box score columns are null for older games where team statistics were not recorded. Ordered by game_date descending.
 
+**Additive:** yes. Sum the counts and components across rows and recompute rates from them; never sum or average a rate column.
+
 ## nba_game_types_dim
 
 **Grain:** one row per game_type.
@@ -24,6 +26,8 @@ One row per season per game type: league totals and league-average rates, the ba
 
 **Coverage:** Shooting from 1946-47 (partial before ~1965); possession metrics from 1973-74, complete from 1983-84.
 
+**Additive:** no. Never sum or average lg_pace, lg_points_per_possession, lg_offensive_rating, lg_true_shooting_pct, lg_effective_field_goal_pct, lg_three_point_attempt_rate, lg_free_throw_rate, lg_turnover_pct, lg_offensive_rebound_pct across rows: read them one row at a time, or get the rate over several rows from Cube.
+
 ## nba_player_advanced_career
 
 **Grain:** one row per (person_id, game_type).
@@ -31,6 +35,8 @@ One row per season per game type: league totals and league-average rates, the ba
 One row per player per career scope (game_type Regular Season, the default career, or Playoffs) summarising career efficiency, enriched with bio; seasons from 1954-55. Box-score rates (usage, TS%, eFG%, AST%, TRB%, individual ratings) are recomputed from the career's summed numerators and opportunities, so they cover every era from each metric's coverage start. The NBA-supplied on-court ratings and PIE exist only from 1996-97: ratings are weighted by on-court possessions, PIE by minutes. Double- and triple-doubles are counted from the box score in every era. Ordered by game type, triple-doubles, then net rating.
 
 **Coverage:** Seasons from 1954-55; each metric from its coverage start; on-court ratings and PIE from 1996-97.
+
+**Additive:** no. Never sum or average minutes_per_game, usage_pct, true_shooting_pct, effective_field_goal_pct, offensive_rating, defensive_rating, net_rating, assist_pct, rebound_pct, player_impact_estimate, individual_offensive_rating, individual_defensive_rating across rows: read them one row at a time, or get the rate over several rows from Cube.
 
 ## nba_player_career_stats
 
@@ -40,17 +46,23 @@ One row per player per career scope: game_type Regular Season (the default caree
 
 **Coverage:** Seasons from 1954-55 (dbt var nba_first_complete_season).
 
+**Additive:** yes. Sum the counts and components across rows and recompute rates from them; never sum or average a rate column.
+
 ## nba_player_clutch_stats
 
 **Grain:** one row per (person_id, season_start_year, game_type).
 
 One row per player per season and game type with at least one clutch event, from the play-by-play (1996-97 to the latest ingest). Clutch time is the NBA's definition: the last five minutes of the fourth quarter or any overtime, with the score within five points (judged on the score before each event). Clutch scoring, shooting splits, true shooting, rebounds, turnovers and go-ahead field goals, with the player's true shooting across all minutes of the same season as a baseline. The play-by-play doesn't record who was on the floor, so clutch_games counts games with at least one clutch event of the player's own. Assists, steals and blocks are left out because the legacy feed (to early 2019-20) lacks them.
 
+**Additive:** no. Never sum or average true_shooting_pct across rows: read them one row at a time, or get the rate over several rows from Cube.
+
 ## nba_player_game_stats
 
 **Grain:** one row per (person_id, game_id).
 
 One row per player per game played (minutes recorded), from 1946-47 to the latest ingest: the traditional box score with game context (season, game type, team, opponent, home/away, result, starter), plus advanced efficiency (usage, true shooting, ratings, PIE) from 1996-97 on, null before. Built on int_nba_player_games, the same rows as nba_player_season_stats, so a player's rows for a season and game type add up to that mart's games_played and totals. The game-grain counterpart to nba_player_season_stats. Ordered by game date descending. Known upstream gap, outside our control: the Kaggle source is missing six 2024-25 Regular Season games (still missing in dataset version 542, checked 10 Nov 2026). Four (game ids 22400532, 22400537, 22400538, 22400617) are absent from the games and box score files; two more (22400627, 22400988) are recorded 0-0 with no player box score and are dropped in staging. So 2024-25 shows 1,224 of 1,230 games: ATL, CHA, HOU, LAC, LAL, MIL, NOP, ORL, UTA and WAS have 81 games, SAS 80, and those teams' records and totals and their players' season totals are short by the missing games. The games are present in the play-by-play.
+
+**Additive:** yes. Sum the counts and components across rows and recompute rates from them; never sum or average a rate column.
 
 ## nba_player_season_advanced
 
@@ -60,17 +72,23 @@ One row per player per season per game type: the metrics of nba_player_stint_adv
 
 **Coverage:** Same coverage as nba_player_stint_advanced.
 
+**Additive:** no. Never sum or average true_shooting_pct, effective_field_goal_pct, three_point_attempt_rate, free_throw_rate, usage_pct, turnover_pct, assist_pct, offensive_rebound_pct, defensive_rebound_pct, rebound_pct, steal_pct, block_pct, points_per_100, rebounds_total_per_100, assists_per_100, steals_per_100, blocks_per_100, turnovers_per_100, game_score_per_game, individual_defensive_rating across rows: read them one row at a time, or get the rate over several rows from Cube.
+
 ## nba_player_season_stats
 
 **Grain:** one row per (person_id, season_start_year, game_type).
 
 One row per player per season per game type (Regular Season, Playoffs, etc.) of traditional box score totals, per-game averages and shooting splits, enriched with bio. Built on int_nba_player_games, so the team is resolved where the raw data leaves it blank and nba_player_game_stats adds up to it exactly. A player traded mid-season is combined into one row per game type, with primary_team_id the team they played the most games for. Only games actually played count. The ts_* and efg_* columns are additive inputs for true shooting and effective field goal percentage. Includes seasons before 1954-55 (incomplete schedules; see nba_seasons_dim). Ordered by season then total points descending. Known upstream gap, outside our control: the Kaggle source is missing six 2024-25 Regular Season games (still missing in dataset version 542, checked 10 Nov 2026). Four (game ids 22400532, 22400537, 22400538, 22400617) are absent from the games and box score files; two more (22400627, 22400988) are recorded 0-0 with no player box score and are dropped in staging. So 2024-25 shows 1,224 of 1,230 games: ATL, CHA, HOU, LAC, LAL, MIL, NOP, ORL, UTA and WAS have 81 games, SAS 80, and those teams' records and totals and their players' season totals are short by the missing games. The games are present in the play-by-play.
 
+**Additive:** yes. Sum the counts and components across rows and recompute rates from them; never sum or average a rate column.
+
 ## nba_player_shot_zones
 
 **Grain:** one row per (person_id, season_start_year, game_type, shot_zone).
 
 One row per player per season, game type and shot zone, from the play-by-play (1996-97 to the latest ingest): attempts, makes, field goal %, points per shot and the share of the player's attempts from the zone, with the league's figures for the same zone, season and game type alongside. Zones follow the NBA's court areas (Restricted Area, In The Paint (Non-RA), Mid-Range, Corner 3, Above the Break 3) plus Heave for shots from 40+ ft, computed from shot coordinates so they are consistent across both play-by-play feeds. Field goals only. A player's attempts across zones match the box score's field goal attempts for almost every player-season. No minimum attempts: filter on field_goals_attempted for meaningful rates.
+
+**Additive:** no. Never sum or average league_field_goal_pct, league_points_per_shot, league_share_of_attempts, field_goal_pct_vs_league across rows: read them one row at a time, or get the rate over several rows from Cube.
 
 ## nba_player_stint_advanced
 
@@ -79,6 +97,8 @@ One row per player per season, game type and shot zone, from the play-by-play (1
 One row per player per team per season per game type (a stint; a player traded mid-season has one row per team): box-score advanced metrics from the player's games for that team. Shooting efficiency (TS%, eFG%, 3PA and FT rates, TS points added), usage, assist, turnover, rebound, steal and block percentages with team context from the same games, per-100 production, Game Score and Dean Oliver's individual offensive and defensive ratings. Every rate is computed from summed numerators and opportunities (macros/nba_player_metric_columns.sql); each is null before its coverage start and where inputs were not recorded. Rates are 0-1. nba_player_season_advanced combines a traded player's stints.
 
 **Coverage:** Shooting from 1946-47 where attempts were recorded; AST% and TRB% from 1964-65; ORB/DRB/STL/BLK%, per-100 and DRtg from 1973-74 (complete from 1983-84); usage, TOV% and ORtg from 1977-78.
+
+**Additive:** no. Never sum or average true_shooting_pct, effective_field_goal_pct, three_point_attempt_rate, free_throw_rate, usage_pct, turnover_pct, assist_pct, offensive_rebound_pct, defensive_rebound_pct, rebound_pct, steal_pct, block_pct, points_per_100, rebounds_total_per_100, assists_per_100, steals_per_100, blocks_per_100, turnovers_per_100, game_score_per_game, individual_defensive_rating across rows: read them one row at a time, or get the rate over several rows from Cube.
 
 ## nba_players_dim
 
@@ -100,6 +120,8 @@ One row per team per season per game type (Regular Season, Play-in Tournament, P
 
 **Coverage:** Scores from 1946-47; shooting from summed player box scores where complete; ratings and possession metrics from 1973-74 (complete from 1983-84); three-point rate from 1979-80. Pace and three-point attempt rate trend upward over time.
 
+**Additive:** no. Never sum or average offensive_rating, defensive_rating, net_rating, pace, effective_field_goal_pct, true_shooting_pct, assist_pct, rebound_pct, turnover_pct, three_point_attempt_rate, points_in_paint_share, fast_break_points_share, offensive_rebound_pct, free_throw_rate, opp_effective_field_goal_pct, opp_turnover_pct, defensive_rebound_pct, opp_free_throw_rate, simple_rating_system, strength_of_schedule, relative_offensive_rating, relative_defensive_rating, relative_pace, relative_effective_field_goal_pct, relative_true_shooting_pct across rows: read them one row at a time, or get the rate over several rows from Cube.
+
 ## nba_team_dim
 
 **Grain:** one row per team_id.
@@ -114,6 +136,8 @@ One row per team per competitive game from 1973-74: the team's form going into t
 
 **Coverage:** 1973-74 onward; the first game of each season and game type has no form.
 
+**Additive:** no. Never sum or average last_10_net_rating, last_20_net_rating, season_to_date_net_rating, league_to_date_offensive_rating, league_to_date_pace across rows: read them one row at a time, or get the rate over several rows from Cube.
+
 ## nba_team_game_stats
 
 **Grain:** one row per (game_id, team_id).
@@ -122,17 +146,23 @@ One row per team per competitive game (Regular Season, Play-in Tournament, Playo
 
 **Coverage:** Scores from 1946-47; ratings from 1973-74 (complete from 1983-84).
 
+**Additive:** yes. Sum the counts and components across rows and recompute rates from them; never sum or average a rate column.
+
 ## nba_team_head_to_head
 
 **Grain:** one row per (team_id, opponent_team_id).
 
 All-time matchup record, one row per ordered (team_id, opponent_team_id) pair. A team's row against an opponent is its record from its own perspective; the reverse matchup is a separate row. Restricted to competitive meetings (Regular Season, Playoffs, Play-in Tournament and NBA Cup Final), excluding preseason and All-Star games. Ordered by games_played descending.
 
+**Additive:** yes. Sum the counts and components across rows and recompute rates from them; never sum or average a rate column.
+
 ## nba_team_season_summary
 
 **Grain:** one row per (team_id, season_start_year).
 
 One row per team per regular season with win/loss record, home/away wins and scoring averages. Season comes from the game id, so the 2020 bubble games belong to 2019-20. Restricted to Regular Season games. Ordered by season then win percentage. Known upstream gap, outside our control: the Kaggle source is missing six 2024-25 Regular Season games (still missing in dataset version 542, checked 10 Nov 2026). Four (game ids 22400532, 22400537, 22400538, 22400617) are absent from the games and box score files; two more (22400627, 22400988) are recorded 0-0 with no player box score and are dropped in staging. So 2024-25 shows 1,224 of 1,230 games: ATL, CHA, HOU, LAC, LAL, MIL, NOP, ORL, UTA and WAS have 81 games, SAS 80, and those teams' records and totals and their players' season totals are short by the missing games. The games are present in the play-by-play.
+
+**Additive:** yes. Sum the counts and components across rows and recompute rates from them; never sum or average a rate column.
 
 ## nba_team_seasons_dim
 

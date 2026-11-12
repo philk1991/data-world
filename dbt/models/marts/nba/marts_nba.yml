@@ -101,6 +101,7 @@ models:
     config:
       meta:
         grain: one row per game_id
+        additive: true
         purpose: Join game metadata with home/away team box scores via conditional aggregation to produce a single analysis-ready row per game.
         business_question: How did each game play out — result, margin, and the shooting, rebounding and ball-movement lines for each side?
         relationships:
@@ -197,6 +198,18 @@ models:
         description: "{{ doc('nba__total_blocks') }}"
       - name: total_turnovers
         description: "{{ doc('nba__total_turnovers') }}"
+      - name: games_with_minutes
+        description: "{{ doc('nba__games_with_minutes') }}"
+      - name: games_with_rebounds
+        description: "{{ doc('nba__games_with_rebounds') }}"
+      - name: games_with_assists
+        description: "{{ doc('nba__games_with_assists') }}"
+      - name: games_with_steals
+        description: "{{ doc('nba__games_with_steals') }}"
+      - name: games_with_blocks
+        description: "{{ doc('nba__games_with_blocks') }}"
+      - name: games_with_turnovers
+        description: "{{ doc('nba__games_with_turnovers') }}"
       - name: total_field_goals_made
         description: "{{ doc('nba__total_field_goals_made') }}"
       - name: total_field_goals_attempted
@@ -235,6 +248,7 @@ models:
     config:
       meta:
         grain: one row per (person_id, game_type)
+        additive: true
         purpose: Career totals and averages per career scope (regular season, playoffs), additive across the two, for career leaderboards.
         business_question: Who are the most prolific scorers in regular-season (or playoff) history, and what do their career averages and shooting splits look like?
         seasonality: Seasons from 1954-55 (dbt var nba_first_complete_season).
@@ -303,6 +317,7 @@ models:
     config:
       meta:
         grain: one row per (team_id, season_start_year)
+        additive: true
         purpose: Aggregate regular-season team box scores into a season-level standings row per team, taking the season from the game id.
         business_question: How did each team perform in a given regular season — record, home/away split and scoring margin?
         relationships:
@@ -593,6 +608,33 @@ models:
     config:
       meta:
         grain: one row per (team_id, season_start_year, game_type)
+        additive: false
+        non_additive_columns:
+          - offensive_rating
+          - defensive_rating
+          - net_rating
+          - pace
+          - effective_field_goal_pct
+          - true_shooting_pct
+          - assist_pct
+          - rebound_pct
+          - turnover_pct
+          - three_point_attempt_rate
+          - points_in_paint_share
+          - fast_break_points_share
+          - offensive_rebound_pct
+          - free_throw_rate
+          - opp_effective_field_goal_pct
+          - opp_turnover_pct
+          - defensive_rebound_pct
+          - opp_free_throw_rate
+          - simple_rating_system
+          - strength_of_schedule
+          - relative_offensive_rating
+          - relative_defensive_rating
+          - relative_pace
+          - relative_effective_field_goal_pct
+          - relative_true_shooting_pct
         purpose: Season-level efficiency profile that explains how a team achieved its record, comparable across eras.
         business_question: How efficient was each team in a given season — offence, defence, pace, shot selection, schedule strength and luck?
         seasonality: >
@@ -693,6 +735,20 @@ models:
     config:
       meta:
         grain: one row per (person_id, game_type)
+        additive: false
+        non_additive_columns:
+          - minutes_per_game
+          - usage_pct
+          - true_shooting_pct
+          - effective_field_goal_pct
+          - offensive_rating
+          - defensive_rating
+          - net_rating
+          - assist_pct
+          - rebound_pct
+          - player_impact_estimate
+          - individual_offensive_rating
+          - individual_defensive_rating
         purpose: Career efficiency per career scope (regular season, playoffs) for every player, with the NBA's on-court ratings for the advanced-stats era.
         business_question: Which players have been the most efficient and impactful, and who racks up the most triple-doubles?
         seasonality: Seasons from 1954-55; each metric from its coverage start; on-court ratings and PIE from 1996-97.
@@ -816,6 +872,18 @@ models:
         description: "{{ doc('nba__total_blocks') }}"
       - name: total_turnovers
         description: "{{ doc('nba__total_turnovers') }}"
+      - name: games_with_minutes
+        description: "{{ doc('nba__games_with_minutes') }}"
+      - name: games_with_rebounds
+        description: "{{ doc('nba__games_with_rebounds') }}"
+      - name: games_with_assists
+        description: "{{ doc('nba__games_with_assists') }}"
+      - name: games_with_steals
+        description: "{{ doc('nba__games_with_steals') }}"
+      - name: games_with_blocks
+        description: "{{ doc('nba__games_with_blocks') }}"
+      - name: games_with_turnovers
+        description: "{{ doc('nba__games_with_turnovers') }}"
       - name: total_field_goals_made
         description: "{{ doc('nba__total_field_goals_made') }}"
       - name: total_field_goals_attempted
@@ -852,6 +920,7 @@ models:
     config:
       meta:
         grain: one row per (person_id, season_start_year, game_type)
+        additive: true
         purpose: Aggregate per-game box scores to a season-and-game-type line per player, the base for the career rollups and the Cube player-season measures.
         business_question: How did each player perform in a given season, split by regular season vs playoffs, and how do their numbers trend over time?
         relationships:
@@ -1084,6 +1153,7 @@ models:
     config:
       meta:
         grain: one row per (person_id, game_id)
+        additive: true
         purpose: Expose every player's box score for each game played, with game context and advanced efficiency, as the game-grain base for game logs, single-game records and streaks.
         business_question: How did a player perform game by game, what are the best single-game performances, and how does form change across a season?
         relationships:
@@ -1213,6 +1283,12 @@ models:
     config:
       meta:
         grain: one row per (person_id, season_start_year, game_type, shot_zone)
+        additive: false
+        non_additive_columns:
+          - league_field_goal_pct
+          - league_points_per_shot
+          - league_share_of_attempts
+          - field_goal_pct_vs_league
         purpose: Show where each player shoots from and how efficiently, against the league, for every season with play-by-play.
         business_question: Where does a player take their shots, how well do they convert from each area compared with the league, and how has the league's shot mix changed (e.g. the decline of the mid-range two)?
         relationships:
@@ -1332,6 +1408,9 @@ models:
     config:
       meta:
         grain: one row per (person_id, season_start_year, game_type)
+        additive: false
+        non_additive_columns:
+          - true_shooting_pct
         purpose: Measure how players perform in close games late on, against their own all-minutes efficiency.
         business_question: Who scores and shoots best when games are close at the end, who hits go-ahead shots, and does a player's efficiency rise or fall in the clutch?
         relationships:
@@ -1396,6 +1475,7 @@ models:
     config:
       meta:
         grain: one row per (team_id, opponent_team_id)
+        additive: true
         purpose: Aggregate every competitive meeting between two franchises into a single all-time head-to-head record per team perspective.
         business_question: What is a team's all-time record against a given opponent, and how lopsided is the rivalry?
         relationships:
@@ -1555,6 +1635,11 @@ models:
         description: "{{ doc('nba__rebound_pct') }} Team rebounds over team plus opponent rebounds."
       - name: three_point_attempt_rate
         description: "{{ doc('nba__three_point_attempt_rate') }}"
+      - name: three_par_field_goals_attempted
+        description: >
+          Field goal attempts from 1979-80 on (null before the three-point line),
+          the additive denominator for three-point attempt rate: SUM(three_pointers_attempted)
+          / SUM(three_par_field_goals_attempted) is null over seasons without the line, not 0.
       - name: assist_pct
         description: "{{ doc('nba__assist_pct__team') }}"
       - name: true_shooting_pct
@@ -1578,6 +1663,7 @@ models:
     config:
       meta:
         grain: one row per (game_id, team_id)
+        additive: true
         purpose: Team-game box counts and efficiency, the per-game building block for team ratings.
         business_question: How efficiently did a team play in a given game, on offence and defence?
         seasonality: Scores from 1946-47; ratings from 1973-74 (complete from 1983-84).
@@ -1688,6 +1774,17 @@ models:
     config:
       meta:
         grain: one row per (season_start_year, game_type)
+        additive: false
+        non_additive_columns:
+          - lg_pace
+          - lg_points_per_possession
+          - lg_offensive_rating
+          - lg_true_shooting_pct
+          - lg_effective_field_goal_pct
+          - lg_three_point_attempt_rate
+          - lg_free_throw_rate
+          - lg_turnover_pct
+          - lg_offensive_rebound_pct
         purpose: League totals and averages that relative, era-adjusted and all-in-one metrics use as their baseline.
         business_question: What was league-average efficiency, pace and shot profile in a given season?
         seasonality: Shooting from 1946-47 (partial before ~1965); possession metrics from 1973-74, complete from 1983-84.
@@ -1756,6 +1853,13 @@ models:
     config:
       meta:
         grain: one row per (game_id, team_id)
+        additive: false
+        non_additive_columns:
+          - last_10_net_rating
+          - last_20_net_rating
+          - season_to_date_net_rating
+          - league_to_date_offensive_rating
+          - league_to_date_pace
         purpose: As-of team form for comparing a team's recent level with the league so far.
         business_question: How well was a team playing going into a given game?
         seasonality: 1973-74 onward; the first game of each season and game type has no form.
@@ -1879,6 +1983,28 @@ models:
     config:
       meta:
         grain: one row per (person_id, team_id, season_start_year, game_type)
+        additive: false
+        non_additive_columns:
+          - true_shooting_pct
+          - effective_field_goal_pct
+          - three_point_attempt_rate
+          - free_throw_rate
+          - usage_pct
+          - turnover_pct
+          - assist_pct
+          - offensive_rebound_pct
+          - defensive_rebound_pct
+          - rebound_pct
+          - steal_pct
+          - block_pct
+          - points_per_100
+          - rebounds_total_per_100
+          - assists_per_100
+          - steals_per_100
+          - blocks_per_100
+          - turnovers_per_100
+          - game_score_per_game
+          - individual_defensive_rating
         purpose: Player advanced metrics per team stint, with team context from that team's games.
         business_question: How did a player perform for each team they played for in a season?
         seasonality: >
@@ -2024,6 +2150,28 @@ models:
     config:
       meta:
         grain: one row per (person_id, season_start_year, game_type)
+        additive: false
+        non_additive_columns:
+          - true_shooting_pct
+          - effective_field_goal_pct
+          - three_point_attempt_rate
+          - free_throw_rate
+          - usage_pct
+          - turnover_pct
+          - assist_pct
+          - offensive_rebound_pct
+          - defensive_rebound_pct
+          - rebound_pct
+          - steal_pct
+          - block_pct
+          - points_per_100
+          - rebounds_total_per_100
+          - assists_per_100
+          - steals_per_100
+          - blocks_per_100
+          - turnovers_per_100
+          - game_score_per_game
+          - individual_defensive_rating
         purpose: Player-season advanced metrics, comparable across teams and eras.
         business_question: Who was the most efficient, highest-usage or best rebounder in a season?
         seasonality: Same coverage as nba_player_stint_advanced.

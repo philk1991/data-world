@@ -245,11 +245,35 @@ Points per game played.
 {% enddocs %}
 
 {% docs nba__rebounds_per_game %}
-Rebounds per game played.
+Rebounds per game with rebounds recorded (games_with_rebounds).
 {% enddocs %}
 
 {% docs nba__assists_per_game %}
-Assists per game played.
+Assists per game with assists recorded (games_with_assists).
+{% enddocs %}
+
+{% docs nba__games_with_minutes %}
+Games with minutes recorded in the box score: the denominator for minutes per game. Early box scores often leave the stat blank, and a blank is not a zero, so dividing by every game played would understate the average. Additive: sum it with the matching total.
+{% enddocs %}
+
+{% docs nba__games_with_rebounds %}
+Games with rebounds recorded in the box score: the denominator for rebounds per game. Early box scores often leave the stat blank, and a blank is not a zero, so dividing by every game played would understate the average. Additive: sum it with the matching total.
+{% enddocs %}
+
+{% docs nba__games_with_assists %}
+Games with assists recorded in the box score: the denominator for assists per game. Early box scores often leave the stat blank, and a blank is not a zero, so dividing by every game played would understate the average. Additive: sum it with the matching total.
+{% enddocs %}
+
+{% docs nba__games_with_steals %}
+Games with steals recorded in the box score (recorded from 1973-74): the denominator for steals per game. Early box scores often leave the stat blank, and a blank is not a zero, so dividing by every game played would understate the average. Additive: sum it with the matching total.
+{% enddocs %}
+
+{% docs nba__games_with_blocks %}
+Games with blocks recorded in the box score (recorded from 1973-74): the denominator for blocks per game. Early box scores often leave the stat blank, and a blank is not a zero, so dividing by every game played would understate the average. Additive: sum it with the matching total.
+{% enddocs %}
+
+{% docs nba__games_with_turnovers %}
+Games with turnovers recorded in the box score (recorded from 1977-78): the denominator for turnovers per game. Early box scores often leave the stat blank, and a blank is not a zero, so dividing by every game played would understate the average. Additive: sum it with the matching total.
 {% enddocs %}
 
 {# ── Per-game box score values and shooting splits ─────────────────────── #}

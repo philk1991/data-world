@@ -87,6 +87,11 @@ SELECT
         WHEN season_start_year >= {{ nba_coverage_start('three_pointers') }}
             THEN {{ nba_three_par('three_pointers_attempted', 'field_goals_attempted') }}
     END AS three_point_attempt_rate,
+    -- Its additive denominator: field goal attempts from 1979-80 on, so a sum over
+    -- seasons before the line gives a null rate rather than 0.
+    CASE
+        WHEN season_start_year >= {{ nba_coverage_start('three_pointers') }} THEN field_goals_attempted
+    END AS three_par_field_goals_attempted,
     {{ nba_ast_rate('assists', 'field_goals_made') }} AS assist_pct,
     {{ nba_ts('points', 'field_goals_attempted', 'free_throws_attempted') }} AS true_shooting_pct,
     counts_source,

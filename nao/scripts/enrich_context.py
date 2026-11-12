@@ -152,6 +152,13 @@ def write_marts_doc(tables: list[str]) -> None:
         lines += [normalise(model.get("description")), ""]
         if meta.get("seasonality"):
             lines += [f"**Coverage:** {normalise(meta['seasonality'])}", ""]
+        if meta.get("additive") is True:
+            lines += ["**Additive:** yes. Sum the counts and components across rows and recompute "
+                      "rates from them; never sum or average a rate column.", ""]
+        elif meta.get("additive") is False:
+            columns = ", ".join(meta.get("non_additive_columns") or [])
+            lines += [f"**Additive:** no. Never sum or average {columns} across rows: read them "
+                      "one row at a time, or get the rate over several rows from Cube.", ""]
     MARTS_DOC.write_text("\n".join(lines))
 
 

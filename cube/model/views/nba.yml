@@ -133,8 +133,11 @@ views:
       scoring averages, from 1954-55. win_pct and the per-game measures are
       weighted correctly across rows. team_name is the team's name that season
       (the 2007-08 SuperSonics); current_team_name is the franchise's name today.
-      The source is missing six 2024-25 games, so ten teams show 81 games and
-      San Antonio 80.
+      simple_rating_system, strength_of_schedule, pythagorean_wins and
+      luck_wins are season facts: group by team and season to read them, never
+      sum or average them across seasons. For ratings, pace
+      and the Four Factors use team_game. The source is missing six 2024-25
+      games, so ten teams show 81 games and San Antonio 80.
     cubes:
       - join_path: nba_team_season_summary
         includes: "*"
@@ -151,6 +154,13 @@ views:
             alias: current_team_name
           - current_league
           - has_relocated_or_renamed
+
+      - join_path: nba_team_season_summary.nba_team_advanced_profile
+        includes:
+          - simple_rating_system
+          - strength_of_schedule
+          - pythagorean_wins
+          - luck_wins
 
   - name: game
     description: >

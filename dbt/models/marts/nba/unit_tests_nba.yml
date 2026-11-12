@@ -279,12 +279,12 @@ unit_tests:
           - {person_id: 1, team_id: 10, season_start_year: 2010, game_type: Regular Season, games_played: 50, minutes_played: 1500,
              usage_opportunity_numerator: 30, usage_opportunity: 100, assist_opportunity_numerator: 20, assist_opportunity: 100,
              rebound_opportunity_numerator: 10, rebound_opportunity: 100, ts_points: 100, ts_field_goals_attempted: 80,
-             ts_free_throws_attempted: 25, field_goals_made: 40, field_goals_attempted: 80, three_pointers_made: 10,
+             ts_free_throws_attempted: 25, field_goals_made: 40, field_goals_attempted: 80, efg_three_pointers_made: 10,
              points_produced: 200, individual_possessions: 160, individual_defensive_rating: 100, rating_player_possessions: 300}
           - {person_id: 1, team_id: 20, season_start_year: 2011, game_type: Regular Season, games_played: 10, minutes_played: 500,
              usage_opportunity_numerator: 10, usage_opportunity: 100, assist_opportunity_numerator: 10, assist_opportunity: 100,
              rebound_opportunity_numerator: 30, rebound_opportunity: 100, ts_points: 0, ts_field_goals_attempted: 0,
-             ts_free_throws_attempted: 0, field_goals_made: 0, field_goals_attempted: 0, three_pointers_made: 0,
+             ts_free_throws_attempted: 0, field_goals_made: 0, field_goals_attempted: 0, efg_three_pointers_made: 0,
              points_produced: 40, individual_possessions: 40, individual_defensive_rating: 110, rating_player_possessions: 100}
           # 1975-76: usage opportunity predates the 1977-78 coverage start -> excluded from usage
           - {person_id: 1, team_id: 10, season_start_year: 1975, game_type: Regular Season, games_played: 5, minutes_played: 100,
@@ -500,8 +500,9 @@ unit_tests:
       their own row (they add up to a combined career), play-in and preseason
       rows are left out, seasons before 1954-55 are left out and flagged with
       has_games_before_coverage, and rates are recomputed from the summed
-      made/attempted and ts_* columns. A player missing from stg_nba_players
-      keeps a row with null bio.
+      made/attempted and ts_* columns. Per-game averages divide by the games
+      with the stat recorded (assists in 120 of 140 games: 4.7, not 4.0). A
+      player missing from stg_nba_players keeps a row with null bio.
     given:
       - input: ref('stg_nba_players')
         rows:
@@ -509,14 +510,17 @@ unit_tests:
       - input: ref('nba_player_season_stats')
         rows:
           - {person_id: 1, first_name: Test, last_name: Player, season_start_year: 2010, game_type: Regular Season, games_played: 80,
+             games_with_rebounds: 80, games_with_assists: 80,
              first_game_date: 2010-10-27, last_game_date: 2011-04-13, total_points: 1600, total_rebounds: 400, total_assists: 320,
              total_field_goals_made: 600, total_field_goals_attempted: 1300, total_three_pointers_made: 100, total_three_pointers_attempted: 300,
              total_free_throws_made: 300, total_free_throws_attempted: 400, ts_points: 1600, ts_field_goals_attempted: 1300, ts_free_throws_attempted: 400}
           - {person_id: 1, first_name: Test, last_name: Player, season_start_year: 2011, game_type: Regular Season, games_played: 60,
+             games_with_rebounds: 60, games_with_assists: 40,
              first_game_date: 2011-12-25, last_game_date: 2012-04-26, total_points: 1400, total_rebounds: 300, total_assists: 240,
              total_field_goals_made: 500, total_field_goals_attempted: 1000, total_three_pointers_made: 100, total_three_pointers_attempted: 200,
              total_free_throws_made: 300, total_free_throws_attempted: 350, ts_points: 1400, ts_field_goals_attempted: 1000, ts_free_throws_attempted: 350}
           - {person_id: 1, first_name: Test, last_name: Player, season_start_year: 2010, game_type: Playoffs, games_played: 10,
+             games_with_rebounds: 10, games_with_assists: 10,
              first_game_date: 2011-04-17, last_game_date: 2011-05-10, total_points: 250, total_rebounds: 60, total_assists: 50,
              total_field_goals_made: 90, total_field_goals_attempted: 200, total_free_throws_made: 70, total_free_throws_attempted: 80,
              ts_points: 250, ts_field_goals_attempted: 200, ts_free_throws_attempted: 80}
@@ -531,11 +535,12 @@ unit_tests:
           - {person_id: 3, season_start_year: 2012, game_type: Preseason, games_played: 3, total_points: 12}
     expect:
       rows:
-        # 140 games, 3000 pts; FG 1100/2300, 3PT 200/500, FT 600/750; TS 3000 / (2 * (2300 + 0.44 * 750)) = 0.570
+        # 140 games, 3000 pts; FG 1100/2300, 3PT 200/500, FT 600/750; TS 3000 / (2 * (2300 + 0.44 * 750)) = 0.570;
+        # assists recorded in 120 games, so 560 / 120 = 4.7 per game
         - {person_id: 1, game_type: Regular Season, first_name: Test, is_guard: true, draft_year: 2010, has_games_before_coverage: false,
            seasons_played: 2, first_season_start_year: 2010, last_season_start_year: 2011, first_game_date: 2010-10-27, last_game_date: 2012-04-26,
            games_played: 140, total_points: 3000, total_rebounds: 700, total_assists: 560,
-           points_per_game: 21.4, rebounds_per_game: 5.0, assists_per_game: 4.0,
+           points_per_game: 21.4, rebounds_per_game: 5.0, assists_per_game: 4.7,
            career_field_goal_pct: 0.478, career_three_point_pct: 0.4, career_free_throw_pct: 0.8, career_true_shooting_pct: 0.57}
         # TS 250 / (2 * (200 + 0.44 * 80)) = 0.531
         - {person_id: 1, game_type: Playoffs, first_name: Test, is_guard: true, draft_year: 2010, has_games_before_coverage: false,

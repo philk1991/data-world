@@ -404,6 +404,16 @@ tasks:
       - task: dbt:parse
       - .venv/bin/python cube/scripts/sync_dbt_descriptions.py --check
 
+  cube:additivity:check:
+    desc: "Fail when an NBA fact mart lacks meta.additive, or a Cube measure sums or averages a column its mart tags non-additive."
+    cmds:
+      - .venv/bin/python cube/scripts/check_additivity.py
+
+  cube:reconcile:
+    desc: "Compare the Cube views with the dbt rollup marts row for row (needs task cube:dev); fails on any difference."
+    cmds:
+      - .venv/bin/python cube/scripts/reconcile_marts.py
+
   cube:mcp:install:
     desc: "Create the Cube MCP server's isolated venv (cube/mcp/.venv). Claude Code starts the server itself over stdio via .mcp.json; it talks only to the local Cube dev server."
     cmds:

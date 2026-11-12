@@ -341,34 +341,34 @@ cubes:
         description: Points per game across matching rows — total points over total games, so high-volume seasons weigh more.
 
       - name: rebounds_per_game
-        sql: "SUM({CUBE}.total_rebounds) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.total_rebounds IS NOT NULL THEN {CUBE}.games_played END), 0)"
+        sql: "SUM({CUBE}.total_rebounds) * 1.0 / NULLIF(SUM({CUBE}.games_with_rebounds), 0)"
         type: number
         format: ".1f"
-        description: Rebounds per game across matching rows, counting only seasons where rebounds were recorded.
+        description: Rebounds per game across matching rows, over the games where rebounds were recorded (early box scores often leave them blank).
 
       - name: assists_per_game
-        sql: "SUM({CUBE}.total_assists) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.total_assists IS NOT NULL THEN {CUBE}.games_played END), 0)"
+        sql: "SUM({CUBE}.total_assists) * 1.0 / NULLIF(SUM({CUBE}.games_with_assists), 0)"
         type: number
         format: ".1f"
-        description: Assists per game across matching rows, counting only seasons where assists were recorded.
+        description: Assists per game across matching rows, over the games where assists were recorded (early box scores often leave them blank).
 
       - name: steals_per_game
-        sql: "SUM({CUBE}.total_steals) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.total_steals IS NOT NULL THEN {CUBE}.games_played END), 0)"
+        sql: "SUM({CUBE}.total_steals) * 1.0 / NULLIF(SUM({CUBE}.games_with_steals), 0)"
         type: number
         format: ".1f"
-        description: Steals per game across matching rows, counting only seasons where steals were recorded.
+        description: Steals per game across matching rows, over the games where steals were recorded (early box scores often leave them blank).
 
       - name: blocks_per_game
-        sql: "SUM({CUBE}.total_blocks) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.total_blocks IS NOT NULL THEN {CUBE}.games_played END), 0)"
+        sql: "SUM({CUBE}.total_blocks) * 1.0 / NULLIF(SUM({CUBE}.games_with_blocks), 0)"
         type: number
         format: ".1f"
-        description: Blocks per game across matching rows, counting only seasons where blocks were recorded.
+        description: Blocks per game across matching rows, over the games where blocks were recorded (early box scores often leave them blank).
 
       - name: turnovers_per_game
-        sql: "SUM({CUBE}.total_turnovers) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.total_turnovers IS NOT NULL THEN {CUBE}.games_played END), 0)"
+        sql: "SUM({CUBE}.total_turnovers) * 1.0 / NULLIF(SUM({CUBE}.games_with_turnovers), 0)"
         type: number
         format: ".1f"
-        description: Turnovers per game across matching rows, counting only seasons where turnovers were recorded.
+        description: Turnovers per game across matching rows, over the games where turnovers were recorded (early box scores often leave them blank).
 
       - name: max_points_per_game
         sql: "{CUBE}.points_per_game"
@@ -430,4 +430,4 @@ cubes:
         sql: "SUM(CASE WHEN {CUBE}.total_turnovers IS NOT NULL THEN {CUBE}.total_assists END) * 1.0 / NULLIF(SUM({CUBE}.total_turnovers), 0)"
         type: number
         format: ".2f"
-        description: Assists per turnover across matching rows, counting only seasons where turnovers were recorded.
+        description: Assists per turnover across matching rows, over the games where turnovers were recorded (early box scores often leave them blank).

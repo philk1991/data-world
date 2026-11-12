@@ -21,6 +21,7 @@
 - Always `{{ ref() }}` — never `{{ source() }}`
 - Materialise as **table** for batch sources; **incremental** for append-heavy streaming sources
 - If a SQL file becomes too large (over 200 lines) consider creating intermeidate models to hold reusable logic
+- NBA fact marts declare `config.meta.additive` (`plans/adr/0002-dbt-cube-boundary.md`). `true`: every rate or average in the mart can be rebuilt from its own additive columns (counts, `ts_*`-style components, `games_with_*` denominators), so rows can be combined by summing those and recomputing. `false`: list the columns that can't in `non_additive_columns` (SRS, as-of windows, league baselines, rates whose components live elsewhere). Dimensions (`_dim`) are not tagged. `task cube:additivity:check` enforces the tags and fails on any Cube measure that sums or averages a listed column.
 
 ---
 

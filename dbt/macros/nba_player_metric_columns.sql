@@ -20,7 +20,7 @@
         ('block_pct', 'block_opportunity', nba_coverage_start('steals_blocks'))
     ] -%}
     {{ nba_ts('ts_points', 'ts_field_goals_attempted', 'ts_free_throws_attempted') }} AS true_shooting_pct,
-    {{ nba_efg('field_goals_made', 'three_pointers_made', 'field_goals_attempted') }}
+    {{ nba_efg('field_goals_made', 'efg_three_pointers_made', 'field_goals_attempted') }}
         AS effective_field_goal_pct,
     CASE
         WHEN season_start_year >= {{ nba_coverage_start('three_pointers') }}

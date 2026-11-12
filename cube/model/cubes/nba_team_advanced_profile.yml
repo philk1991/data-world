@@ -1,0 +1,67 @@
+cubes:
+  - name: nba_team_advanced_profile
+    public: false
+    # Regular-season rows from 1954-55, the scope of team_season; the ratings
+    # themselves are on team_game, computed from summed counts.
+    sql: >
+      SELECT m.*
+      FROM marts.nba_team_advanced_profile m
+      INNER JOIN marts.nba_seasons_dim d USING (season_start_year)
+      WHERE d.is_in_coverage AND m.game_type = 'Regular Season'
+    meta:
+      dbt_model: nba_team_advanced_profile
+    description: >
+      The team-season facts that can't be summed across rows, one row per team
+      per regular season: Simple Rating System, strength of schedule and
+      Pythagorean wins (non-additive in dbt, so dimensions here, never
+      aggregated). Joined from nba_team_season_summary for the team_season view.
+
+    dimensions:
+      - name: team_id
+        sql: "{CUBE}.team_id"
+        type: number
+        primary_key: true
+        description: Franchise identifier, stable across relocations and renames.
+
+      - name: season_start_year
+        sql: "{CUBE}.season_start_year"
+        type: number
+        primary_key: true
+        description: >
+          Calendar year the season started (e.g. 2023 for 2023-24), decoded from
+          the game id. Follows the league's own season assignment, so the 2020
+          bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
+
+      - name: simple_rating_system
+        sql: "{CUBE}.simple_rating_system"
+        type: number
+        format: ".2f"
+        description: >
+          SRS: margin of victory adjusted for opponent strength, in points per
+          game; the league is centred on 0 each season. Basketball-Reference's
+          iterative definition (int_nba_team_season_srs). Regular Season only;
+          null for other game types.
+
+      - name: strength_of_schedule
+        sql: "{CUBE}.strength_of_schedule"
+        type: number
+        format: ".2f"
+        description: >
+          SOS = SRS minus margin of victory; positive means a
+          harder-than-average schedule. Regular Season only.
+
+      - name: pythagorean_wins
+        sql: "{CUBE}.pythagorean_wins"
+        type: number
+        format: ".1f"
+        description: >
+          Wins expected from points scored and allowed, games × PTS^14 / (PTS^14
+          + opponent PTS^14) (Basketball-Reference's exponent). All seasons.
+
+      - name: luck_wins
+        sql: "{CUBE}.luck_wins"
+        type: number
+        format: ".1f"
+        description: >
+          Actual wins minus pythagorean_wins; positive means the team won more
+          than its scoring margin suggests.

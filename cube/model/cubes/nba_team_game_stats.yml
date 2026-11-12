@@ -224,10 +224,10 @@ cubes:
         description: "Free throws made per field goal attempt, over games with box counts."
 
       - name: three_point_attempt_rate
-        sql: "SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.three_pointers_attempted END) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.field_goals_attempted END), 0)"
+        sql: "SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.three_pointers_attempted END) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.three_par_field_goals_attempted END), 0)"
         type: number
         format: ".3f"
-        description: "Share of field goal attempts taken from three, over games with box counts, 0-1 (0 before 1979-80)."
+        description: "Share of field goal attempts taken from three, over games with box counts from 1979-80 on, 0-1 (null before the three-point line)."
 
       - name: assist_pct
         sql: "SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.assists END) * 1.0 / NULLIF(SUM(CASE WHEN {CUBE}.counts_source <> 'none' THEN {CUBE}.field_goals_made END), 0)"

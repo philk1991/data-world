@@ -1,6 +1,6 @@
 {% set sums = [
     'games_played', 'minutes_played', 'points', 'ts_points', 'ts_field_goals_attempted', 'ts_free_throws_attempted',
-    'field_goals_made', 'field_goals_attempted', 'three_pointers_made', 'three_pointers_attempted',
+    'field_goals_made', 'field_goals_attempted', 'efg_three_pointers_made', 'three_pointers_attempted',
     'ft_rate_free_throws_made', 'ft_rate_field_goals_attempted', 'tov_pct_turnovers', 'tov_pct_plays',
     'usage_opportunity_numerator', 'usage_opportunity', 'assist_opportunity_numerator', 'assist_opportunity',
     'offensive_rebound_opportunity_numerator', 'offensive_rebound_opportunity',

@@ -64,7 +64,7 @@ box_career AS (
         SUM(ts_free_throws_attempted) AS ts_free_throws_attempted,
         SUM(field_goals_made) AS field_goals_made,
         SUM(field_goals_attempted) AS field_goals_attempted,
-        SUM(three_pointers_made) AS three_pointers_made,
+        SUM(efg_three_pointers_made) AS efg_three_pointers_made,
         SUM(assist_opportunity_numerator) FILTER (
             WHERE season_start_year >= {{ nba_coverage_start('assists') }}
         ) AS assists,
@@ -151,7 +151,7 @@ SELECT
     b.usage_plays / NULLIF(b.usage_opportunity, 0) AS usage_pct,
     {{ nba_ts('b.ts_points', 'b.ts_field_goals_attempted', 'b.ts_free_throws_attempted') }}
         AS true_shooting_pct,
-    {{ nba_efg('b.field_goals_made', 'b.three_pointers_made', 'b.field_goals_attempted') }}
+    {{ nba_efg('b.field_goals_made', 'b.efg_three_pointers_made', 'b.field_goals_attempted') }}
         AS effective_field_goal_pct,
     a.on_court_offensive_rating AS offensive_rating,
     a.on_court_defensive_rating AS defensive_rating,

@@ -28,6 +28,10 @@ cubes:
         sql: "{CUBE}.team_id = {nba_team_seasons_dim}.team_id AND {CUBE}.season_start_year = {nba_team_seasons_dim}.season_start_year"
         relationship: many_to_one
 
+      - name: nba_team_advanced_profile
+        sql: "{CUBE}.team_id = {nba_team_advanced_profile}.team_id AND {CUBE}.season_start_year = {nba_team_advanced_profile}.season_start_year"
+        relationship: one_to_one
+
     dimensions:
       - name: team_id
         sql: "{CUBE}.team_id"

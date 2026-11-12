@@ -21,4 +21,5 @@ Option B. The boundary rule: if a value can be rebuilt from additive columns by 
 
 - Marts expose matched components (`ts_points`, `ts_field_goals_attempted`, `ts_free_throws_attempted`, `efg_three_pointers_made`, …) alongside any convenience rates.
 - Cube rate measures divide sums of those components; no formula constant appears in both dbt and Cube.
+- The tag is `config.meta.additive` (true or false) on every fact mart, with `meta.non_additive_columns` listing what can't be re-aggregated; `task cube:additivity:check` enforces it and blocks Cube measures that sum or average those columns. `task cube:reconcile` checks that the kept rollup marts equal the Cube views row for row.
 - nao asks Cube for defined metrics (ADR 0005).
