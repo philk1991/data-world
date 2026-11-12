@@ -218,3 +218,65 @@ models:
       - name: individual_defensive_rating
         description: "{{ doc('nba__individual_defensive_rating') }}"
 
+
+  - name: int_nba_play_events
+    description: >
+      One row per play-by-play event credited to a player (1996-97 on), with the
+      score before the event, the player's team margin, home/away and opponent,
+      and is_clutch: the one clutch-time definition, read by nba_shot_events and
+      nba_player_clutch_stats.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - game_id
+              - action_number
+    columns:
+      - name: game_id
+        description: "{{ doc('nba__game_id') }}"
+        tests:
+          - not_null
+      - name: action_number
+        description: "{{ doc('nba__action_number') }}"
+        tests:
+          - not_null
+      - name: event_order
+        description: "{{ doc('nba__event_order') }}"
+      - name: season_start_year
+        description: "{{ doc('nba__season_start_year') }}"
+      - name: game_type
+        description: "{{ doc('nba__game_type') }}"
+      - name: game_date
+        description: "{{ doc('nba__game_date') }}"
+      - name: period
+        description: "{{ doc('nba__period') }}"
+      - name: clock_seconds_remaining
+        description: "{{ doc('nba__clock_seconds_remaining') }}"
+      - name: event_type
+        description: "{{ doc('nba__event_type') }}"
+      - name: person_id
+        description: "{{ doc('nba__person_id') }}"
+        tests:
+          - not_null
+      - name: team_id
+        description: "{{ doc('nba__team_id') }}"
+      - name: opponent_team_id
+        description: "{{ doc('nba__opponent_team_id') }}"
+      - name: is_home
+        description: "{{ doc('nba__is_home') }}"
+      - name: is_shot_made
+        description: "{{ doc('nba__is_shot_made') }}"
+      - name: shot_value
+        description: "{{ doc('nba__shot_value') }}"
+      - name: points_scored
+        description: "{{ doc('nba__points_scored') }}"
+      - name: shot_x
+        description: "{{ doc('nba__shot_x') }}"
+      - name: shot_y
+        description: "{{ doc('nba__shot_y') }}"
+      - name: shot_distance_ft
+        description: "{{ doc('nba__shot_distance_ft') }}"
+      - name: is_clutch
+        description: "{{ doc('nba__is_clutch') }}"
+      - name: team_margin_before
+        description: "{{ doc('nba__team_margin_before') }}"

@@ -112,6 +112,14 @@ Conformed player dimension, one row per person_id carrying biography (birth date
 
 Conformed season dimension: one row per season in the game records, with the coverage facts consumers filter on. coverage_tier is incomplete_schedule before 1954-55 (the source holds only the 30 current franchises, so games against defunct teams are missing), in_progress for the latest season, and complete otherwise. Careers, Cube and nao filter on is_in_coverage by default. Known upstream gap, outside our control: the Kaggle source is missing six 2024-25 Regular Season games (still missing in dataset version 542, checked 10 Nov 2026). Four (game ids 22400532, 22400537, 22400538, 22400617) are absent from the games and box score files; two more (22400627, 22400988) are recorded 0-0 with no player box score and are dropped in staging. So 2024-25 shows 1,224 of 1,230 games: ATL, CHA, HOU, LAC, LAL, MIL, NOP, ORL, UTA and WAS have 81 games, SAS 80, and those teams' records and totals and their players' season totals are short by the missing games. The games are present in the play-by-play.
 
+## nba_shot_events
+
+**Grain:** one row per (game_id, action_number).
+
+One row per shot attempt by a player from the play-by-play (1996-97 to the latest ingest): every field goal and free throw with its zone, distance, result and clutch context. The atomic shot fact: nba_player_shot_zones and the clutch shooting in nba_player_clutch_stats are rollups of it, and the Cube shot view computes shooting by zone, clutch time or period from it. Count rows for attempts and filter is_shot_made for makes; sum points_scored. Play-by-play counts can differ slightly from the box score (per-player points match in 99.96% of player-games).
+
+**Additive:** yes. Sum the counts and components across rows and recompute rates from them; never sum or average a rate column.
+
 ## nba_team_advanced_profile
 
 **Grain:** one row per (team_id, season_start_year, game_type).

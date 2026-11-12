@@ -12,6 +12,8 @@ that the new cube reads like it was written by the same person: same
 description style, same instinct for which columns become dimensions vs.
 measures, same YAML shape.
 
+Before building a metric, mart or cube, read `docs/analytics-engineering-principles.md`: store additive components and compute ratios in Cube, write each formula once per layer, tag non-additive marts (`meta.additive`), keep marts unrounded, and treat a blank as null, not zero.
+
 Read [references/conventions.md](references/conventions.md) in full before
 writing any YAML — it holds the exact rules (description-alignment algorithm,
 dimension/measure heuristics, type mapping, formatting) that this file only
@@ -111,6 +113,24 @@ NBA cubes are `public: false`: the published interface is the views in
 cube, set `public: false` and add its members to an existing view, or a new
 view whose description states the grain and default scope. Other domains
 publish their cubes directly until they get views.
+
+NBA rate formulas live once, in `cube/model/macros/nba_rates.jinja`
+(`true_shooting`, `effective_fg`, `turnover_pct`, `per_100`, `pace`,
+`ts_attempts`). Import it inside a YAML comment on the first line, so the raw
+file still parses for the description sync and checks, and call it with SQL
+aggregates or measure references:
+
+```yaml
+# {% import "macros/nba_rates.jinja" as rates %}
+cubes:
+  ...
+      - name: true_shooting_pct
+        sql: "{{ rates.true_shooting('SUM({CUBE}.ts_points)', 'SUM({CUBE}.ts_field_goals_attempted)', 'SUM({CUBE}.ts_free_throws_attempted)') }}"
+```
+
+Use a YAML block scalar (`sql: >-`) when an argument contains single quotes.
+`task cube:formulas:check` fails on a formula written inline, and
+`task cube:reconcile` must still pass after any measure change.
 
 ## Step 5 — Validate
 

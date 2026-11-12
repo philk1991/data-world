@@ -38,10 +38,10 @@ INSTRUCTIONS = """\
 Answers questions from the Cube semantic layer over the data-world lake (NBA and
 Spotify marts). Work in this order:
 1. Call describe_model once to see the views (NBA: player_game, player_season,
-   player_career, team_game, team_season, league_season, game, player) and cubes, with their measures and dimensions. Read
-   the descriptions: they state the grain, the default scope (player views
-   default to the Regular Season until you filter game_type) and when stats were
-   not recorded.
+   player_career, team_game, team_season, league_season, game, player, shot)
+   and cubes, with their measures and dimensions. Read the descriptions: they
+   state the grain, the default scope (player views default to the Regular
+   Season until you filter game_type) and when stats were not recorded.
 2. Build a query from one view's member names and call query. Prefer the model's
    own measures (e.g. points_per_game, win_pct, true_shooting_pct) over computing
    ratios or averaging rows yourself — they are weighted correctly across rows.

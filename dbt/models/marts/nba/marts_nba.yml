@@ -1166,6 +1166,106 @@ models:
             - "nba_game_results: join on game_id for the final score and venue"
             - "nba_players_dim: join on person_id for age and physical profile"
             - "nba_team_dim: join on player_team_id or opponent_team_id for readable names"
+  - name: nba_shot_events
+    description: >
+      One row per shot attempt by a player from the play-by-play (1996-97 to the
+      latest ingest): every field goal and free throw with its zone, distance,
+      result and clutch context. The atomic shot fact: nba_player_shot_zones and
+      the clutch shooting in nba_player_clutch_stats are rollups of it, and the
+      Cube shot view computes shooting by zone, clutch time or period from it.
+      Count rows for attempts and filter is_shot_made for makes; sum
+      points_scored. Play-by-play counts can differ slightly from the box score
+      (per-player points match in 99.96% of player-games).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - game_id
+              - action_number
+    columns:
+      - name: game_id
+        description: "{{ doc('nba__game_id') }}"
+        tests:
+          - not_null
+      - name: action_number
+        description: "{{ doc('nba__action_number') }}"
+        tests:
+          - not_null
+      - name: person_id
+        description: "{{ doc('nba__person_id') }}"
+        tests:
+          - not_null
+      - name: team_id
+        description: "{{ doc('nba__team_id') }}"
+      - name: opponent_team_id
+        description: "{{ doc('nba__opponent_team_id') }}"
+      - name: season_start_year
+        description: "{{ doc('nba__season_start_year') }}"
+        tests:
+          - not_null
+      - name: season_label
+        description: "{{ doc('nba__season_label') }}"
+      - name: game_type
+        description: "{{ doc('nba__game_type') }}"
+        tests:
+          - not_null
+      - name: game_date
+        description: "{{ doc('nba__game_date') }}"
+      - name: period
+        description: "{{ doc('nba__period') }}"
+      - name: clock_seconds_remaining
+        description: "{{ doc('nba__clock_seconds_remaining') }}"
+      - name: shot_type
+        description: field_goal or free_throw.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['field_goal', 'free_throw']
+      - name: shot_value
+        description: "{{ doc('nba__shot_value') }}"
+      - name: is_shot_made
+        description: "{{ doc('nba__is_shot_made') }} False rather than null for the few attempts the feed leaves blank."
+        tests:
+          - not_null
+      - name: points_scored
+        description: "{{ doc('nba__points_scored') }}"
+        tests:
+          - not_null
+      - name: shot_zone
+        description: "{{ doc('nba__shot_zone') }} Null for free throws and for field goals with no recorded distance."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Restricted Area', 'In The Paint (Non-RA)', 'Mid-Range', 'Corner 3', 'Above the Break 3', 'Heave']
+      - name: shot_zone_order
+        description: "{{ doc('nba__shot_zone_order') }}"
+      - name: shot_distance_ft
+        description: "{{ doc('nba__shot_distance_ft') }}"
+      - name: shot_x
+        description: "{{ doc('nba__shot_x') }}"
+      - name: shot_y
+        description: "{{ doc('nba__shot_y') }}"
+      - name: is_clutch
+        description: "{{ doc('nba__is_clutch') }}"
+        tests:
+          - not_null
+      - name: team_margin_before
+        description: "{{ doc('nba__team_margin_before') }}"
+      - name: is_go_ahead
+        description: A made field goal that took the player's team from tied or behind to ahead.
+        tests:
+          - not_null
+
+    config:
+      meta:
+        grain: one row per (game_id, action_number)
+        additive: true
+        purpose: The atomic shot fact from the play-by-play, so shooting by zone, clutch time or period comes from one grain.
+        business_question: Where and when does a player shoot, and how well, including in clutch time?
+        relationships:
+          decomposes_into:
+            - "int_nba_play_events: player events with the clutch context"
   - name: nba_player_shot_zones
     description: >
       One row per player per season, game type and shot zone, from the
@@ -1217,12 +1317,7 @@ models:
                   - "All-Star Game"
                   - "NBA Cup Final"
       - name: shot_zone
-        description: >
-          Court area the shot was taken from, from its coordinates. Restricted
-          Area: under 4 ft from the basket. In The Paint (Non-RA): the rest of
-          the 16-ft-wide lane. Mid-Range: any other two. Corner 3: a three from
-          below the break in the arc, along the sidelines. Above the Break 3: any
-          other three. Heave: any shot from 40+ ft (end-of-quarter attempts).
+        description: "{{ doc('nba__shot_zone') }}"
         tests:
           - not_null
           - accepted_values:
@@ -1235,7 +1330,7 @@ models:
                   - "Above the Break 3"
                   - "Heave"
       - name: shot_zone_order
-        description: Sort order for shot_zone, from the basket outwards (1 = Restricted Area, 6 = Heave).
+        description: "{{ doc('nba__shot_zone_order') }}"
         tests:
           - not_null
       - name: field_goals_attempted

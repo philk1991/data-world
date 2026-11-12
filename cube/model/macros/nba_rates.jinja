@@ -1,0 +1,41 @@
+{#-
+  The NBA rate formulas of the Cube model, defined once: each cube imports this
+  file inside a YAML comment (so the raw file still parses as YAML) and calls
+  these with SQL aggregates, e.g.
+    # {% import "macros/nba_rates.jinja" as rates %}
+    sql: "{{ rates.true_shooting('SUM({CUBE}.ts_points)', ...) }}"
+  Their dbt twins in dbt/macros/nba_metrics.sql serve the rollup marts (ADR 0004);
+  task cube:reconcile checks the two give the same numbers, and
+  task cube:formulas:check fails if a formula constant appears anywhere else.
+  Cube's Jinja escapes strings in YAML templates, hence the `safe` filters.
+-#}
+
+{#- True shooting attempts: 2 × (FGA + 0.44 × FTA). -#}
+{%- macro ts_attempts(fga, fta) -%}
+2 * ({{ fga | safe }} + 0.44 * {{ fta | safe }})
+{%- endmacro %}
+
+{#- True shooting percentage, PTS / (2 × (FGA + 0.44 × FTA)), 0-1. -#}
+{%- macro true_shooting(points, fga, fta) -%}
+{{ points | safe }} * 1.0 / NULLIF({{ ts_attempts(fga, fta) }}, 0)
+{%- endmacro %}
+
+{#- Effective field goal percentage, (FGM + 0.5 × 3PM) / FGA, 0-1. -#}
+{%- macro effective_fg(fgm, fg3m, fga) -%}
+({{ fgm | safe }} + 0.5 * {{ fg3m | safe }}) * 1.0 / NULLIF({{ fga | safe }}, 0)
+{%- endmacro %}
+
+{#- Turnovers per play, TOV / (FGA + 0.44 × FTA + TOV), 0-1. -#}
+{%- macro turnover_pct(tov, fga, fta) -%}
+{{ tov | safe }} * 1.0 / NULLIF({{ fga | safe }} + 0.44 * {{ fta | safe }} + {{ tov | safe }}, 0)
+{%- endmacro %}
+
+{#- A count per 100 possessions; offensive and defensive rating are points per 100. -#}
+{%- macro per_100(count, possessions) -%}
+100.0 * {{ count | safe }} / NULLIF({{ possessions | safe }}, 0)
+{%- endmacro %}
+
+{#- Pace: possessions per 48 minutes, from team minutes (five players on court). -#}
+{%- macro pace(possessions, team_minutes) -%}
+48.0 * {{ possessions | safe }} / NULLIF({{ team_minutes | safe }} / 5.0, 0)
+{%- endmacro %}

@@ -53,30 +53,18 @@ box_career AS (
         game_type,
         SUM(games_played) AS games_played,
         SUM(minutes_played) AS total_minutes,
-        SUM(usage_opportunity_numerator) FILTER (
-            WHERE season_start_year >= {{ nba_coverage_start('turnovers') }}
-        ) AS usage_plays,
-        SUM(usage_opportunity) FILTER (
-            WHERE season_start_year >= {{ nba_coverage_start('turnovers') }}
-        ) AS usage_opportunity,
+        SUM(usage_opportunity_numerator) AS usage_plays,
+        SUM(usage_opportunity) AS usage_opportunity,
         SUM(ts_points) AS ts_points,
         SUM(ts_field_goals_attempted) AS ts_field_goals_attempted,
         SUM(ts_free_throws_attempted) AS ts_free_throws_attempted,
         SUM(field_goals_made) AS field_goals_made,
         SUM(field_goals_attempted) AS field_goals_attempted,
         SUM(efg_three_pointers_made) AS efg_three_pointers_made,
-        SUM(assist_opportunity_numerator) FILTER (
-            WHERE season_start_year >= {{ nba_coverage_start('assists') }}
-        ) AS assists,
-        SUM(assist_opportunity) FILTER (
-            WHERE season_start_year >= {{ nba_coverage_start('assists') }}
-        ) AS assist_opportunity,
-        SUM(rebound_opportunity_numerator) FILTER (
-            WHERE season_start_year >= {{ nba_coverage_start('total_rebounds') }}
-        ) AS rebounds,
-        SUM(rebound_opportunity) FILTER (
-            WHERE season_start_year >= {{ nba_coverage_start('total_rebounds') }}
-        ) AS rebound_opportunity,
+        SUM(assist_opportunity_numerator) AS assists,
+        SUM(assist_opportunity) AS assist_opportunity,
+        SUM(rebound_opportunity_numerator) AS rebounds,
+        SUM(rebound_opportunity) AS rebound_opportunity,
         SUM(points_produced) AS points_produced,
         SUM(individual_possessions) AS individual_possessions,
         SUM(individual_defensive_rating * rating_player_possessions)
@@ -88,25 +76,13 @@ box_career AS (
         person_id, game_type
 ),
 
--- Minutes per game counts only stints with recorded minutes (none before
--- 1964-65).
-minute_games AS (
+-- Minutes per game counts only games with recorded minutes (early box scores
+-- often leave them blank), the same denominator as nba_player_season_stats.
+box_games AS (
     SELECT
         person_id,
         game_type,
-        SUM(games_played) AS games_with_minutes
-    FROM
-        stints
-    WHERE
-        minutes_played IS NOT NULL
-    GROUP BY
-        person_id, game_type
-),
-
-double_doubles AS (
-    SELECT
-        person_id,
-        game_type,
+        COUNT(minutes_played) AS games_with_minutes,
         COUNT(*) FILTER (WHERE is_double_double) AS double_doubles,
         COUNT(*) FILTER (WHERE is_triple_double) AS triple_doubles
     FROM
@@ -145,7 +121,7 @@ SELECT
     p.is_center,
     b.games_played,
     COALESCE(a.games_with_advanced, 0) AS games_with_advanced,
-    b.total_minutes / NULLIF(m.games_with_minutes, 0) AS minutes_per_game,
+    b.total_minutes / NULLIF(d.games_with_minutes, 0) AS minutes_per_game,
     COALESCE(d.double_doubles, 0) AS double_doubles,
     COALESCE(d.triple_doubles, 0) AS triple_doubles,
     b.usage_plays / NULLIF(b.usage_opportunity, 0) AS usage_pct,
@@ -165,10 +141,7 @@ SELECT
 FROM
     box_career b
 LEFT JOIN
-    minute_games m
-    USING (person_id, game_type)
-LEFT JOIN
-    double_doubles d
+    box_games d
     USING (person_id, game_type)
 LEFT JOIN
     advanced_career a

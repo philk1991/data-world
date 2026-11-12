@@ -266,7 +266,8 @@ unit_tests:
       Asserts one row per career scope (Regular Season, Playoffs) and that
       box-score career rates re-divide summed numerators and opportunities
       across stints (usage 30 + 10 plays over 100 + 100 opportunities is 0.2),
-      that usage before 1977-78 is left out, that individual offensive rating
+      that minutes per game divides by the games with minutes recorded in
+      int_nba_player_games, that individual offensive rating
       is total points produced over total individual possessions, and that the
       NBA's on-court ratings are weighted by on-court possessions (120 over 30
       possessions and 80 over 10 is 110.0). Play-in stints, preseason games and
@@ -286,9 +287,8 @@ unit_tests:
              rebound_opportunity_numerator: 30, rebound_opportunity: 100, ts_points: 0, ts_field_goals_attempted: 0,
              ts_free_throws_attempted: 0, field_goals_made: 0, field_goals_attempted: 0, efg_three_pointers_made: 0,
              points_produced: 40, individual_possessions: 40, individual_defensive_rating: 110, rating_player_possessions: 100}
-          # 1975-76: usage opportunity predates the 1977-78 coverage start -> excluded from usage
-          - {person_id: 1, team_id: 10, season_start_year: 1975, game_type: Regular Season, games_played: 5, minutes_played: 100,
-             usage_opportunity_numerator: 99, usage_opportunity: 100}
+          # 1975-76: usage inputs are null before the 1977-78 coverage start (gated in the stints)
+          - {person_id: 1, team_id: 10, season_start_year: 1975, game_type: Regular Season, games_played: 5, minutes_played: 100}
           - {person_id: 1, team_id: 10, season_start_year: 2010, game_type: Playoffs, games_played: 4, minutes_played: 120,
              usage_opportunity_numerator: 25, usage_opportunity: 100}
           # play-in and pre-1954-55 stints -> excluded
@@ -297,9 +297,10 @@ unit_tests:
           - {person_id: 2, team_id: 30, season_start_year: 2010, game_type: Regular Season, games_played: 1, minutes_played: 30}
       - input: ref('int_nba_player_games')
         rows:
-          - {game_id: 1, person_id: 1, season_start_year: 2010, game_type: Regular Season, is_double_double: true, is_triple_double: true}
-          - {game_id: 2, person_id: 1, season_start_year: 2010, game_type: Regular Season, is_double_double: true, is_triple_double: false}
-          - {game_id: 5, person_id: 1, season_start_year: 2010, game_type: Playoffs, is_double_double: true, is_triple_double: false}
+          - {game_id: 1, person_id: 1, season_start_year: 2010, game_type: Regular Season, minutes_played: 30, is_double_double: true, is_triple_double: true}
+          - {game_id: 2, person_id: 1, season_start_year: 2010, game_type: Regular Season, minutes_played: 30, is_double_double: true, is_triple_double: false}
+          - {game_id: 7, person_id: 1, season_start_year: 2010, game_type: Regular Season, is_double_double: false, is_triple_double: false}
+          - {game_id: 5, person_id: 1, season_start_year: 2010, game_type: Playoffs, minutes_played: 30, is_double_double: true, is_triple_double: false}
           - {game_id: 6, person_id: 1, season_start_year: 2010, game_type: Preseason, is_double_double: true, is_triple_double: true}
       - input: ref('stg_nba_player_statistics_extended')
         rows:
@@ -314,14 +315,15 @@ unit_tests:
           - {person_id: 1, first_name: Test, last_name: Player, is_guard: true, is_forward: false, is_center: false}
     expect:
       rows:
-        - {person_id: 1, game_type: Regular Season, first_name: Test, games_played: 65, games_with_advanced: 2, minutes_per_game: 32.3,
+        # minutes per game: the stints' 2100 minutes over the 2 games with minutes recorded
+        - {person_id: 1, game_type: Regular Season, first_name: Test, games_played: 65, games_with_advanced: 2, minutes_per_game: 1050.0,
            double_doubles: 2, triple_doubles: 1, usage_pct: 0.2, assist_pct: 0.15, rebound_pct: 0.2,
            true_shooting_pct: 0.476, effective_field_goal_pct: 0.563,
            offensive_rating: 110.0, defensive_rating: 102.5, net_rating: 7.5, player_impact_estimate: 0.125,
            individual_offensive_rating: 120.0, individual_defensive_rating: 102.5}
-        - {person_id: 1, game_type: Playoffs, first_name: Test, games_played: 4, games_with_advanced: 0, minutes_per_game: 30.0,
+        - {person_id: 1, game_type: Playoffs, first_name: Test, games_played: 4, games_with_advanced: 0, minutes_per_game: 120.0,
            double_doubles: 1, triple_doubles: 0, usage_pct: 0.25, offensive_rating: null}
-        - {person_id: 2, game_type: Regular Season, first_name: null, games_played: 1, games_with_advanced: 0, minutes_per_game: 30.0,
+        - {person_id: 2, game_type: Regular Season, first_name: null, games_played: 1, games_with_advanced: 0, minutes_per_game: null,
            double_doubles: 0, triple_doubles: 0, offensive_rating: null}
 
   - name: nba_player_season_advanced_combines_stints
@@ -349,7 +351,7 @@ unit_tests:
              rating_player_possessions: 100}
           - {person_id: 2, team_id: 10, season_start_year: 1975, game_type: Regular Season, games_played: 10, minutes_played: 300,
              usage_opportunity_numerator: 30, usage_opportunity: 100}
-      - input: ref('int_nba_team_games')
+      - input: ref('nba_league_season_baselines')
         rows: []
       - input: ref('stg_nba_players')
         rows: []
@@ -725,3 +727,84 @@ unit_tests:
         # the only player in game 2 has 0 minutes -> minutes not recorded
         - {game_id: 2, person_id: 3, team_id: 30, opponent_team_id: 40, is_team_inferred: false, is_competitive: false, minutes_played: null,
            is_double_double: false, is_triple_double: false}
+
+  - name: int_nba_play_events_judges_clutch_on_the_score_before
+    model: int_nba_play_events
+    description: >
+      Clutch time is the last five minutes of the fourth quarter or overtime
+      with the score within five, judged on the score before the event: the
+      basket that opens a six-point lead is clutch, the next one (taken at
+      six) is not. Events with no player (a timeout) carry the score but are
+      not output. team_margin_before is from the player's team's side, and
+      opponent_team_id comes from the game record.
+    given:
+      - input: ref('stg_nba_play_by_play')
+        rows:
+          - {game_id: 1, action_number: 1, event_order: 1, period: 4, clock_seconds_remaining: 320, event_type: timeout,
+             person_id: null, team_id: 10, score_home: 90, score_away: 86}
+          - {game_id: 1, action_number: 2, event_order: 2, period: 4, clock_seconds_remaining: 290, event_type: field_goal,
+             person_id: 1, team_id: 10, score_home: 92, score_away: 86, is_shot_made: true, shot_value: 2, points_scored: 2}
+          - {game_id: 1, action_number: 3, event_order: 3, period: 4, clock_seconds_remaining: 250, event_type: field_goal,
+             person_id: 2, team_id: 20, score_home: 92, score_away: 89, is_shot_made: true, shot_value: 3, points_scored: 3}
+          - {game_id: 1, action_number: 4, event_order: 4, period: 5, clock_seconds_remaining: 100, event_type: rebound,
+             person_id: 1, team_id: 10, score_home: 92, score_away: 89}
+          - {game_id: 1, action_number: 5, event_order: 5, period: 3, clock_seconds_remaining: 100, event_type: rebound,
+             person_id: 2, team_id: 20, score_home: 92, score_away: 89}
+      - input: ref('stg_nba_games')
+        rows:
+          - {game_id: 1, game_date: 2016-03-01, home_team_id: 10, away_team_id: 20}
+    expect:
+      rows:
+        # 90-86 before: within five
+        - {action_number: 2, person_id: 1, is_home: true, opponent_team_id: 20, is_clutch: true, team_margin_before: 4}
+        # 92-86 before: six apart
+        - {action_number: 3, person_id: 2, is_home: false, opponent_team_id: 10, is_clutch: false, team_margin_before: -6}
+        # overtime, 92-89 before
+        - {action_number: 4, person_id: 1, is_home: true, opponent_team_id: 20, is_clutch: true, team_margin_before: 3}
+        # third quarter
+        - {action_number: 5, person_id: 2, is_home: false, opponent_team_id: 10, is_clutch: false, team_margin_before: -3}
+
+  - name: nba_shot_events_zones_and_go_ahead
+    model: nba_shot_events
+    description: >
+      Field goals get a court zone from their coordinates (restricted area
+      under 4 ft, the rest of the 16-ft lane, mid-range, corner and
+      above-the-break threes, heaves from 40 ft); free throws get none, and a
+      blank make or points becomes false / 0. A go-ahead field goal turns a
+      tie or deficit into a lead; tying the game does not count. Non-shot
+      events are left out.
+    given:
+      - input: ref('int_nba_play_events')
+        rows:
+          - {game_id: 1, action_number: 1, person_id: 1, season_start_year: 2015, game_type: Regular Season, event_type: field_goal,
+             shot_value: 2, is_shot_made: true, points_scored: 2, shot_x: 5, shot_y: 10, shot_distance_ft: 1.1,
+             is_clutch: true, team_margin_before: -1}
+          - {game_id: 1, action_number: 2, person_id: 1, season_start_year: 2015, game_type: Regular Season, event_type: field_goal,
+             shot_value: 3, is_shot_made: false, points_scored: 0, shot_x: -220, shot_y: 50, shot_distance_ft: 22.6,
+             is_clutch: false, team_margin_before: 0}
+          - {game_id: 1, action_number: 3, person_id: 1, season_start_year: 2015, game_type: Regular Season, event_type: field_goal,
+             shot_value: 3, is_shot_made: true, points_scored: 3, shot_x: 0, shot_y: 260, shot_distance_ft: 26.0,
+             is_clutch: true, team_margin_before: -3}
+          - {game_id: 1, action_number: 4, person_id: 1, season_start_year: 2015, game_type: Regular Season, event_type: field_goal,
+             shot_value: 2, is_shot_made: true, points_scored: 2, shot_x: 30, shot_y: 100, shot_distance_ft: 10.4,
+             is_clutch: false, team_margin_before: 5}
+          - {game_id: 1, action_number: 5, person_id: 1, season_start_year: 2015, game_type: Regular Season, event_type: field_goal,
+             shot_value: 2, is_shot_made: true, points_scored: 2, shot_x: 150, shot_y: 120, shot_distance_ft: 19.2,
+             is_clutch: false, team_margin_before: 5}
+          - {game_id: 1, action_number: 6, person_id: 1, season_start_year: 2015, game_type: Regular Season, event_type: field_goal,
+             shot_value: 3, is_shot_made: false, points_scored: 0, shot_x: 0, shot_y: 450, shot_distance_ft: 45.0,
+             is_clutch: false, team_margin_before: 5}
+          - {game_id: 1, action_number: 7, person_id: 1, season_start_year: 2015, game_type: Regular Season, event_type: free_throw,
+             shot_value: 1, is_shot_made: null, points_scored: null, is_clutch: true, team_margin_before: 0}
+          - {game_id: 1, action_number: 8, person_id: 1, season_start_year: 2015, game_type: Regular Season, event_type: rebound,
+             is_clutch: true, team_margin_before: 0}
+    expect:
+      rows:
+        - {action_number: 1, shot_type: field_goal, shot_zone: Restricted Area, shot_zone_order: 1, is_shot_made: true, points_scored: 2, is_go_ahead: true}
+        - {action_number: 2, shot_type: field_goal, shot_zone: Corner 3, shot_zone_order: 4, is_shot_made: false, points_scored: 0, is_go_ahead: false}
+        # from three down to tied: not a go-ahead
+        - {action_number: 3, shot_type: field_goal, shot_zone: Above the Break 3, shot_zone_order: 5, is_shot_made: true, points_scored: 3, is_go_ahead: false}
+        - {action_number: 4, shot_type: field_goal, shot_zone: In The Paint (Non-RA), shot_zone_order: 2, is_shot_made: true, points_scored: 2, is_go_ahead: false}
+        - {action_number: 5, shot_type: field_goal, shot_zone: Mid-Range, shot_zone_order: 3, is_shot_made: true, points_scored: 2, is_go_ahead: false}
+        - {action_number: 6, shot_type: field_goal, shot_zone: Heave, shot_zone_order: 6, is_shot_made: false, points_scored: 0, is_go_ahead: false}
+        - {action_number: 7, shot_type: free_throw, shot_zone: null, shot_zone_order: null, is_shot_made: false, points_scored: 0, is_go_ahead: false}

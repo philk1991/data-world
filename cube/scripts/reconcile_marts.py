@@ -57,6 +57,8 @@ class Case:
     mart: str
     mart_where: str
     game_types: list[str] = field(default_factory=lambda: COMPETITIVE)
+    segments: list[str] = field(default_factory=list)  # Cube segments of the view
+    filters: list[dict] = field(default_factory=list)  # extra Cube filters
 
 
 CASES = [
@@ -215,6 +217,43 @@ CASES = [
         mart="nba_league_season_baselines",
         mart_where=MART_SCOPE,
     ),
+    Case(
+        name="player shot zones from shots",
+        view="shot",
+        keys=["person_id", "season_start_year", "game_type", "shot_zone"],
+        columns={
+            "field_goals_attempted": "field_goals_attempted",
+            "field_goals_made": "field_goals_made",
+            "field_goal_pct": "field_goal_pct",
+            "field_goal_points": "field_goal_points",
+            "points_per_shot": "points_per_shot",
+            "avg_shot_distance_ft": "avg_shot_distance_ft",
+        },
+        mart="nba_player_shot_zones",
+        mart_where=MART_SCOPE,
+        filters=[{"member": "shot_zone", "operator": "set"}],
+    ),
+    Case(
+        name="clutch shooting from shots",
+        view="shot",
+        keys=["person_id", "season_start_year", "game_type"],
+        columns={
+            "points": "clutch_points",
+            "field_goals_attempted": "clutch_field_goals_attempted",
+            "field_goals_made": "clutch_field_goals_made",
+            "three_pointers_attempted": "clutch_three_pointers_attempted",
+            "three_pointers_made": "clutch_three_pointers_made",
+            "free_throws_attempted": "clutch_free_throws_attempted",
+            "free_throws_made": "clutch_free_throws_made",
+            "go_ahead_field_goals": "clutch_go_ahead_field_goals",
+            "field_goal_pct": "clutch_field_goal_pct",
+            "true_shooting_pct": "clutch_true_shooting_pct",
+        },
+        mart="nba_player_clutch_stats",
+        # Clutch rows with only rebounds, turnovers or fouls have no shots to compare.
+        mart_where=f"{MART_SCOPE} AND clutch_field_goals_attempted + clutch_free_throws_attempted > 0",
+        segments=["clutch"],
+    ),
 ]
 
 
@@ -251,7 +290,9 @@ def cube_rows(case: Case) -> dict[tuple, dict]:
     query = {
         "dimensions": members(case.keys),
         "measures": members(case.columns),
-        "filters": [{"member": f"{case.view}.game_type", "operator": "equals", "values": case.game_types}],
+        "filters": [{"member": f"{case.view}.game_type", "operator": "equals", "values": case.game_types},
+                    *({**f, "member": f"{case.view}.{f['member']}"} for f in case.filters)],
+        "segments": members(case.segments),
         "order": [[member, "asc"] for member in members(case.keys)],
         "limit": PAGE_SIZE,
     }

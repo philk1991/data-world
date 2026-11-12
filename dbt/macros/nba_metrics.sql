@@ -47,8 +47,13 @@
     (({{ fg }} + 0.5 * {{ fg3 }})::DOUBLE / NULLIF({{ fga }}, 0))
 {% endmacro %}
 
+{# Plays used: FGA + 0.44 × FTA + TOV, the denominator of turnover % and usage. #}
+{% macro nba_plays(fga, fta, tov) %}
+    ({{ fga }} + 0.44 * {{ fta }} + {{ tov }})
+{% endmacro %}
+
 {% macro nba_tov_pct(tov, fga, fta) %}
-    ({{ tov }}::DOUBLE / NULLIF({{ fga }} + 0.44 * {{ fta }} + {{ tov }}, 0))
+    ({{ tov }}::DOUBLE / NULLIF({{ nba_plays(fga, fta, tov) }}, 0))
 {% endmacro %}
 
 {# Offensive rebound share; pass (drb, opp_orb) for defensive rebound share. #}
@@ -68,8 +73,13 @@
     ({{ ast }}::DOUBLE / NULLIF({{ fg }}, 0))
 {% endmacro %}
 
+{# True shooting attempts: 2 × (FGA + 0.44 × FTA). #}
+{% macro nba_ts_attempts(fga, fta) %}
+    (2 * ({{ fga }} + 0.44 * {{ fta }}))
+{% endmacro %}
+
 {% macro nba_ts(pts, fga, fta) %}
-    ({{ pts }}::DOUBLE / NULLIF(2 * ({{ fga }} + 0.44 * {{ fta }}), 0))
+    ({{ pts }}::DOUBLE / NULLIF({{ nba_ts_attempts(fga, fta) }}, 0))
 {% endmacro %}
 
 {# Pythagorean wins, BBRef exponent 14. #}

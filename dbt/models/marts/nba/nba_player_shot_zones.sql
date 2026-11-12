@@ -1,13 +1,14 @@
 -- One row per player per season, game type and shot zone, from the play-by-play
 -- (1996-97 on), with the league's numbers for the same zone and season alongside.
--- Zones follow the NBA's court areas, computed from shot coordinates so they are
--- consistent across both play-by-play feeds: they match the live feed's own area
--- labels on 96.5% of shots, differing only at the edges (the restricted-area arc).
--- Field goals only; free throws are in nba_player_season_stats.
-WITH play_by_play AS (
+-- A rollup of nba_shot_events, which defines the zones; field goals with a
+-- recorded distance only (free throws are in nba_player_season_stats).
+WITH shots AS (
     SELECT *
     FROM
-        {{ ref('stg_nba_play_by_play') }}
+        {{ ref('nba_shot_events') }}
+    WHERE
+        shot_type = 'field_goal'
+        AND shot_zone IS NOT NULL
 ),
 
 box_scores AS (
@@ -34,33 +35,6 @@ box_score_names AS (
         person_id
 ),
 
-field_goals AS (
-    SELECT
-        person_id,
-        season_start_year,
-        game_type,
-        is_shot_made,
-        points_scored,
-        shot_distance_ft,
-        -- Coordinates are tenths of a foot from the basket. The paint is 16 ft wide and
-        -- reaches 19 ft from the baseline, 14.25 ft past the basket; corner threes are
-        -- taken below the point where the three-point arc meets the straight sideline line.
-        CASE
-            WHEN shot_distance_ft >= 40 THEN 'Heave'
-            WHEN shot_value = 3 AND shot_y <= 92 THEN 'Corner 3'
-            WHEN shot_value = 3 THEN 'Above the Break 3'
-            WHEN shot_distance_ft < 4 THEN 'Restricted Area'
-            WHEN ABS(shot_x) <= 80 AND shot_y <= 142.5 THEN 'In The Paint (Non-RA)'
-            ELSE 'Mid-Range'
-        END AS shot_zone
-    FROM
-        play_by_play
-    WHERE
-        event_type = 'field_goal'
-        AND person_id IS NOT NULL
-        AND shot_distance_ft IS NOT NULL
-),
-
 player_zones AS (
     SELECT
         person_id,
@@ -70,9 +44,10 @@ player_zones AS (
         COUNT(*) AS field_goals_attempted,
         COUNT(*) FILTER (WHERE is_shot_made) AS field_goals_made,
         SUM(points_scored) AS field_goal_points,
-        AVG(shot_distance_ft) AS avg_shot_distance_ft
+        AVG(shot_distance_ft) AS avg_shot_distance_ft,
+        MIN(shot_zone_order) AS shot_zone_order
     FROM
-        field_goals
+        shots
     GROUP BY
         person_id, season_start_year, game_type, shot_zone
 ),
@@ -86,7 +61,7 @@ league_zones AS (
         COUNT(*) FILTER (WHERE is_shot_made) AS league_field_goals_made,
         SUM(points_scored) AS league_field_goal_points
     FROM
-        field_goals
+        shots
     GROUP BY
         season_start_year, game_type, shot_zone
 ),
@@ -110,14 +85,7 @@ enriched AS (
         {{ nba_season_label('pz.season_start_year') }} AS season_label,
         pz.game_type,
         pz.shot_zone,
-        CASE pz.shot_zone
-            WHEN 'Restricted Area' THEN 1
-            WHEN 'In The Paint (Non-RA)' THEN 2
-            WHEN 'Mid-Range' THEN 3
-            WHEN 'Corner 3' THEN 4
-            WHEN 'Above the Break 3' THEN 5
-            WHEN 'Heave' THEN 6
-        END AS shot_zone_order,
+        pz.shot_zone_order,
         pz.field_goals_attempted,
         pz.field_goals_made,
         pz.field_goals_made / pz.field_goals_attempted AS field_goal_pct,

@@ -28,7 +28,7 @@
     END AS three_point_attempt_rate,
     {{ nba_ft_rate('ft_rate_free_throws_made', 'ft_rate_field_goals_attempted') }} AS free_throw_rate,
     -- Points above what league-average true shooting would score on the same attempts.
-    ts_points - 2 * lg_true_shooting_pct * (ts_field_goals_attempted + 0.44 * ts_free_throws_attempted)
+    ts_points - lg_true_shooting_pct * {{ nba_ts_attempts('ts_field_goals_attempted', 'ts_free_throws_attempted') }}
         AS true_shooting_points_added,
     CASE
         WHEN season_start_year >= {{ nba_coverage_start('turnovers') }}

@@ -131,6 +131,13 @@ staging tables.
   the clutch". No assists, steals or blocks. **Set a minimum
   `clutch_field_goals_attempted`** (e.g. 30) before ranking by percentage, and
   **filter `game_type = 'Regular Season'`** unless playoffs are asked for.
+- `nba_shot_events` — one row per shot attempt (field goal or free throw),
+  1996-97 on, with `shot_zone`, `shot_distance_ft`, `period`,
+  `clock_seconds_remaining`, `is_clutch`, `team_margin_before` and
+  `is_go_ahead`. The two marts above are rollups of it; use it only for cuts
+  they don't have (by period, opponent, score margin, a date range, clutch
+  shooting by zone). Count rows for attempts, `COUNT(*) FILTER (WHERE
+  is_shot_made)` for makes, `SUM(points_scored)` for points.
 - `nba_team_season_summary` — one row per (`team_id`, `season_start_year`);
   regular-season record, home/away wins, scoring. Use for standings / best
   record questions.
@@ -227,6 +234,7 @@ for what a column means.
 - `lake.marts.nba_player_stint_advanced`: person_id, first_name, last_name, team_id, season_start_year, season_label, game_type, games_played, total_minutes, total_points, true_shooting_pct, effective_field_goal_pct, three_point_attempt_rate, free_throw_rate, true_shooting_points_added, usage_pct, turnover_pct, assist_pct, offensive_rebound_pct, defensive_rebound_pct, rebound_pct, steal_pct, block_pct, player_possessions, points_per_100, rebounds_total_per_100, assists_per_100, steals_per_100, blocks_per_100, turnovers_per_100, game_score_per_game, rating_games, points_produced, individual_possessions, individual_offensive_rating, individual_defensive_rating, formula_version
 - `lake.marts.nba_players_dim`: person_id, first_name, last_name, player_name, has_bio_record, birth_date, height_inches, height_cm, height_feet_inches, body_weight_lbs, body_weight_kg, is_guard, is_forward, is_center, position, school, country, is_undrafted, draft_year, draft_round, draft_number, first_game_date, last_game_date, first_season_start_year, last_season_start_year, seasons_played, played_in_last_two_seasons, age_at_first_game, age_at_last_game
 - `lake.marts.nba_seasons_dim`: season_start_year, season_label, season_first_game_date, season_last_game_date, regular_season_games, playoff_games, teams, min_team_regular_season_games, max_team_regular_season_games, is_current, coverage_tier, is_in_coverage
+- `lake.marts.nba_shot_events`: game_id, action_number, person_id, team_id, opponent_team_id, season_start_year, season_label, game_type, game_date, period, clock_seconds_remaining, shot_type, shot_value, is_shot_made, points_scored, shot_zone, shot_zone_order, shot_distance_ft, shot_x, shot_y, is_clutch, team_margin_before, is_go_ahead
 - `lake.marts.nba_team_advanced_profile`: team_id, season_start_year, season_label, game_type, games_played, wins, losses, possessions, offensive_rating, defensive_rating, net_rating, pace, effective_field_goal_pct, true_shooting_pct, assist_pct, rebound_pct, turnover_pct, three_point_attempt_rate, points_in_paint_share, fast_break_points_share, offensive_rebound_pct, free_throw_rate, opp_effective_field_goal_pct, opp_turnover_pct, defensive_rebound_pct, opp_free_throw_rate, margin_of_victory, pythagorean_wins, luck_wins, simple_rating_system, strength_of_schedule, relative_offensive_rating, relative_defensive_rating, relative_pace, relative_effective_field_goal_pct, relative_true_shooting_pct, games_with_counts, games_with_full_box, coverage_flag, formula_version
 - `lake.marts.nba_team_dim`: team_id, current_team_city, current_team_name, current_full_name, current_team_abbrev, current_league, current_era_season_founded, current_era_active_till, franchise_first_season, franchise_era_count, has_relocated_or_renamed
 - `lake.marts.nba_team_form`: team_id, game_id, season_start_year, game_type, game_date, last_10_games, last_10_net_rating, last_20_games, last_20_net_rating, season_to_date_games, season_to_date_net_rating, league_to_date_offensive_rating, league_to_date_pace, formula_version

@@ -28,10 +28,13 @@ WITH stints AS (
         {{ ref('int_nba_player_stints') }}
 ),
 
-team_games AS (
-    SELECT *
+league AS (
+    SELECT
+        season_start_year,
+        game_type,
+        lg_true_shooting_pct
     FROM
-        {{ ref('int_nba_team_games') }}
+        {{ ref('nba_league_season_baselines') }}
 ),
 
 players AS (
@@ -54,23 +57,6 @@ season_stats AS (
 ),
 
 -- Transform
-league AS (
-    SELECT
-        season_start_year,
-        game_type,
-        {{
-            nba_ts(
-                "SUM(points) FILTER (WHERE counts_source <> 'none')",
-                "SUM(field_goals_attempted) FILTER (WHERE counts_source <> 'none')",
-                "SUM(free_throws_attempted) FILTER (WHERE counts_source <> 'none')"
-            )
-        }} AS lg_true_shooting_pct
-    FROM
-        team_games
-    GROUP BY
-        season_start_year, game_type
-),
-
 seasons AS (
     SELECT
         person_id,

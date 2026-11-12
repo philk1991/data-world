@@ -356,15 +356,11 @@ models:
         tests:
           - not_null
       - name: action_number
-        description: >
-          The feed's event id within the game. Unique per game, but not the game's
-          order: use event_order for that.
+        description: "{{ doc('nba__action_number') }}"
         tests:
           - not_null
       - name: event_order
-        description: >
-          Position of the event in the game (1 = first), by period, then game clock
-          counting down, then the feed's own order for events at the same moment.
+        description: "{{ doc('nba__event_order') }}"
         tests:
           - not_null
       - name: game_type
@@ -396,7 +392,7 @@ models:
               arguments:
                 values: ["legacy", "live"]
       - name: period
-        description: Period of the game. 1-4 are quarters, 5 and up overtimes.
+        description: "{{ doc('nba__period') }}"
         tests:
           - not_null
       - name: is_overtime
@@ -404,7 +400,7 @@ models:
         tests:
           - not_null
       - name: clock_seconds_remaining
-        description: Seconds left on the game clock in the period when the event happened.
+        description: "{{ doc('nba__clock_seconds_remaining') }}"
         tests:
           - not_null
       - name: game_seconds_elapsed
@@ -414,12 +410,7 @@ models:
         tests:
           - not_null
       - name: event_type
-        description: >
-          What happened, in one vocabulary for both feeds: field_goal (including
-          missed), free_throw, rebound, turnover, steal, block, foul, substitution,
-          timeout, violation, jump_ball, period (start/end), game (end), heave,
-          instant_replay, stoppage, ejection, memo, unknown. Steal and block events
-          exist only in the live feed.
+        description: "{{ doc('nba__event_type') }}"
         tests:
           - not_null
           - accepted_values:
@@ -477,26 +468,19 @@ models:
         tests:
           - not_null
       - name: is_shot_made
-        description: For field goals and free throws, whether the shot went in. Null for other events.
+        description: "{{ doc('nba__is_shot_made') }}"
       - name: shot_value
-        description: For field goals and free throws, the points the shot was worth if made (1, 2 or 3).
+        description: "{{ doc('nba__shot_value') }}"
       - name: points_scored
-        description: "Points the event scored: shot_value for a made shot, else 0."
+        description: "{{ doc('nba__points_scored') }}"
         tests:
           - not_null
       - name: shot_x
-        description: >
-          Field goals only. Horizontal court position in tenths of a foot from the
-          basket (negative = left, looking from half court at the basket). Set
-          for all but a handful of field goals; the legacy feed puts shots at the
-          rim at exactly 0,0.
+        description: "{{ doc('nba__shot_x') }}"
       - name: shot_y
-        description: Field goals only. Distance up the court from the basket, in tenths of a foot.
+        description: "{{ doc('nba__shot_y') }}"
       - name: shot_distance_ft
-        description: >
-          Field goals only. Distance of the shot from the basket in feet, from the
-          court coordinates (the legacy feed's own distance is 0 whenever its text
-          gives none).
+        description: "{{ doc('nba__shot_distance_ft') }}"
       - name: shot_area
         description: Live feed only. Court area of a field goal (e.g. Restricted Area, Above the Break 3).
       - name: shot_area_detail

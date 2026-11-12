@@ -7,6 +7,8 @@ description: Scaffold a new dbt model (SQL + YAML) following project conventions
 
 Scaffold a new dbt model with correct SQL structure and YAML schema entry, following this project's conventions.
 
+Before building a metric, mart or cube, read `docs/analytics-engineering-principles.md`: store additive components and compute ratios in Cube, write each formula once per layer, tag non-additive marts (`meta.additive`), keep marts unrounded, and treat a blank as null, not zero.
+
 ## Step 1 — Synthesise conventions via sub-agent
 
 Spawn one **Explore** sub-agent to read all three conventions files and return a compact,

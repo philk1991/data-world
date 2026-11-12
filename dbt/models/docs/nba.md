@@ -589,3 +589,65 @@ Dean Oliver's individual defensive rating: points allowed per 100 possessions, t
 {% docs nba__upstream_gap_2024_25 %}
 Known upstream gap, outside our control: the Kaggle source is missing six 2024-25 Regular Season games (still missing in dataset version 542, checked 10 Nov 2026). Four (game ids 22400532, 22400537, 22400538, 22400617) are absent from the games and box score files; two more (22400627, 22400988) are recorded 0-0 with no player box score and are dropped in staging. So 2024-25 shows 1,224 of 1,230 games: ATL, CHA, HOU, LAC, LAL, MIL, NOP, ORL, UTA and WAS have 81 games, SAS 80, and those teams' records and totals and their players' season totals are short by the missing games. The games are present in the play-by-play.
 {% enddocs %}
+
+{# ── Play-by-play events and shots ─────────────────────────────────────── #}
+
+{% docs nba__action_number %}
+The feed's event id within the game. Unique per game, but not the game's order: use event_order for that.
+{% enddocs %}
+
+{% docs nba__event_order %}
+Position of the event in the game (1 = first), by period, then game clock counting down, then the feed's own order for events at the same moment.
+{% enddocs %}
+
+{% docs nba__period %}
+Period of the game. 1-4 are quarters, 5 and up overtimes.
+{% enddocs %}
+
+{% docs nba__clock_seconds_remaining %}
+Seconds left on the game clock in the period when the event happened.
+{% enddocs %}
+
+{% docs nba__event_type %}
+What happened, in one vocabulary for both feeds: field_goal (including missed), free_throw, rebound, turnover, steal, block, foul, substitution, timeout, violation, jump_ball, period (start/end), game (end), heave, instant_replay, stoppage, ejection, memo, unknown. Steal and block events exist only in the live feed.
+{% enddocs %}
+
+{% docs nba__is_shot_made %}
+For field goals and free throws, whether the shot went in. Null for other events.
+{% enddocs %}
+
+{% docs nba__shot_value %}
+For field goals and free throws, the points the shot was worth if made (1, 2 or 3).
+{% enddocs %}
+
+{% docs nba__points_scored %}
+Points the event scored: shot_value for a made shot, else 0.
+{% enddocs %}
+
+{% docs nba__shot_x %}
+Field goals only. Horizontal court position in tenths of a foot from the basket (negative = left, looking from half court at the basket). Set for all but a handful of field goals; the legacy feed puts shots at the rim at exactly 0,0.
+{% enddocs %}
+
+{% docs nba__shot_y %}
+Field goals only. Distance up the court from the basket, in tenths of a foot.
+{% enddocs %}
+
+{% docs nba__shot_distance_ft %}
+Field goals only. Distance of the shot from the basket in feet, from the court coordinates (the legacy feed's own distance is 0 whenever its text gives none).
+{% enddocs %}
+
+{% docs nba__shot_zone %}
+Court area the shot was taken from, from its coordinates. Restricted Area: under 4 ft from the basket. In The Paint (Non-RA): the rest of the 16-ft-wide lane. Mid-Range: any other two. Corner 3: a three from below the break in the arc, along the sidelines. Above the Break 3: any other three. Heave: any shot from 40+ ft (end-of-quarter attempts).
+{% enddocs %}
+
+{% docs nba__shot_zone_order %}
+Sort order for shot_zone, from the basket outwards (1 = Restricted Area, 6 = Heave).
+{% enddocs %}
+
+{% docs nba__is_clutch %}
+Whether the event happened in clutch time, the NBA's definition: the last five minutes of the fourth quarter or any overtime with the score within five points, judged on the score before the event (so the shot that opens a six-point lead still counts). Defined once in int_nba_play_events.
+{% enddocs %}
+
+{% docs nba__team_margin_before %}
+The player's team's lead before the event, in points (negative when behind). Null for the few games missing from the game records.
+{% enddocs %}

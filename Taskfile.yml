@@ -409,6 +409,11 @@ tasks:
     cmds:
       - .venv/bin/python cube/scripts/check_additivity.py
 
+  cube:formulas:check:
+    desc: "Fail when an NBA rate formula (0.44, 0.5 x 3PM, 48 x) is written outside dbt/macros/nba_metrics.sql and cube/model/macros/nba_rates.jinja, or appears in nao's rules."
+    cmds:
+      - .venv/bin/python cube/scripts/check_formulas.py
+
   cube:reconcile:
     desc: "Compare the Cube views with the dbt rollup marts row for row (needs task cube:dev); fails on any difference."
     cmds:

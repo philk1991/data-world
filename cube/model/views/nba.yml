@@ -284,3 +284,44 @@ views:
     cubes:
       - join_path: nba_league_season_baselines
         includes: "*"
+
+  - name: shot
+    description: >
+      One row per shot attempt (field goal or free throw) from the play-by-play,
+      1996-97 on, Regular Season by default (filter game_type to change it, as
+      in player_season). Shooting by zone, clutch time, period, score margin or
+      opponent, from one grain: field_goal_pct, effective_field_goal_pct,
+      true_shooting_pct and points_per_shot are correct over any cut. Apply the
+      clutch segment for clutch time (last five minutes of the fourth quarter
+      or overtime, score within five). shot_zone is null for free throws.
+      Counts come from the play-by-play and can differ slightly from the box
+      score; for season totals use player_season. A zone's share of a
+      player's attempts is its field_goals_attempted over the player's total.
+    cubes:
+      - join_path: nba_shot_events
+        includes: "*"
+
+      - join_path: nba_shot_events.nba_players_dim
+        includes:
+          - player_name
+          - position
+
+      - join_path: nba_shot_events.nba_team_seasons_dim
+        includes:
+          - team_name
+          - team_full_name
+          - team_abbrev
+
+      - join_path: nba_shot_events.nba_opponent_seasons_dim
+        includes:
+          - name: team_name
+            alias: opponent_name
+          - name: team_full_name
+            alias: opponent_full_name
+          - name: team_abbrev
+            alias: opponent_abbrev
+    default_filters:
+      - member: game_type
+        operator: equals
+        values: ["Regular Season"]
+        unless: [game_type]

@@ -1,0 +1,294 @@
+# {% import "macros/nba_rates.jinja" as rates %}
+cubes:
+  - name: nba_shot_events
+    public: false
+    sql_table: marts.nba_shot_events
+    description: >
+      One row per shot attempt (field goal or free throw) from the play-by-play,
+      1996-97 on, with zone, distance, result and clutch context. Shooting
+      measures here are correct over any cut: zone, clutch time, period, score
+      margin, opponent. Published through the shot view.
+
+    joins:
+      - name: nba_players_dim
+        sql: "{CUBE}.person_id = {nba_players_dim}.person_id"
+        relationship: many_to_one
+
+      - name: nba_team_seasons_dim
+        sql: "{CUBE}.team_id = {nba_team_seasons_dim}.team_id AND {CUBE}.season_start_year = {nba_team_seasons_dim}.season_start_year"
+        relationship: many_to_one
+
+      - name: nba_opponent_seasons_dim
+        sql: "{CUBE}.opponent_team_id = {nba_opponent_seasons_dim}.team_id AND {CUBE}.season_start_year = {nba_opponent_seasons_dim}.season_start_year"
+        relationship: many_to_one
+
+    dimensions:
+      - name: game_id
+        sql: "{CUBE}.game_id"
+        type: number
+        primary_key: true
+        public: true
+        description: >
+          NBA game identifier. Encodes the game type and season (00TYYNNNNN,
+          stored without the leading zeros); game_type and season_start_year are
+          decoded from it.
+
+      - name: action_number
+        sql: "{CUBE}.action_number"
+        type: number
+        primary_key: true
+        description: >
+          The feed's event id within the game. Unique per game, but not the
+          game's order: use event_order for that.
+
+      - name: person_id
+        sql: "{CUBE}.person_id"
+        type: number
+        public: true
+        description: NBA player identifier.
+
+      - name: team_id
+        sql: "{CUBE}.team_id"
+        type: number
+        description: Franchise identifier, stable across relocations and renames.
+
+      - name: opponent_team_id
+        sql: "{CUBE}.opponent_team_id"
+        type: number
+        description: Franchise identifier of the opposing team.
+
+      - name: season_start_year
+        sql: "{CUBE}.season_start_year"
+        type: number
+        description: >
+          Calendar year the season started (e.g. 2023 for 2023-24), decoded from
+          the game id. Follows the league's own season assignment, so the 2020
+          bubble games belong to 2019-20 and the July 2021 Finals to 2020-21.
+
+      - name: season_label
+        sql: "{CUBE}.season_label"
+        type: string
+        description: Human-readable season label (e.g. "2023-24").
+
+      - name: game_type
+        sql: "{CUBE}.game_type"
+        type: string
+        description: >
+          Type of game, decoded from the game id: Regular Season, Playoffs,
+          Play-in Tournament, Preseason, All-Star Game or NBA Cup Final. NBA Cup
+          group and knockout games are Regular Season; only the Cup final, which
+          does not count toward the standings, is separate.
+
+      - name: game_date
+        sql: "{CUBE}.game_date"
+        type: time
+        description: Calendar date of the game.
+
+      - name: period
+        sql: "{CUBE}.period"
+        type: number
+        description: Period of the game. 1-4 are quarters, 5 and up overtimes.
+
+      - name: clock_seconds_remaining
+        sql: "{CUBE}.clock_seconds_remaining"
+        type: number
+        description: Seconds left on the game clock in the period when the event happened.
+
+      - name: shot_type
+        sql: "{CUBE}.shot_type"
+        type: string
+        description: field_goal or free_throw.
+
+      - name: shot_value
+        sql: "{CUBE}.shot_value"
+        type: number
+        description: >
+          For field goals and free throws, the points the shot was worth if made
+          (1, 2 or 3).
+
+      - name: is_shot_made
+        sql: "{CUBE}.is_shot_made"
+        type: boolean
+        description: >
+          For field goals and free throws, whether the shot went in. Null for
+          other events. False rather than null for the few attempts the feed
+          leaves blank.
+
+      - name: shot_zone
+        sql: "{CUBE}.shot_zone"
+        type: string
+        description: >
+          Court area the shot was taken from, from its coordinates. Restricted
+          Area: under 4 ft from the basket. In The Paint (Non-RA): the rest of
+          the 16-ft-wide lane. Mid-Range: any other two. Corner 3: a three from
+          below the break in the arc, along the sidelines. Above the Break 3:
+          any other three. Heave: any shot from 40+ ft (end-of-quarter
+          attempts). Null for free throws and for field goals with no recorded
+          distance.
+
+      - name: shot_zone_order
+        sql: "{CUBE}.shot_zone_order"
+        type: number
+        description: >
+          Sort order for shot_zone, from the basket outwards (1 = Restricted
+          Area, 6 = Heave).
+
+      - name: shot_distance_ft
+        sql: "{CUBE}.shot_distance_ft"
+        type: number
+        description: >
+          Field goals only. Distance of the shot from the basket in feet, from
+          the court coordinates (the legacy feed's own distance is 0 whenever
+          its text gives none).
+
+      - name: is_clutch
+        sql: "{CUBE}.is_clutch"
+        type: boolean
+        description: >
+          Whether the event happened in clutch time, the NBA's definition: the
+          last five minutes of the fourth quarter or any overtime with the score
+          within five points, judged on the score before the event (so the shot
+          that opens a six-point lead still counts). Defined once in
+          int_nba_play_events.
+
+      - name: team_margin_before
+        sql: "{CUBE}.team_margin_before"
+        type: number
+        description: >
+          The player's team's lead before the event, in points (negative when
+          behind). Null for the few games missing from the game records.
+
+      - name: is_go_ahead
+        sql: "{CUBE}.is_go_ahead"
+        type: boolean
+        description: A made field goal that took the player's team from tied or behind to ahead.
+
+    segments:
+      - name: clutch
+        sql: "{CUBE}.is_clutch"
+        description: Shots in clutch time (last five minutes of the fourth quarter or overtime, score within five).
+
+    measures:
+      - name: count
+        type: count
+        format: ",.0f"
+        description: Shot attempts, field goals and free throws together.
+
+      - name: count_players
+        sql: "{CUBE}.person_id"
+        type: count_distinct
+        format: ",.0f"
+        description: Distinct players with a matching shot.
+
+      - name: count_games
+        sql: "{CUBE}.game_id"
+        type: count_distinct
+        format: ",.0f"
+        description: Distinct games with a matching shot.
+
+      - name: field_goals_attempted
+        type: count
+        format: ",.0f"
+        filters:
+          - sql: "{CUBE}.shot_type = 'field_goal'"
+        description: Field goal attempts.
+
+      - name: field_goals_made
+        type: count
+        format: ",.0f"
+        filters:
+          - sql: "{CUBE}.shot_type = 'field_goal' AND {CUBE}.is_shot_made"
+        description: Field goals made.
+
+      - name: three_pointers_attempted
+        type: count
+        format: ",.0f"
+        filters:
+          - sql: "{CUBE}.shot_type = 'field_goal' AND {CUBE}.shot_value = 3"
+        description: Three-point attempts.
+
+      - name: three_pointers_made
+        type: count
+        format: ",.0f"
+        filters:
+          - sql: "{CUBE}.shot_type = 'field_goal' AND {CUBE}.shot_value = 3 AND {CUBE}.is_shot_made"
+        description: Three-pointers made.
+
+      - name: free_throws_attempted
+        type: count
+        format: ",.0f"
+        filters:
+          - sql: "{CUBE}.shot_type = 'free_throw'"
+        description: Free throw attempts.
+
+      - name: free_throws_made
+        type: count
+        format: ",.0f"
+        filters:
+          - sql: "{CUBE}.shot_type = 'free_throw' AND {CUBE}.is_shot_made"
+        description: Free throws made.
+
+      - name: points
+        sql: "{CUBE}.points_scored"
+        type: sum
+        format: ",.0f"
+        description: Points scored on the matching shots.
+
+      - name: field_goal_points
+        sql: "{CUBE}.points_scored"
+        type: sum
+        format: ",.0f"
+        filters:
+          - sql: "{CUBE}.shot_type = 'field_goal'"
+        description: Points scored on field goals.
+
+      - name: go_ahead_field_goals
+        type: count
+        format: ",.0f"
+        filters:
+          - sql: "{CUBE}.is_go_ahead"
+        description: Made field goals that took the team from tied or behind to ahead.
+
+      - name: field_goal_pct
+        sql: "{field_goals_made} * 1.0 / NULLIF({field_goals_attempted}, 0)"
+        type: number
+        format: ".3f"
+        description: Field goals made / attempted, 0-1.
+
+      - name: three_point_pct
+        sql: "{three_pointers_made} * 1.0 / NULLIF({three_pointers_attempted}, 0)"
+        type: number
+        format: ".3f"
+        description: Three-pointers made / attempted, 0-1.
+
+      - name: free_throw_pct
+        sql: "{free_throws_made} * 1.0 / NULLIF({free_throws_attempted}, 0)"
+        type: number
+        format: ".3f"
+        description: Free throws made / attempted, 0-1.
+
+      - name: effective_field_goal_pct
+        sql: "{{ rates.effective_fg('{field_goals_made}', '{three_pointers_made}', '{field_goals_attempted}') }}"
+        type: number
+        format: ".3f"
+        description: "(FGM + 0.5 × 3PM) / FGA, 0-1."
+
+      - name: true_shooting_pct
+        sql: "{{ rates.true_shooting('{points}', '{field_goals_attempted}', '{free_throws_attempted}') }}"
+        type: number
+        format: ".3f"
+        description: "PTS / (2 × (FGA + 0.44 × FTA)) over the matching shots, 0-1; with the clutch segment, clutch true shooting."
+
+      - name: points_per_shot
+        sql: "{field_goal_points} * 1.0 / NULLIF({field_goals_attempted}, 0)"
+        type: number
+        format: ".2f"
+        description: Points per field goal attempt.
+
+      - name: avg_shot_distance_ft
+        sql: "{CUBE}.shot_distance_ft"
+        type: avg
+        format: ".1f"
+        filters:
+          - sql: "{CUBE}.shot_type = 'field_goal'"
+        description: Average field goal distance in feet.

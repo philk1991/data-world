@@ -1,23 +1,23 @@
 -- One row per player per season and game type with any clutch-time event, from
--- the play-by-play (1996-97 on). Clutch time is the NBA's definition: the last
--- five minutes of the fourth quarter or any overtime, with the score within five
--- points. Whether an event is clutch is judged on the score before it, so the
--- shot that opens a six-point lead still counts.
+-- the play-by-play (1996-97 on). Clutch time (int_nba_play_events) is the NBA's
+-- definition: the last five minutes of the fourth quarter or any overtime, with
+-- the score within five points, judged on the score before the event. Shooting
+-- comes from nba_shot_events; games, rebounds and turnovers from the events.
 -- The play-by-play has no record of who was on the floor, so a player's clutch
 -- games are games with at least one clutch event of their own (a shot, free
 -- throw, rebound, turnover or foul), not every game they were on court for one.
 -- Assists, steals and blocks are left out: the legacy feed (to early 2019-20)
 -- records assists only as names and steals and blocks not at all.
-WITH play_by_play AS (
+WITH play_events AS (
     SELECT *
     FROM
-        {{ ref('stg_nba_play_by_play') }}
+        {{ ref('int_nba_play_events') }}
 ),
 
-games AS (
+shots AS (
     SELECT *
     FROM
-        {{ ref('stg_nba_games') }}
+        {{ ref('nba_shot_events') }}
 ),
 
 box_scores AS (
@@ -44,70 +44,67 @@ box_score_names AS (
         person_id
 ),
 
-events AS (
-    SELECT
-        pbp.*,
-        pbp.team_id = g.home_team_id AS is_home,
-        -- Score before the event: the previous event's score.
-        COALESCE(LAG(pbp.score_home) OVER game_order, 0) AS score_home_before,
-        COALESCE(LAG(pbp.score_away) OVER game_order, 0) AS score_away_before
-    FROM
-        play_by_play pbp
-    LEFT JOIN
-        games g
-        USING (game_id)
-    WINDOW game_order AS (PARTITION BY pbp.game_id ORDER BY pbp.event_order)
-),
-
-player_events AS (
-    SELECT
-        *,
-        period >= 4
-        AND clock_seconds_remaining <= 300
-        AND ABS(score_home_before - score_away_before) <= 5 AS is_clutch,
-        -- Null for the few games missing from the game records, so they never count as go-ahead.
-        CASE
-            WHEN is_home THEN score_home_before - score_away_before
-            WHEN NOT is_home THEN score_away_before - score_home_before
-        END AS team_margin_before
-    FROM
-        events
-    WHERE
-        person_id IS NOT NULL
-),
-
-player_seasons AS (
+-- Any clutch event of the player's own counts toward clutch games.
+event_seasons AS (
     SELECT
         person_id,
         season_start_year,
         game_type,
         COUNT(DISTINCT game_id) FILTER (WHERE is_clutch) AS clutch_games,
-        SUM(points_scored) FILTER (WHERE is_clutch) AS clutch_points,
-        COUNT(*) FILTER (WHERE is_clutch AND event_type = 'field_goal') AS clutch_field_goals_attempted,
-        COUNT(*) FILTER (WHERE is_clutch AND event_type = 'field_goal' AND is_shot_made) AS clutch_field_goals_made,
-        COUNT(*) FILTER (
-            WHERE is_clutch AND event_type = 'field_goal' AND shot_value = 3
-        ) AS clutch_three_pointers_attempted,
-        COUNT(*) FILTER (
-            WHERE is_clutch AND event_type = 'field_goal' AND shot_value = 3 AND is_shot_made
-        ) AS clutch_three_pointers_made,
-        COUNT(*) FILTER (WHERE is_clutch AND event_type = 'free_throw') AS clutch_free_throws_attempted,
-        COUNT(*) FILTER (WHERE is_clutch AND event_type = 'free_throw' AND is_shot_made) AS clutch_free_throws_made,
         COUNT(*) FILTER (WHERE is_clutch AND event_type = 'rebound') AS clutch_rebounds,
-        COUNT(*) FILTER (WHERE is_clutch AND event_type = 'turnover') AS clutch_turnovers,
-        -- A made field goal that took the team from tied or behind to ahead.
-        COUNT(*) FILTER (
-            WHERE is_clutch AND event_type = 'field_goal' AND is_shot_made
-            AND team_margin_before <= 0 AND team_margin_before + points_scored > 0
-        ) AS clutch_go_ahead_field_goals,
-        -- Every-minute shooting from the same events, as the baseline to compare against.
-        SUM(points_scored) AS points,
-        COUNT(*) FILTER (WHERE event_type = 'field_goal') AS field_goals_attempted,
-        COUNT(*) FILTER (WHERE event_type = 'free_throw') AS free_throws_attempted
+        COUNT(*) FILTER (WHERE is_clutch AND event_type = 'turnover') AS clutch_turnovers
     FROM
-        player_events
+        play_events
     GROUP BY
         person_id, season_start_year, game_type
+),
+
+shot_seasons AS (
+    SELECT
+        person_id,
+        season_start_year,
+        game_type,
+        SUM(points_scored) FILTER (WHERE is_clutch) AS clutch_points,
+        COUNT(*) FILTER (WHERE is_clutch AND shot_type = 'field_goal') AS clutch_field_goals_attempted,
+        COUNT(*) FILTER (WHERE is_clutch AND shot_type = 'field_goal' AND is_shot_made) AS clutch_field_goals_made,
+        COUNT(*) FILTER (
+            WHERE is_clutch AND shot_type = 'field_goal' AND shot_value = 3
+        ) AS clutch_three_pointers_attempted,
+        COUNT(*) FILTER (
+            WHERE is_clutch AND shot_type = 'field_goal' AND shot_value = 3 AND is_shot_made
+        ) AS clutch_three_pointers_made,
+        COUNT(*) FILTER (WHERE is_clutch AND shot_type = 'free_throw') AS clutch_free_throws_attempted,
+        COUNT(*) FILTER (WHERE is_clutch AND shot_type = 'free_throw' AND is_shot_made) AS clutch_free_throws_made,
+        COUNT(*) FILTER (WHERE is_clutch AND is_go_ahead) AS clutch_go_ahead_field_goals,
+        -- Every-minute shooting from the same events, as the baseline to compare against.
+        SUM(points_scored) AS points,
+        COUNT(*) FILTER (WHERE shot_type = 'field_goal') AS field_goals_attempted,
+        COUNT(*) FILTER (WHERE shot_type = 'free_throw') AS free_throws_attempted
+    FROM
+        shots
+    GROUP BY
+        person_id, season_start_year, game_type
+),
+
+player_seasons AS (
+    SELECT
+        e.*,
+        COALESCE(s.clutch_points, 0) AS clutch_points,
+        COALESCE(s.clutch_field_goals_attempted, 0) AS clutch_field_goals_attempted,
+        COALESCE(s.clutch_field_goals_made, 0) AS clutch_field_goals_made,
+        COALESCE(s.clutch_three_pointers_attempted, 0) AS clutch_three_pointers_attempted,
+        COALESCE(s.clutch_three_pointers_made, 0) AS clutch_three_pointers_made,
+        COALESCE(s.clutch_free_throws_attempted, 0) AS clutch_free_throws_attempted,
+        COALESCE(s.clutch_free_throws_made, 0) AS clutch_free_throws_made,
+        COALESCE(s.clutch_go_ahead_field_goals, 0) AS clutch_go_ahead_field_goals,
+        s.points,
+        s.field_goals_attempted,
+        s.free_throws_attempted
+    FROM
+        event_seasons e
+    LEFT JOIN
+        shot_seasons s
+        USING (person_id, season_start_year, game_type)
 ),
 
 enriched AS (
@@ -130,10 +127,9 @@ enriched AS (
         ps.clutch_free_throws_made,
         ps.clutch_free_throws_attempted,
         ps.clutch_free_throws_made / NULLIF(ps.clutch_free_throws_attempted, 0) AS clutch_free_throw_pct,
-        ps.clutch_points
-        / NULLIF(2 * (ps.clutch_field_goals_attempted + 0.44 * ps.clutch_free_throws_attempted), 0)
+        {{ nba_ts('ps.clutch_points', 'ps.clutch_field_goals_attempted', 'ps.clutch_free_throws_attempted') }}
             AS clutch_true_shooting_pct,
-        ps.points / NULLIF(2 * (ps.field_goals_attempted + 0.44 * ps.free_throws_attempted), 0) AS true_shooting_pct,
+        {{ nba_ts('ps.points', 'ps.field_goals_attempted', 'ps.free_throws_attempted') }} AS true_shooting_pct,
         ps.clutch_rebounds,
         ps.clutch_turnovers,
         ps.clutch_go_ahead_field_goals

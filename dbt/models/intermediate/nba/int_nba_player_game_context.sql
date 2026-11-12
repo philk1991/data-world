@@ -109,10 +109,11 @@ joined AS (
 SELECT
     *,
     -- Usage: plays used / on-court share of team plays.
-    field_goals_attempted + 0.44 * free_throws_attempted + turnovers AS usage_plays,
+    {{ nba_plays('field_goals_attempted', 'free_throws_attempted', 'turnovers') }} AS usage_plays,
     CASE
         WHEN turnovers IS NOT NULL AND field_goals_attempted IS NOT NULL AND free_throws_attempted IS NOT NULL
-            THEN on_court_share * (team_field_goals_attempted + 0.44 * team_free_throws_attempted + team_turnovers)
+            THEN on_court_share
+                * {{ nba_plays('team_field_goals_attempted', 'team_free_throws_attempted', 'team_turnovers') }}
     END AS usage_opportunity,
     -- Assist %: teammates' field goals made while on the floor.
     CASE WHEN assists IS NOT NULL THEN on_court_share * team_field_goals_made - field_goals_made END

@@ -1,3 +1,4 @@
+# {% import "macros/nba_rates.jinja" as rates %}
 cubes:
   - name: nba_player_season_stats
     public: false
@@ -415,13 +416,13 @@ cubes:
       # Both rates divide sums of matched inputs the mart exposes (ts_*, efg_*), so they
       # are correct at any grain (plans/adr/0002-dbt-cube-boundary.md).
       - name: effective_field_goal_pct
-        sql: "(SUM({CUBE}.total_field_goals_made) + 0.5 * SUM({CUBE}.efg_three_pointers_made)) / NULLIF(SUM({CUBE}.total_field_goals_attempted), 0)"
+        sql: "{{ rates.effective_fg('SUM({CUBE}.total_field_goals_made)', 'SUM({CUBE}.efg_three_pointers_made)', 'SUM({CUBE}.total_field_goals_attempted)') }}"
         type: number
         format: ".3f"
         description: Field goal percentage adjusted for the extra value of a three, (FGM + 0.5 × 3PM) / FGA, over games with field goal attempts recorded, 0-1.
 
       - name: true_shooting_pct
-        sql: "SUM({CUBE}.ts_points) / NULLIF(2 * (SUM({CUBE}.ts_field_goals_attempted) + 0.44 * SUM({CUBE}.ts_free_throws_attempted)), 0)"
+        sql: "{{ rates.true_shooting('SUM({CUBE}.ts_points)', 'SUM({CUBE}.ts_field_goals_attempted)', 'SUM({CUBE}.ts_free_throws_attempted)') }}"
         type: number
         format: ".3f"
         description: Shooting efficiency accounting for twos, threes and free throws, PTS / (2 × (FGA + 0.44 × FTA)), over games with both attempt counts recorded, 0-1. For leaderboards apply the fg_qualified segment.

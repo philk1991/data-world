@@ -65,6 +65,8 @@ data-world/
 
 ## Architecture
 
+Read [`docs/analytics-engineering-principles.md`](docs/analytics-engineering-principles.md) before adding a metric or a mart: it sets the rules dbt, Cube and nao follow so one question gets one answer (components in dbt, ratios in Cube, one formula per layer, additivity tags, reconciliation), with the checklist and the checks that enforce them.
+
 ### The lake
 
 All batch and bulk data lives in one [DuckLake](https://ducklake.select) named `lake`:
