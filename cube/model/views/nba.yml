@@ -182,10 +182,16 @@ views:
 
   - name: player
     description: >
-      One row per player who ever played: biography (height, weight, position,
-      draft, school, country) and career span. Apply has_competitive_games to
-      leave out players who only appeared in preseason or All-Star games. For
-      stats use player_season or player_career.
+      One row per person_id: biography (height, weight, position, draft,
+      school, country) and career span. Apply the competitive_players segment
+      (or filter has_competitive_games) to keep only players who played a
+      competitive game: the rest are people in the bio table who never played
+      one, players who only appeared in preseason or All-Star games, and extra
+      ids for international club players in preseason exhibitions. Names are
+      not unique even among players who played (three Charles Smiths, two of
+      them in the same seasons): when a name matches more than one, tell them
+      apart by first and last season, then by team in player_season, and say
+      which one you mean. For stats use player_season or player_career.
     cubes:
       - join_path: nba_players_dim
         includes: "*"

@@ -447,6 +447,19 @@ models:
         description: "{{ doc('nba__draft_round') }}"
       - name: draft_number
         description: "{{ doc('nba__draft_number') }}"
+      - name: has_competitive_games
+        description: >
+          True when the person played at least one competitive game (Regular
+          Season, Playoffs, Play-in Tournament or NBA Cup Final) with recorded
+          minutes. False for people in the bio table who never played one,
+          players who only appeared in preseason or All-Star games, and the
+          separate ids the feed gives international club players for each NBA
+          preseason exhibition tour (Luka Doncic has two besides his NBA id).
+          Filter on it to find the id that has stats. Names are not unique even
+          among players with games (three Charles Smiths), so tell same-named
+          players apart by their seasons, not by this flag.
+        tests:
+          - not_null
       - name: first_game_date
         description: "{{ doc('nba__first_game_date') }} Over every competitive game (Regular Season, Playoffs, Play-in Tournament, NBA Cup Final); null for players with none."
       - name: last_game_date

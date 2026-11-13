@@ -95,6 +95,7 @@ SELECT
     p.draft_year,
     p.draft_round,
     p.draft_number,
+    cs.person_id IS NOT NULL AS has_competitive_games,
     cs.first_game_date,
     cs.last_game_date,
     cs.first_season_start_year,

@@ -34,6 +34,20 @@ cubes:
           True when the player has a row in the bio table. False for players who
           only appear in the box scores, whose bio columns are all null.
 
+      - name: has_competitive_games
+        sql: "{CUBE}.has_competitive_games"
+        type: boolean
+        description: >
+          True when the person played at least one competitive game (Regular
+          Season, Playoffs, Play-in Tournament or NBA Cup Final) with recorded
+          minutes. False for people in the bio table who never played one,
+          players who only appeared in preseason or All-Star games, and the
+          separate ids the feed gives international club players for each NBA
+          preseason exhibition tour (Luka Doncic has two besides his NBA id).
+          Filter on it to find the id that has stats. Names are not unique even
+          among players with games (three Charles Smiths), so tell same-named
+          players apart by their seasons, not by this flag.
+
       - name: birth_date
         sql: "{CUBE}.birth_date"
         type: time
@@ -188,18 +202,19 @@ cubes:
           last_game_date is null.
 
     segments:
-      - name: has_competitive_games
-        sql: "{CUBE}.first_game_date IS NOT NULL"
+      - name: competitive_players
+        sql: "{CUBE}.has_competitive_games"
         description: >
-          Players with at least one competitive game. The dimension also holds
-          players from the bio table who never played one (and some duplicate
-          ids), so apply this before counting players.
+          Players with at least one competitive game (has_competitive_games).
+          The dimension also holds people from the bio table who never played
+          one and extra ids for international club players in preseason
+          exhibitions, so apply this before counting or looking up players.
 
     measures:
       - name: count
         type: count
         format: ",.0f"
-        description: Number of players; apply has_competitive_games to count only players who played.
+        description: Number of players; apply competitive_players to count only players who played.
 
       - name: avg_height_inches
         sql: "{CUBE}.height_inches"
