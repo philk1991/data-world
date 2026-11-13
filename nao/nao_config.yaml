@@ -46,3 +46,11 @@ llm:
           default: true
 
 slack: null
+
+# `task nao:test` (nao test) runs the questions under tests/ through the agent.
+# Questions answered through Cube can't use nao's data verification (it only reads
+# SQL results), so each test asserts the Cube call and records its expected answer
+# in a comment; read the answers in tests/outputs/.
+test:
+  models:
+    - ollama:nao-qwen3:14b

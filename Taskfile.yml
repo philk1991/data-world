@@ -451,7 +451,7 @@ tasks:
       - ollama create nao-qwen3:14b -f Modelfile
 
   nao:sync:
-    desc: "Refresh nao's context from the lake's NBA marts (writes nao/databases/**), then add the marts' dbt descriptions, the generated column list in RULES.md and docs/nba/nba_marts.md (scripts/enrich_context.py, which reads dbt's manifest). Reads the lake READ_ONLY, so it can run alongside dbt and ingest jobs."
+    desc: "Refresh nao's context from the lake's NBA marts (writes nao/databases/**), then add the marts' dbt descriptions, the generated column list and Cube views in RULES.md and docs/nba/nba_marts.md (scripts/enrich_context.py, which reads dbt's manifest and Cube's /meta; without task cube:dev it keeps the previous Cube views). Reads the lake READ_ONLY, so it can run alongside dbt and ingest jobs."
     dir: nao
     env:
       POSTHOG_DISABLED: "true"  # nao's usage analytics (CLI and chat server)
@@ -469,7 +469,7 @@ tasks:
       - bash -c "source ../{{.VENV}} && nao debug"
 
   nao:dev:
-    desc: "Start the nao chat UI (http://localhost:5005). Uses the local Ollama model in nao_config.yaml, so Ollama must be running (brew services start ollama) and the model built (task nao:model). Reads the lake READ_ONLY."
+    desc: "Start the nao chat UI (http://localhost:5005). Uses the local Ollama model in nao_config.yaml, so Ollama must be running (brew services start ollama) and the model built (task nao:model). Answers metric questions through the Cube MCP server (agent/mcps/mcp.json), so start task cube:dev first. Reads the lake READ_ONLY."
     dir: nao
     env:
       POSTHOG_DISABLED: "true"  # nao's usage analytics (CLI and chat server)
@@ -477,3 +477,11 @@ tasks:
       DB_URI: "sqlite:{{.ROOT_DIR}}/nao/db.sqlite"
     cmds:
       - bash -c "source ../{{.VENV}} && nao chat"
+
+  nao:test:
+    desc: "Run the questions under nao/tests/ through the agent (nao test; results in nao/tests/outputs/). Needs task nao:dev and task cube:dev running, and NAO_API_KEY (or NAO_USERNAME and NAO_PASSWORD) in nao/.env. Pass a selection with -- -s luka_doncic."
+    dir: nao
+    env:
+      POSTHOG_DISABLED: "true"  # nao's usage analytics (CLI and chat server)
+    cmds:
+      - bash -c "source ../{{.VENV}} && set -a && { [ ! -f .env ] || source .env; } && set +a && nao test {{.CLI_ARGS}}"

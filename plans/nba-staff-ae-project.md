@@ -1,6 +1,6 @@
 # NBA analytics: a staff-level analytics engineering project
 
-Status: Phases 0–2 done on branch `nba-staff-ae-phase-1` (10 Nov 2026); Phase 3 next. Decisions: `plans/adr/0001`–`0005`.
+Status: Phases 0–3 done on `main` (12 Nov 2026); Phase 4 wired up on 13 Nov, but not yet tested through nao's agent. Decisions: `plans/adr/0001`–`0005`.
 
 ## Goal
 
@@ -272,9 +272,20 @@ Acceptance: no rate formula appears in more than one of dbt, Cube and nao (a gre
 
 ### Phase 4: route nao through Cube
 
-- [ ] Register the Cube MCP server in `nao_config.yaml` (`mcp: json_file_path`).
-- [ ] Generate the RULES.md table section and the metric list from the Cube `/meta` output and dbt, instead of maintaining them by hand.
-- [ ] Re-run the Curry shot-zone and clutch questions from `plans/nao-hosted-model-plan.md`. Pairs with that plan's model move: a 14B local model is unlikely to choose tools reliably.
+- [x] Register the Cube MCP server. *Done 13 Nov, differently:* nao 0.3.31's chat server reads `nao/agent/mcps/mcp.json`, not the `mcp:` key of `nao_config.yaml`. It starts `cube/mcp/server.py` over stdio and writes one OpenAPI spec per tool under `nao/agent/mcps/cube/`. The agent calls them through its `mcp_call` tool. The paths start `${NAO_DEFAULT_PROJECT_PATH}`, because the server runs from inside the `nao_core` package. Checked: discovery finds `describe_model`, `query` and `generated_sql`.
+- [x] Generate the Cube part of RULES.md from Cube's `/meta`. *Done 13 Nov:* `task nao:sync` writes `## Cube views (generated)`, which holds every view's description (the agent guidance) and member names, plus the current and last completed season. The model can then write a query without calling `describe_model` on the whole model, which is 90K characters, too long for the local model's 32K context. Without Cube running, the previous section is kept. The hand-written top of RULES.md now routes every number through Cube, with the call shape spelled out, and labels SQL as exploration. The table section was already generated from dbt (Phase 1).
+- [ ] Ask the questions through nao. Five Luka Doncic 2025-26 shooting questions are in `nao/tests/luka_doncic/` (`task nao:test`): splits, TS% rank, shot zones, clutch, threes rank. Each records its expected answer, checked to agree between Cube and the marts. Each test asserts a `mcp_call` to Cube, because nao's own data verification only reads SQL results. Running them needs `NAO_API_KEY` in `nao/.env`, which isn't set yet. Then re-run the Curry shot-zone and clutch questions from `plans/nao-hosted-model-plan.md`. RULES.md grew from 26K to 42K characters, so nao's prompt is about 15K tokens of the local model's 32K. If `nao-qwen3:14b` doesn't call Cube reliably, the hosted-model plan is next.
+  - *First manual test, 13 Nov:* single-player answers came through Cube correctly: TS .616, and threes 254/694 (.366). It failed in three ways:
+    - It invented a `true_shooting_pct_rank` member, a `player_shot_zones` cube and a `person_id` (1623423, nobody).
+    - Every SQL fallback used `database_id: "duckdb_local"`, nao's uninstalled scratch engine.
+    - After an error, it answered with the league-wide figure.
+  - Fixes:
+    - The Cube MCP server returns rows as arrays led by a row number, about a third of the size, so a leaderboard position is read rather than counted. An unknown-member error now explains how to rank.
+    - RULES.md now covers ranking, the `shot` view for zones and clutch, looking players up by name, and `database_id: "lake"`.
+  - The model inventing names it was given correctly is the signal for the hosted-model plan.
+  - Separately, `nba_players_dim` holds 262 extra ids for international club players in NBA preseason exhibitions (Luka Doncic: 1962937071 and 1962937441, Real Madrid 2015-16 and 2016-17, besides 1629029). *Done 13 Nov:* the dim has a `has_competitive_games` column, defined once in dbt. Cube exposes it as a dimension and as the `competitive_players` segment, renamed from `has_competitive_games` to avoid clashing with the dimension's name. nao's rules use both.
+    - Names aren't unique even among players with games: 42 names belong to two or more players, such as the three Charles Smiths, two of them in overlapping seasons.
+    - The `player` view description and RULES.md say to tell same-named players apart by seasons, then team, and to say which one was used.
 
 ### Phase 5: golden questions
 

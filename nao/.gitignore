@@ -13,3 +13,6 @@ repos/
 *.sqlite-shm
 
 __pycache__/
+
+# nao test results (task nao:test)
+tests/outputs/

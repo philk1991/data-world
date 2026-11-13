@@ -1,0 +1,8 @@
+# Expected: 254 threes made in 2025-26 (36.6%), third in the league behind
+# Kon Knueppel (273) and LaMelo Ball (272).
+name: luka_threes_rank
+prompt: How many threes did Luka Doncic make last season, and where did that rank in the league?
+assertions:
+  - type: tool_call
+    tool: mcp_call
+    args: {server: cube, tool: query}

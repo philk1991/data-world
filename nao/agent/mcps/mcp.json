@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "cube": {
+      "transport": "stdio",
+      "command": "${NAO_DEFAULT_PROJECT_PATH}/../cube/mcp/.venv/bin/python",
+      "args": ["${NAO_DEFAULT_PROJECT_PATH}/../cube/mcp/server.py"]
+    }
+  }
+}

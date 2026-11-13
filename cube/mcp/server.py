@@ -47,11 +47,20 @@ Spotify marts). Work in this order:
    ratios or averaging rows yourself — they are weighted correctly across rows.
 3. Query one view at a time; outside the views, only combine members from cubes
    that share a join_group.
-4. When answering, state the filters you applied (season, game type) and any
+4. There are no rank members. For "where did X rank", query the whole
+   leaderboard (the measure and the player or team name, the season filter and
+   the qualifying segment, ordered by the measure, limit 1000) and read X's
+   `row` number; filtering on X first would rank X against itself.
+5. When answering, state the filters you applied (season, game type) and any
    data-coverage caveat from the descriptions. Values come back unrounded:
    display them at the member's format (a d3 specifier: ".3f" for rates such as
    true shooting, ".1f" for per-game stats and ratings).
 """
+
+UNKNOWN_MEMBER_HINT = (
+    " -- use only the members describe_model lists for that view. There are no rank members:"
+    " to rank, order a leaderboard query by the measure and read the row number."
+)
 
 QUERY_FORMAT = """\
 A Cube REST query (JSON object). Members are always "<cube>.<member>". Keys:
@@ -70,6 +79,9 @@ A Cube REST query (JSON object). Members are always "<cube>.<member>". Keys:
     "dateRange": ["2020-01-01", "2020-12-31"]}] — only for type-time dimensions.
   order: {"<cube>.<member>": "desc"} (or a list of [member, "asc"|"desc"] pairs)
   limit: integer (default 100, max 1000); offset: integer
+Returns {"row_count", "limit", "columns", "rows"}: one array per row in the
+columns' order, led by its 1-based row number, so a row's number in an ordered
+query is its position on the leaderboard.
 Example — best regular-season records of 2023-24:
   {"measures": ["team_season.win_pct"],
    "dimensions": ["team_season.team_full_name"],
@@ -100,7 +112,9 @@ async def _request(method: str, path: str, **kwargs: Any) -> dict[str, Any]:
             if body.get("error") == "Continue wait" and time.monotonic() < deadline:
                 continue
             if response.status_code >= 400 or "error" in body:
-                raise ToolError(f"Cube returned an error: {body.get('error', body)}")
+                error = body.get("error", body)
+                hint = UNKNOWN_MEMBER_HINT if "not found for path" in str(error) else ""
+                raise ToolError(f"Cube returned an error: {error}{hint}")
             return body
 
 
@@ -149,7 +163,13 @@ async def query(query: dict[str, Any]) -> str:
     query = {**query, "limit": min(int(query.get("limit", DEFAULT_LIMIT)), MAX_LIMIT)}
     body = await _request("POST", "/load", json={"query": query})
     rows = body.get("data", [])
-    return json.dumps({"row_count": len(rows), "limit": query["limit"], "rows": rows}, indent=1, default=str)
+    # Arrays rather than objects: repeating every member name on every row tripled
+    # the size of a leaderboard, which a local model's context can't spare.
+    columns = list(rows[0]) if rows else [*query.get("dimensions", []), *query.get("measures", [])]
+    header = json.dumps({"row_count": len(rows), "limit": query["limit"], "columns": ["row", *columns]})
+    lines = [json.dumps([number, *(row.get(c) for c in columns)], default=str)
+             for number, row in enumerate(rows, start=1)]
+    return header[:-1] + ', "rows": [\n' + ",\n".join(lines) + "\n]}"
 
 
 @server.tool(annotations=ToolAnnotations(read_only_hint=True, open_world_hint=False))

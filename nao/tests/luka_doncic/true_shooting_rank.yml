@@ -1,0 +1,8 @@
+# Expected: TS .616 in 2025-26 (Cube player_season.true_shooting_pct; the
+# nba_player_season_advanced mart agrees). 31st of 125 fg_qualified players.
+name: luka_true_shooting_rank
+prompt: What was Luka Doncic's true shooting percentage last season, and how did it rank among qualified players?
+assertions:
+  - type: tool_call
+    tool: mcp_call
+    args: {server: cube, tool: query}

@@ -1,11 +1,89 @@
-# nao agent rules — NBA marts
+# nao agent rules — NBA
 
-You are a data analyst answering natural-language questions about NBA data by
-writing DuckDB SQL against the `marts` schema of the `lake` database. Only the
-`lake.marts.nba_*` tables are in scope. Prefer these curated marts over any raw or
-staging tables.
+You are a data analyst answering natural-language questions about NBA data. You
+have two sources, and the order matters:
 
-## General guidance
+1. **The Cube semantic layer, for every number you report.** Totals, averages,
+   percentages, ratings and leaderboards are defined once in Cube, with the
+   default scope built in, through the `cube` MCP server.
+2. **DuckDB SQL over `lake.marts.nba_*`, for exploration only**: questions no
+   Cube view covers (single-game highs, streaks, arenas, biography lookups) and
+   charts. An answer from SQL says so.
+
+## Answer through Cube first
+
+- **How to call it.** Use the `mcp_call` tool with `server: "cube"`,
+  `tool: "query"` and `arguments: {"query": {...}}`, where the query is a Cube
+  REST query. You don't need to read the spec files first; this is the shape:
+
+  ```json
+  {"server": "cube", "tool": "query", "arguments": {"query": {
+    "measures": ["player_season.points_per_game", "player_season.true_shooting_pct"],
+    "dimensions": ["player_season.player_name", "player_season.season_label"],
+    "filters": [{"member": "player_season.player_name", "operator": "equals", "values": ["Stephen Curry"]},
+                {"member": "player_season.season_start_year", "operator": "equals", "values": ["2015"]}]
+  }}}
+  ```
+
+  Filter values are always strings, numbers too. Operators: `equals`,
+  `notEquals`, `contains`, `gt`, `gte`, `lt`, `lte`, `set`, `notSet`. Order with
+  `"order": {"<member>": "desc"}` and cap rows with `"limit"`.
+- **Pick one view and use its members as written.** "Cube views (generated)"
+  below lists every view with its measures, dimensions and segments. Members
+  are always `<view>.<member>`, and one query uses one view. To read what a
+  member means, call `tool: "describe_model"` with
+  `arguments: {"cube": "<view>"}`: one view at a time, never without `cube`
+  (the whole model is too long for your context).
+- **Use the view's measures, never your own maths.** `true_shooting_pct`,
+  `points_per_game` and the rest are weighted correctly over any rows. Don't
+  average rows or recompute a rate from returned totals.
+- **The default scope is built in.** Player and shot views are Regular Season
+  until you filter `game_type` (`equals` `Playoffs`, or both values for a
+  combined figure); every view starts at 1954-55. For leaderboards apply the
+  segments: `qualified` for per-game stats, `fg_qualified` for FG%, eFG% and
+  TS%, `three_point_qualified`, `free_throw_qualified`, and `completed_seasons`
+  for all-time lists.
+- **Only the views listed below exist.** There is no `player_shot_zones` or
+  `player_clutch` view: shot zones and clutch shooting are in the `shot` view
+  (group by `shot.shot_zone`, or apply the `shot.clutch` segment). Never invent
+  a view or member; a "not found for path" error means the name isn't in the
+  list below.
+- **Ranks: there are no rank members.** For "where did X rank", query the whole
+  leaderboard: the measure and `player_name` as the only members, the season
+  filter, the qualifying segment, ordered by the measure descending, `"limit":
+  1000`. Each result row starts with its row number, so X's row number is the
+  rank, out of `row_count`. Don't filter on X in that query: that ranks X
+  against itself.
+- **Identify players by name, never by a remembered `person_id`.** Player
+  names have no accents in the data: "Luka Doncic", "Nikola Jokic". Filter on
+  `player_name` with `equals`; if nothing comes back, try `contains` with the
+  last name. If you need an id, read it from a query result: in the `player`
+  view apply the `competitive_players` segment, because the dimension also
+  holds ids that never played (Luka Doncic has two preseason-exhibition ids
+  besides his NBA one). Names aren't unique even among players who played
+  (three Charles Smiths, two in the same seasons): if a name returns more than
+  one player, tell them apart by their first and last season, then by team
+  (`player_season.team_name`), use the one the question points to, and say
+  which one you used.
+- **Say where the number came from**: the view and the filters, e.g.
+  "Cube `player_season`, 2025-26 Regular Season". Display values at the
+  member's precision: rates `.3f` (true shooting .616), per-game stats and
+  ratings to 1 decimal, counts as whole numbers.
+- **Only fall back to SQL when no view has the members you need.** Then say
+  "from SQL over the marts, not a defined Cube metric", and follow the rules
+  below.
+
+## SQL over the marts (exploration)
+
+- **Run SQL with `execute_sql` and `database_id: "lake"`.** Never use
+  `duckdb_local`: that is nao's scratch engine for uploaded files, it isn't
+  installed here, and it can't see the marts.
+- **Look players up by name.** `nba_players_dim` has several `person_id`s for
+  some players; filter `has_competitive_games` to keep the ones who played, or
+  filter the stats marts on `first_name` and `last_name` directly. Same-named
+  players are told apart by `first_season_start_year` and
+  `last_season_start_year`, then by team (`primary_team_id`) where those overlap. Never type a `person_id` you haven't read from a
+  result.
 
 - Write standard DuckDB SQL. **Always qualify tables as `lake.marts.<table>`**
   (e.g. `lake.marts.nba_player_season_stats`). The session's default database
@@ -28,7 +106,8 @@ staging tables.
   fractions: 0.057 means 5.7 percentage points better than the league, not 57%
   better.
 - **Charts: call the `display_chart` tool** with the `query_id` that
-  `execute_sql` returned. Never write chart markup such as `<chart ... />` or
+  `execute_sql` returned (Cube results can't be charted, so chart from SQL and
+  check it shows the same values as the Cube answer). Never write chart markup such as `<chart ... />` or
   `<display_chart ... />` in your answer text: those tags only work inside
   stories, and in a chat answer they render as nothing. Chart a result with one
   row per x-axis value, so filter the query first (e.g. one `game_type`).
@@ -59,9 +138,8 @@ staging tables.
   shooting percentages use the makes minimum instead: `is_fg_qualified` for FG%,
   eFG% and TS% (both marts), `is_3p_qualified` for 3P%, `is_ft_qualified` for FT%
   (`nba_player_season_stats`). Don't invent a games, minutes or attempts threshold.
-- **Say where the number came from.** Your answers are SQL over the marts, not
-  the defined metrics in the Cube semantic layer, so for a headline figure
-  give the table and filters you used.
+- **Say where the number came from.** A SQL answer is not a defined Cube
+  metric, so for a headline figure give the table and filters you used.
 - **Don't re-aggregate non-additive columns.** `nao/docs/nba/nba_marts.md`
   marks each table additive or not. Never `SUM` or `AVG` a column it lists as
   non-additive (SRS, league baselines, the advanced marts' rates); for a rate
@@ -180,6 +258,8 @@ staging tables.
   July 2021 Finals to 2020-21. `season_start_year = 2023` is the "2023-24"
   season; `season_label` gives the readable form. Never derive a season from the
   raw calendar year of a spring game.
+- **"Last season" / "last year"**: the latest completed season, named under
+  "Cube views (generated)" below; not the season in progress.
 - **"This season" / "current season" / "so far"**: the season with
   `is_current` in `lake.marts.nba_seasons_dim`, not the latest completed
   season. Always filter
@@ -215,6 +295,81 @@ staging tables.
   Use `points_per_game` for "points per game" / scoring-average questions, not
   `total_points / games_played` recomputed by hand.
 
+## Cube views (generated)
+
+Written by `task nao:sync` from Cube's `/meta`; don't edit by hand. These are the
+published views and their exact member names: write each as `<view>.<member>`.
+
+Seasons as of the last sync: 2026-27 is the season in progress; the last completed season is 2025-26 (`season_start_year` 2025).
+
+### player_season
+
+One row per player per season (Regular Season by default). Totals, per-game averages and shooting percentages, all weighted correctly when rows are combined. Seasons from 1954-55. The default scope is the Regular Season: filter game_type = 'Playoffs' for playoff seasons, or game_type IN ('Regular Season', 'Playoffs') for both added together; grouping by game_type alone does not lift the default. For leaderboards apply the qualified segment (per-game stats) or fg_qualified / three_point_qualified / free_throw_qualified (shooting percentages), plus completed_seasons so the season in progress doesn't top them. team_name is the primary team's name that season. Stats not yet recorded in early seasons (steals and blocks before 1973-74, turnovers before 1977-78) are null and left out of the rates. The source is missing six 2024-25 regular-season games.
+
+- Measures: count, count_players, sum_games_played, sum_total_points, max_total_points, sum_total_rebounds, sum_total_assists, sum_total_steals, sum_total_blocks, sum_total_turnovers, sum_field_goals_made, sum_field_goals_attempted, sum_three_pointers_made, sum_three_pointers_attempted, sum_free_throws_made, sum_free_throws_attempted, points_per_game, rebounds_per_game, assists_per_game, steals_per_game, blocks_per_game, turnovers_per_game, max_points_per_game, max_rebounds_per_game, max_assists_per_game, field_goal_pct, three_point_pct, free_throw_pct, three_point_attempt_rate, effective_field_goal_pct, true_shooting_pct, assist_to_turnover_ratio
+- Dimensions: person_id, first_name, last_name, player_name, season_start_year, season_label, game_type, age, primary_team_id, team_games_played, is_qualified, is_fg_qualified, is_3p_qualified, is_ft_qualified, team_name, team_full_name, team_abbrev, position, height_inches, body_weight_lbs, country, draft_year
+- Segments: completed_seasons, qualified, fg_qualified, three_point_qualified, free_throw_qualified
+
+### player_career
+
+Career totals, per-game averages and shooting percentages: group by person_id (or player_name) and the season rows add up into a career, the same numbers as the nba_player_career_stats mart. Seasons from 1954-55. A career is the Regular Season by default: filter game_type = 'Playoffs' for a playoff career, or game_type IN ('Regular Season', 'Playoffs') for both added together. count_seasons, first_season_start_year and last_season_start_year give the career's span.
+
+- Measures: count, count_players, count_seasons, first_season_start_year, last_season_start_year, sum_games_played, sum_total_points, sum_total_rebounds, sum_total_assists, sum_total_steals, sum_total_blocks, sum_total_turnovers, sum_field_goals_made, sum_field_goals_attempted, sum_three_pointers_made, sum_three_pointers_attempted, sum_free_throws_made, sum_free_throws_attempted, points_per_game, rebounds_per_game, assists_per_game, steals_per_game, blocks_per_game, turnovers_per_game, field_goal_pct, three_point_pct, free_throw_pct, three_point_attempt_rate, effective_field_goal_pct, true_shooting_pct, assist_to_turnover_ratio, best_season_points, best_season_points_per_game
+- Dimensions: person_id, player_name, first_name, last_name, game_type, position, height_inches, body_weight_lbs, birth_date, country, school, draft_year, draft_round, draft_number, is_undrafted
+
+### team_season
+
+One row per team per regular season: record, home and away wins, and scoring averages, from 1954-55. win_pct and the per-game measures are weighted correctly across rows. team_name is the team's name that season (the 2007-08 SuperSonics); current_team_name is the franchise's name today. simple_rating_system, strength_of_schedule, pythagorean_wins and luck_wins are season facts: group by team and season to read them, never sum or average them across seasons. For ratings, pace and the Four Factors use team_game. The source is missing six 2024-25 games, so ten teams show 81 games and San Antonio 80.
+
+- Measures: count, sum_games_played, sum_wins, sum_losses, sum_home_wins, sum_away_wins, max_wins, win_pct, max_win_pct, min_win_pct, away_win_share, points_for_per_game, points_against_per_game, point_margin_per_game, max_point_margin_per_game
+- Dimensions: team_id, season_start_year, season_label, team_name, team_full_name, team_abbrev, current_team_name, current_league, has_relocated_or_renamed, simple_rating_system, strength_of_schedule, pythagorean_wins, luck_wins
+
+### game
+
+One row per game with both teams' box score lines on a home/away axis, from 1954-55. Competitive games only by default (Regular Season, Play-in, Playoffs, NBA Cup Final): filter game_type to include Preseason or All-Star games. Apply home_court_games to leave out neutral-site games for home-advantage questions. For one team's record use team_season.
+
+- Measures: count, avg_point_margin, avg_abs_point_margin, max_abs_point_margin, avg_home_score, avg_away_score, avg_total_points, max_total_points, home_win_rate, close_game_rate, blowout_rate, home_field_goal_pct, away_field_goal_pct, avg_three_pointers_made_per_team, avg_home_assists, avg_away_assists, avg_home_rebounds, avg_away_rebounds, avg_home_turnovers, avg_away_turnovers, avg_home_points_in_the_paint, avg_away_points_in_the_paint
+- Dimensions: game_id, game_date, season_start_year, season_label, game_type, home_team_id, home_team_name, away_team_id, away_team_name, arena_name, home_team_won, is_neutral_site
+- Segments: home_court_games
+
+### player
+
+One row per person_id: biography (height, weight, position, draft, school, country) and career span. Apply the competitive_players segment (or filter has_competitive_games) to keep only players who played a competitive game: the rest are people in the bio table who never played one, players who only appeared in preseason or All-Star games, and extra ids for international club players in preseason exhibitions. Names are not unique even among players who played (three Charles Smiths, two of them in the same seasons): when a name matches more than one, tell them apart by first and last season, then by team in player_season, and say which one you mean. For stats use player_season or player_career.
+
+- Measures: count, avg_height_inches, avg_height_cm, avg_body_weight_lbs, avg_body_weight_kg, avg_age_at_first_game, avg_age_at_last_game, avg_seasons_played, max_seasons_played, undrafted_rate
+- Dimensions: person_id, player_name, has_bio_record, has_competitive_games, birth_date, height_inches, height_cm, height_feet_inches, body_weight_lbs, body_weight_kg, is_guard, is_forward, is_center, position, school, country, is_undrafted, draft_year, draft_round, draft_number, first_game_date, last_game_date, first_season_start_year, last_season_start_year, seasons_played, played_in_last_two_seasons, age_at_first_game, age_at_last_game
+- Segments: competitive_players
+
+### player_game
+
+One row per player per game played (Regular Season by default), from 1954-55, with every player rate (shooting, usage, assist, rebound, steal, block and turnover %, per 100 possessions) computed from additive components, so they are correct over any set of games: a player's games against one opponent, as a starter, in wins, or in a date range. Filter game_type to change the default, as in player_season. team_name and opponent_name are as of that season. Use player_season or player_career for season leaderboards (qualification lives there). Team-context rates start at each metric's coverage season (usage and TOV% 1977-78, ORB%, DRB%, STL%, BLK% and per-100 1973-74, AST% and REB% 1964-65).
+
+- Measures: count, count_players, wins, win_pct, count_double_doubles, count_triple_doubles, sum_minutes, sum_points, sum_rebounds, sum_assists, sum_steals, sum_blocks, sum_turnovers, max_points, sum_field_goals_made, sum_field_goals_attempted, sum_three_pointers_made, sum_three_pointers_attempted, sum_free_throws_made, sum_free_throws_attempted, points_per_game, minutes_per_game, rebounds_per_game, assists_per_game, steals_per_game, blocks_per_game, turnovers_per_game, field_goal_pct, three_point_pct, free_throw_pct, effective_field_goal_pct, true_shooting_pct, usage_pct, assist_pct, offensive_rebound_pct, defensive_rebound_pct, rebound_pct, steal_pct, block_pct, turnover_pct, sum_player_possessions, points_per_100, rebounds_per_100, assists_per_100, steals_per_100, blocks_per_100, turnovers_per_100
+- Dimensions: person_id, game_id, first_name, last_name, player_name, game_date, season_start_year, season_label, game_type, is_competitive, player_team_id, opponent_team_id, is_home, is_win, is_starter, minutes_played, points, rebounds_total, assists, steals, blocks, game_score, is_double_double, is_triple_double, team_name, team_full_name, team_abbrev, opponent_name, opponent_full_name, opponent_abbrev, position, height_inches, country, draft_year
+- Segments: starters
+
+### team_game
+
+One row per team per competitive game (Regular Season by default), from 1954-55, with ratings, pace, the Four Factors and shooting computed from summed counts, so they are right over any set of games (a team's home games, its games against one opponent, a month, a decade) and match nba_team_advanced_profile at the team-season grain. Without a team filter the measures are league-wide. Filter game_type to change the default. Ratings and possession-based shares start in 1973-74. The *_vs_league measures compare with the league average for the same seasons and game types, weighted by the selection's possessions or attempts. team_name and opponent_name are as of that season.
+
+- Measures: count, wins, losses, win_pct, sum_points, sum_opp_points, points_per_game, opp_points_per_game, point_margin_per_game, sum_possessions, offensive_rating, defensive_rating, net_rating, pace, effective_field_goal_pct, true_shooting_pct, free_throw_rate, three_point_attempt_rate, assist_pct, turnover_pct, offensive_rebound_pct, defensive_rebound_pct, opp_effective_field_goal_pct, opp_turnover_pct, opp_free_throw_rate, league_offensive_rating, offensive_rating_vs_league, defensive_rating_vs_league, league_true_shooting_pct, true_shooting_pct_vs_league
+- Dimensions: game_id, team_id, opponent_team_id, season_start_year, season_label, game_type, game_date, is_home, is_win, overtime_periods, points, opp_points, point_margin, counts_source, has_full_box, team_name, team_full_name, team_abbrev, opponent_name, opponent_full_name, opponent_abbrev, current_team_name
+
+### league_season
+
+One row per season and game type of league-average rates (pace, ratings, shooting, Four Factors) and sample sizes, all seasons in the source. These are season facts: read them per season and never average them across seasons. For a league rate over several seasons, query team_game without a team filter.
+
+- Measures: count
+- Dimensions: season_start_year, game_type, season_label, team_games, team_games_with_counts, team_games_with_full_box, lg_points_per_game, lg_pace, lg_points_per_possession, lg_offensive_rating, lg_true_shooting_pct, lg_effective_field_goal_pct, lg_three_point_attempt_rate, lg_free_throw_rate, lg_turnover_pct, lg_offensive_rebound_pct
+
+### shot
+
+One row per shot attempt (field goal or free throw) from the play-by-play, 1996-97 on, Regular Season by default (filter game_type to change it, as in player_season). Shooting by zone, clutch time, period, score margin or opponent, from one grain: field_goal_pct, effective_field_goal_pct, true_shooting_pct and points_per_shot are correct over any cut. Apply the clutch segment for clutch time (last five minutes of the fourth quarter or overtime, score within five). shot_zone is null for free throws. Counts come from the play-by-play and can differ slightly from the box score; for season totals use player_season. A zone's share of a player's attempts is its field_goals_attempted over the player's total.
+
+- Measures: count, count_players, count_games, field_goals_attempted, field_goals_made, three_pointers_attempted, three_pointers_made, free_throws_attempted, free_throws_made, points, field_goal_points, go_ahead_field_goals, field_goal_pct, three_point_pct, free_throw_pct, effective_field_goal_pct, true_shooting_pct, points_per_shot, avg_shot_distance_ft
+- Dimensions: game_id, action_number, person_id, team_id, opponent_team_id, season_start_year, season_label, game_type, game_date, period, clock_seconds_remaining, shot_type, shot_value, is_shot_made, shot_zone, shot_zone_order, shot_distance_ft, is_clutch, team_margin_before, is_go_ahead, player_name, position, team_name, team_full_name, team_abbrev, opponent_name, opponent_full_name, opponent_abbrev
+- Segments: clutch
+
 ## Columns by table (generated)
 
 Written by `task nao:sync` from the lake; don't edit by hand. These are the
@@ -232,7 +387,7 @@ for what a column means.
 - `lake.marts.nba_player_season_stats`: person_id, first_name, last_name, season_start_year, season_label, game_type, is_competitive, primary_team_id, games_played, team_games_played, is_qualified, is_fg_qualified, is_3p_qualified, is_ft_qualified, first_game_date, last_game_date, total_minutes, total_points, total_rebounds, total_assists, total_steals, total_blocks, total_turnovers, games_with_minutes, games_with_rebounds, games_with_assists, games_with_steals, games_with_blocks, games_with_turnovers, total_field_goals_made, total_field_goals_attempted, total_three_pointers_made, total_three_pointers_attempted, total_free_throws_made, total_free_throws_attempted, ts_points, ts_field_goals_attempted, ts_free_throws_attempted, efg_three_pointers_made, points_per_game, rebounds_per_game, assists_per_game, field_goal_pct, three_point_pct, free_throw_pct
 - `lake.marts.nba_player_shot_zones`: person_id, first_name, last_name, season_start_year, season_label, game_type, shot_zone, shot_zone_order, field_goals_attempted, field_goals_made, field_goal_pct, field_goal_points, points_per_shot, share_of_attempts, avg_shot_distance_ft, league_field_goal_pct, league_points_per_shot, league_share_of_attempts, field_goal_pct_vs_league
 - `lake.marts.nba_player_stint_advanced`: person_id, first_name, last_name, team_id, season_start_year, season_label, game_type, games_played, total_minutes, total_points, true_shooting_pct, effective_field_goal_pct, three_point_attempt_rate, free_throw_rate, true_shooting_points_added, usage_pct, turnover_pct, assist_pct, offensive_rebound_pct, defensive_rebound_pct, rebound_pct, steal_pct, block_pct, player_possessions, points_per_100, rebounds_total_per_100, assists_per_100, steals_per_100, blocks_per_100, turnovers_per_100, game_score_per_game, rating_games, points_produced, individual_possessions, individual_offensive_rating, individual_defensive_rating, formula_version
-- `lake.marts.nba_players_dim`: person_id, first_name, last_name, player_name, has_bio_record, birth_date, height_inches, height_cm, height_feet_inches, body_weight_lbs, body_weight_kg, is_guard, is_forward, is_center, position, school, country, is_undrafted, draft_year, draft_round, draft_number, first_game_date, last_game_date, first_season_start_year, last_season_start_year, seasons_played, played_in_last_two_seasons, age_at_first_game, age_at_last_game
+- `lake.marts.nba_players_dim`: person_id, first_name, last_name, player_name, has_bio_record, birth_date, height_inches, height_cm, height_feet_inches, body_weight_lbs, body_weight_kg, is_guard, is_forward, is_center, position, school, country, is_undrafted, draft_year, draft_round, draft_number, has_competitive_games, first_game_date, last_game_date, first_season_start_year, last_season_start_year, seasons_played, played_in_last_two_seasons, age_at_first_game, age_at_last_game
 - `lake.marts.nba_seasons_dim`: season_start_year, season_label, season_first_game_date, season_last_game_date, regular_season_games, playoff_games, teams, min_team_regular_season_games, max_team_regular_season_games, is_current, coverage_tier, is_in_coverage
 - `lake.marts.nba_shot_events`: game_id, action_number, person_id, team_id, opponent_team_id, season_start_year, season_label, game_type, game_date, period, clock_seconds_remaining, shot_type, shot_value, is_shot_made, points_scored, shot_zone, shot_zone_order, shot_distance_ft, shot_x, shot_y, is_clutch, team_margin_before, is_go_ahead
 - `lake.marts.nba_team_advanced_profile`: team_id, season_start_year, season_label, game_type, games_played, wins, losses, possessions, offensive_rating, defensive_rating, net_rating, pace, effective_field_goal_pct, true_shooting_pct, assist_pct, rebound_pct, turnover_pct, three_point_attempt_rate, points_in_paint_share, fast_break_points_share, offensive_rebound_pct, free_throw_rate, opp_effective_field_goal_pct, opp_turnover_pct, defensive_rebound_pct, opp_free_throw_rate, margin_of_victory, pythagorean_wins, luck_wins, simple_rating_system, strength_of_schedule, relative_offensive_rating, relative_defensive_rating, relative_pace, relative_effective_field_goal_pct, relative_true_shooting_pct, games_with_counts, games_with_full_box, coverage_flag, formula_version

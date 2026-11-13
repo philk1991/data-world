@@ -1,0 +1,9 @@
+# Expected (Cube player_season and lake.marts.nba_player_season_stats agree, synced 13 Nov 2026):
+# 2025-26 Regular Season, 65 games: FG .476 (693/1457), 3P .366 (254/694),
+# FT .780 (503/645), eFG .563, TS .616. No 2025-26 playoff games for Doncic in the data.
+name: luka_shooting_splits
+prompt: What were Luka Doncic's shooting percentages last season?
+assertions:
+  - type: tool_call
+    tool: mcp_call
+    args: {server: cube, tool: query}

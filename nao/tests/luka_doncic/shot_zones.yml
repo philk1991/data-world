@@ -1,0 +1,10 @@
+# Expected (Cube shot view = lake.marts.nba_player_shot_zones), 2025-26 Regular Season:
+# Restricted Area 132/162 (.815), In The Paint (Non-RA) 206/371 (.555),
+# Mid-Range 101/230 (.439), Corner 3 10/49 (.204), Above the Break 3 244/645 (.378).
+# 44% of his 1,457 attempts were above-the-break threes.
+name: luka_shot_zones
+prompt: Where did Luka Doncic take his shots from last season, and how well did he shoot from each zone?
+assertions:
+  - type: tool_call
+    tool: mcp_call
+    args: {server: cube, tool: query}

@@ -1,0 +1,9 @@
+# Expected (Cube shot view with the clutch segment = lake.marts.nba_player_clutch_stats),
+# 2025-26 Regular Season: 66 clutch points in 20 games, FG 19/44 (.432), 3P 9/25 (.360),
+# FT 19/21, clutch TS .620 vs .616 overall, 4 go-ahead field goals.
+name: luka_clutch_shooting
+prompt: How did Luka Doncic shoot in the clutch last season?
+assertions:
+  - type: tool_call
+    tool: mcp_call
+    args: {server: cube, tool: query}
